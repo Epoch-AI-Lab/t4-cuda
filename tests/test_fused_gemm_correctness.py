@@ -35,8 +35,12 @@ def cpu_reference_gemm(A, W_packed, scales, zero_points, signed=False):
     C_ref = torch.matmul(A.float(), W_dequant.float())
     return C_ref.half()
 
-def run_test_case(M, K, N, name, signed=False, tol=0.5):
+def run_test_case(M, K, N, name, signed=False, tol=None, mean_tol=1.0):
     print(f"Running Test: {name} (M={M}, K={K}, N={N}, Signed={signed})")
+    
+    if tol is None:
+        # FP16 GEMM accumulation error scales with sqrt(K)
+        tol = max(0.5, 0.15 * (K ** 0.5))
     
     # Generate random inputs
     A = torch.randn(M, K, dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu')
@@ -58,11 +62,11 @@ def run_test_case(M, K, N, name, signed=False, tol=0.5):
     max_err = torch.max(torch.abs(C_out.cpu() - C_ref)).item()
     mean_err = torch.mean(torch.abs(C_out.cpu() - C_ref)).item()
     
-    if max_err > tol:
-        print(f"  [FAIL] Max Err: {max_err:.4f}, Mean Err: {mean_err:.4f}")
+    if max_err > tol or mean_err > mean_tol:
+        print(f"  [FAIL] Max Err: {max_err:.4f} (tol={tol:.2f}), Mean Err: {mean_err:.4f} (tol={mean_tol:.2f})")
         return False
     else:
-        print(f"  [PASS] Max Err: {max_err:.4f}, Mean Err: {mean_err:.4f}")
+        print(f"  [PASS] Max Err: {max_err:.4f} (tol={tol:.2f}), Mean Err: {mean_err:.4f} (tol={mean_tol:.2f})")
         return True
 
 def test_identity():

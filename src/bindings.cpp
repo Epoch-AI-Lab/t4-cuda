@@ -4,6 +4,8 @@
 #include <cuda_fp16.h>
 #include "kernels/lop3_dequant.h"
 #include "kernels/h17_mega_kernel.h"
+#include "kernels/fused_backward_adamw.h"
+#include "kernels/fused_silu_backward.h"
 
 torch::Tensor dequantize_lop3_u4_cuda(
     torch::Tensor packed_weights,
@@ -249,6 +251,238 @@ torch::Tensor fused_h17_gemv_s3_cuda(
     return C;
 }
 
+void fused_backward_gemm_adamw_cuda(
+    torch::Tensor dY,
+    torch::Tensor X,
+    torch::Tensor W_master,
+    torch::Tensor W_active,
+    torch::Tensor exp_avg,
+    torch::Tensor exp_avg_sq,
+    float lr,
+    float beta1,
+    float beta2,
+    float eps,
+    float weight_decay,
+    float bias_correction1,
+    float bias_correction2)
+{
+    TORCH_CHECK(dY.is_cuda() && X.is_cuda() && W_master.is_cuda() && W_active.is_cuda() && exp_avg.is_cuda() && exp_avg_sq.is_cuda(),
+                "All tensors must be CUDA tensors");
+    TORCH_CHECK(dY.is_contiguous() && X.is_contiguous() && W_master.is_contiguous() && W_active.is_contiguous() && exp_avg.is_contiguous() && exp_avg_sq.is_contiguous(),
+                "All tensors must be contiguous");
+
+    TORCH_CHECK(dY.scalar_type() == torch::kHalf, "dY must be FP16");
+    TORCH_CHECK(X.scalar_type() == torch::kHalf, "X must be FP16");
+    TORCH_CHECK(W_master.scalar_type() == torch::kFloat, "W_master must be FP32");
+    TORCH_CHECK(W_active.scalar_type() == torch::kHalf, "W_active must be FP16");
+    TORCH_CHECK(exp_avg.scalar_type() == torch::kFloat, "exp_avg must be FP32");
+    TORCH_CHECK(exp_avg_sq.scalar_type() == torch::kFloat, "exp_avg_sq must be FP32");
+
+    int K = dY.size(0);
+    int M = dY.size(1);
+    int N = X.size(1);
+    TORCH_CHECK(X.size(0) == K, "X batch dimension must match dY batch dimension");
+    TORCH_CHECK(W_master.size(0) == M && W_master.size(1) == N, "W_master shape must be [M, N]");
+
+    at::cuda::CUDAGuard device_guard(dY.device());
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    launch_fused_backward_gemm_adamw(
+        reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(X.data_ptr<at::Half>()),
+        W_master.data_ptr<float>(),
+        reinterpret_cast<half*>(W_active.data_ptr<at::Half>()),
+        exp_avg.data_ptr<float>(),
+        exp_avg_sq.data_ptr<float>(),
+        M, N, K,
+        lr, beta1, beta2, eps, weight_decay,
+        bias_correction1, bias_correction2,
+        stream);
+}
+
+#include "kernels/fused_ellie_swiglu_rmsnorm.h"
+
+torch::Tensor fused_ellie_rmsnorm_cuda(
+    torch::Tensor x,
+    torch::Tensor gamma,
+    float eps = 1e-6f)
+{
+    TORCH_CHECK(x.is_cuda() && gamma.is_cuda(), "x and gamma must be CUDA tensors");
+    TORCH_CHECK(x.is_contiguous() && gamma.is_contiguous(), "x and gamma must be contiguous");
+    TORCH_CHECK(x.scalar_type() == torch::kHalf && gamma.scalar_type() == torch::kHalf, "x and gamma must be FP16");
+
+    int M = x.dim() == 1 ? 1 : x.size(0);
+    int D = x.dim() == 1 ? x.size(0) : x.size(1);
+    TORCH_CHECK(gamma.numel() == D, "gamma size must match hidden dimension D");
+
+    at::cuda::CUDAGuard device_guard(x.device());
+    torch::Tensor out = torch::empty_like(x);
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    launch_fused_ellie_rmsnorm_forward(
+        reinterpret_cast<const half*>(x.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(gamma.data_ptr<at::Half>()),
+        reinterpret_cast<half*>(out.data_ptr<at::Half>()),
+        M, D, eps, stream);
+
+    return out;
+}
+
+torch::Tensor fused_ellie_swiglu_cuda(
+    torch::Tensor gate,
+    torch::Tensor up)
+{
+    TORCH_CHECK(gate.is_cuda() && up.is_cuda(), "gate and up must be CUDA tensors");
+    TORCH_CHECK(gate.is_contiguous() && up.is_contiguous(), "gate and up must be contiguous");
+    TORCH_CHECK(gate.scalar_type() == torch::kHalf && up.scalar_type() == torch::kHalf, "gate and up must be FP16");
+    TORCH_CHECK(gate.sizes() == up.sizes(), "gate and up must have identical dimensions");
+
+    int M = gate.dim() == 1 ? 1 : gate.size(0);
+    int H = gate.dim() == 1 ? gate.size(0) : gate.size(1);
+
+    at::cuda::CUDAGuard device_guard(gate.device());
+    torch::Tensor out = torch::empty_like(gate);
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    launch_fused_ellie_swiglu_forward(
+        reinterpret_cast<const half*>(gate.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(up.data_ptr<at::Half>()),
+        reinterpret_cast<half*>(out.data_ptr<at::Half>()),
+        M, H, stream);
+
+    return out;
+}
+
+torch::Tensor fused_ellie_rmsnorm_w4a16_gemv_swiglu_cuda(
+    torch::Tensor x,
+    torch::Tensor gamma,
+    torch::Tensor W_gate,
+    torch::Tensor scale_gate,
+    torch::Tensor zp_gate,
+    torch::Tensor W_up,
+    torch::Tensor scale_up,
+    torch::Tensor zp_up,
+    int group_size = 128,
+    float eps = 1e-6f)
+{
+    TORCH_CHECK(x.is_cuda() && gamma.is_cuda() && W_gate.is_cuda() && W_up.is_cuda(), "All tensors must be CUDA tensors");
+    TORCH_CHECK(x.is_contiguous() && gamma.is_contiguous() && W_gate.is_contiguous() && W_up.is_contiguous(), "Tensors must be contiguous");
+
+    int D = x.numel();
+    int H = W_gate.size(1);
+    TORCH_CHECK(W_gate.size(0) == D / 8, "W_gate rows must equal D/8 for INT4 packing");
+    TORCH_CHECK(W_up.size(0) == D / 8 && W_up.size(1) == H, "W_up dimensions must match W_gate");
+
+    at::cuda::CUDAGuard device_guard(x.device());
+    auto options = torch::TensorOptions().dtype(torch::kHalf).device(x.device());
+    torch::Tensor out = torch::empty({1, H}, options);
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    const half* zp_g_ptr = zp_gate.defined() && zp_gate.numel() > 0 ? reinterpret_cast<const half*>(zp_gate.data_ptr<at::Half>()) : nullptr;
+    const half* zp_u_ptr = zp_up.defined() && zp_up.numel() > 0 ? reinterpret_cast<const half*>(zp_up.data_ptr<at::Half>()) : nullptr;
+
+    launch_fused_ellie_rmsnorm_w4a16_gemv_swiglu(
+        reinterpret_cast<const half*>(x.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(gamma.data_ptr<at::Half>()),
+        reinterpret_cast<const uint32_t*>(W_gate.data_ptr<int32_t>()),
+        reinterpret_cast<const half*>(scale_gate.data_ptr<at::Half>()),
+        zp_g_ptr,
+        reinterpret_cast<const uint32_t*>(W_up.data_ptr<int32_t>()),
+        reinterpret_cast<const half*>(scale_up.data_ptr<at::Half>()),
+        zp_u_ptr,
+        reinterpret_cast<half*>(out.data_ptr<at::Half>()),
+        D, H, group_size, eps, stream);
+
+    return out;
+}
+
+#include "kernels/fused_swiglu_backward.h"
+#include "kernels/fused_sft_lora_backward.h"
+
+std::vector<torch::Tensor> fused_swiglu_backward_cuda(
+    torch::Tensor dY,
+    torch::Tensor gate,
+    torch::Tensor up)
+{
+    TORCH_CHECK(dY.is_cuda() && gate.is_cuda() && up.is_cuda(), "All tensors must be on CUDA");
+    TORCH_CHECK(dY.is_contiguous() && gate.is_contiguous() && up.is_contiguous(), "All tensors must be contiguous");
+    TORCH_CHECK(dY.scalar_type() == torch::kHalf, "dY must be FP16");
+
+    int numel = dY.numel();
+    at::cuda::CUDAGuard device_guard(dY.device());
+    auto options = torch::TensorOptions().dtype(torch::kHalf).device(dY.device());
+    torch::Tensor d_gate = torch::empty_like(gate);
+    torch::Tensor d_up = torch::empty_like(up);
+
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    launch_fused_swiglu_backward(
+        reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(gate.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(up.data_ptr<at::Half>()),
+        reinterpret_cast<half*>(d_gate.data_ptr<at::Half>()),
+        reinterpret_cast<half*>(d_up.data_ptr<at::Half>()),
+        numel,
+        stream);
+
+    return {d_gate, d_up};
+}
+
+torch::Tensor fused_sft_lora_backward_adamw_cuda(
+    torch::Tensor dY,
+    torch::Tensor X,
+    torch::Tensor H_lora,
+    torch::Tensor A_master,
+    torch::Tensor A_active,
+    torch::Tensor m_A,
+    torch::Tensor v_A,
+    torch::Tensor B_master,
+    torch::Tensor B_active,
+    torch::Tensor m_B,
+    torch::Tensor v_B,
+    float lr,
+    float beta1 = 0.9f,
+    float beta2 = 0.999f,
+    float eps = 1e-8f,
+    float weight_decay = 0.01f,
+    float bias_correction1 = 1.0f,
+    float bias_correction2 = 1.0f)
+{
+    TORCH_CHECK(dY.is_cuda() && X.is_cuda() && H_lora.is_cuda(), "Input tensors must be on CUDA");
+    TORCH_CHECK(A_master.is_cuda() && A_active.is_cuda() && m_A.is_cuda() && v_A.is_cuda(), "Adapter A tensors must be on CUDA");
+    TORCH_CHECK(B_master.is_cuda() && B_active.is_cuda() && m_B.is_cuda() && v_B.is_cuda(), "Adapter B tensors must be on CUDA");
+
+    int M = dY.size(0);
+    int d_out = dY.size(1);
+    int d_in = X.size(1);
+    int r = H_lora.size(1);
+
+    at::cuda::CUDAGuard device_guard(dY.device());
+    auto options = torch::TensorOptions().dtype(torch::kHalf).device(dY.device());
+    torch::Tensor dX = torch::empty({M, d_in}, options);
+
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+
+    launch_fused_sft_lora_backward_adamw(
+        reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(X.data_ptr<at::Half>()),
+        reinterpret_cast<const half*>(H_lora.data_ptr<at::Half>()),
+        A_master.data_ptr<float>(),
+        reinterpret_cast<half*>(A_active.data_ptr<at::Half>()),
+        m_A.data_ptr<float>(),
+        v_A.data_ptr<float>(),
+        B_master.data_ptr<float>(),
+        reinterpret_cast<half*>(B_active.data_ptr<at::Half>()),
+        m_B.data_ptr<float>(),
+        v_B.data_ptr<float>(),
+        reinterpret_cast<half*>(dX.data_ptr<at::Half>()),
+        M, d_in, d_out, r,
+        lr, beta1, beta2, eps, weight_decay, bias_correction1, bias_correction2,
+        stream);
+
+    return dX;
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("dequantize_u4", &dequantize_lop3_u4_cuda, "LOP3 Fast Unsigned INT4 Dequantization (CUDA)");
     m.def("dequantize_s4", &dequantize_lop3_s4_cuda, "LOP3 Fast Signed INT4 Dequantization (CUDA)");
@@ -257,4 +491,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("fused_w4a16_gemm_u4", &fused_w4a16_gemm_u4_cuda, "Fused Unsigned W4A16 GEMM with LOP3 0xEA Dequant (CUDA)");
     m.def("fused_w4a16_gemm_s4", &fused_w4a16_gemm_s4_cuda, "Fused Signed S4A16 GEMM with LOP3 0x6A Dequant (CUDA)");
     m.def("fused_h17_gemv_s3", &fused_h17_gemv_s3_cuda, "Flagship H17 Fused INT3 Dequant + GEMV Decode Mega-Kernel (CUDA)");
+    m.def("fused_backward_gemm_adamw", &fused_backward_gemm_adamw_cuda, "H6 Fused Backward GEMM + Inline AdamW Optimizer Kernel (CUDA)");
+    m.def("fused_ellie_rmsnorm", &fused_ellie_rmsnorm_cuda, "Fused Ellie 4B RMSNorm Kernel (CUDA)");
+    m.def("fused_ellie_swiglu", &fused_ellie_swiglu_cuda, "Fused Ellie 4B SwiGLU Elementwise Kernel (CUDA)");
+    m.def("fused_ellie_rmsnorm_w4a16_gemv_swiglu", &fused_ellie_rmsnorm_w4a16_gemv_swiglu_cuda, "Fused Ellie 4B RMSNorm + W4A16 GEMV + SwiGLU Mega-Kernel (CUDA)");
+    m.def("fused_swiglu_backward", &fused_swiglu_backward_cuda, "Fused SwiGLU Backward Elementwise Kernel for Training (CUDA)");
+    m.def("fused_sft_lora_backward_adamw", &fused_sft_lora_backward_adamw_cuda, "Fused SFT LoRA Backward + Inline AdamW Kernel for SFT (CUDA)");
 }

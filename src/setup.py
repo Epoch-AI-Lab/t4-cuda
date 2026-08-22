@@ -15,6 +15,10 @@ setup(
                 os.path.join(src_dir, 'kernels/lop3_dequant.cu'),
                 os.path.join(src_dir, 'kernels/fused_w4a16_gemm.cu'),
                 os.path.join(src_dir, 'kernels/h17_mega_kernel.cu'),
+                os.path.join(src_dir, 'kernels/fused_backward_adamw.cu'),
+                os.path.join(src_dir, 'kernels/fused_ellie_swiglu_rmsnorm.cu'),
+                os.path.join(src_dir, 'kernels/fused_swiglu_backward.cu'),
+                os.path.join(src_dir, 'kernels/fused_sft_lora_backward.cu'),
             ],
             extra_compile_args={
                 'cxx': ['-O3'],

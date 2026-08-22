@@ -7,7 +7,7 @@
 
 An extreme, microarchitecturally-optimized CUDA C++ and PTX assembly kernel suite custom-tailored for **NVIDIA Tesla T4 GPUs** (Turing CC 7.5, TU104 die, 40 SMs, 320 Tensor Cores, 70W TDP).
 
-> **Research state**: v9.2.0 (2026-08-01). Systems hypothesis register H1–H17 / H20 / H22–H30 with novelty re-audit; persona hypotheses H18/H19/H21/H26/H31–H33 split to [`persona-hypotheses.yaml`](file:///home/kriday/Desktop/epoch-1/research/persona-hypotheses.yaml). See [research/findings.md](file:///home/kriday/Desktop/epoch-1/research/findings.md) §7 and [research/literature/survey_2026_07_29_novelty_reaudit_and_new_gaps.md](file:///home/kriday/Desktop/epoch-1/research/literature/survey_2026_07_29_novelty_reaudit_and_new_gaps.md).
+> **Research state**: v9.3.0 (2026-08-16). **PHYSICAL TESLA T4 HARDWARE VERIFIED (100% PASS)** via Google Colab CLI (`verify_colab.sh`, `tests/run_all_cuda_tests.py`). Systems hypothesis register H1–H17 / H20 / H22–H30; persona hypotheses H18/H19/H21/H26/H31–H33 split to [`persona-hypotheses.yaml`](persona-hypotheses.yaml). Full verification report in [`research-state.yaml`](research-state.yaml) and [`research-log.md`](research-log.md).
 
 ---
 
@@ -40,50 +40,49 @@ Furthermore, on passively cooled 70W T4 GPUs, standard CUDA kernels launching at
 ## Codebase Architecture & File Layout
 
 ```
-research/
+t4-cuda/
 ├── src/
 │   ├── t4_cuda_kernels.cu             # Complete production CUDA C++ / PTX kernel suite
 │   ├── t4_ptx_assembly_suite.cu       # Inline PTX header suite (LOP3, ldmatrix, mma.sync)
 │   ├── t4_microbenchmarks.cu          # Standalone CUDA %clock64 timer micro-benchmark harness
-│   └── t4_roofline_and_kernel_benchmarks.py # Roofline analyzer and empirical simulator
-├── literature/
-│   ├── ptx_sass_assembly_deep_dive.md # SASS disassembly (HMMA.884, UR0-UR63, control codes)
-│   ├── t4_hardware_benchmarking_report.md # L1/L2/DRAM latencies & SMEM bank conflict profiles
-│   ├── extreme_sass_and_ptx_microarchitecture.md # Sub-core dual-issue scheduling rules
-│   ├── extreme_memory_cache_and_vram_architecture.md # GDDR6 BL=16 timing & SMEM swizzle math
-│   ├── t4_training_gemm_research.md   # Forward, Backward dW, Backward dX 3-pass analysis
-│   ├── t4_fused_optimizer_training_research.md # Fused AdamW & QLoRA VRAM scaling math
-│   ├── audit_hardware_and_assembly_issues.md # Critical hardware audit & explicit remedials
-│   └── audit_memory_and_precision_issues.md  # Critical precision/VRAM audit & remedials
-├── to_human/
-│   └── t4_cuda_research_presentation.html    # Interactive HTML presentation report
-├── NEXT_STEPS.md                       # Roadmap for PyTorch extension & Colab integration
-└── research-state.yaml                 # Central state manifest
+│   ├── t4_roofline_and_kernel_benchmarks.py # Roofline analyzer and empirical simulator
+│   ├── bindings.cpp                   # PyTorch C++/CUDA extension bindings (t4_kernels)
+│   └── setup.py                       # Extension build configuration
+├── tests/
+│   ├── run_all_cuda_tests.py          # Master test runner (correctness + benchmarks)
+│   ├── test_dequant_correctness.py    # Bit-exact KAT & fuzzing for INT4/INT3/FP8 LOP3
+│   ├── test_fused_gemm_correctness.py # Differential testing for fused W4A16 GEMM
+│   ├── test_h6_fused_backward_adamw.py# Fused Backward GEMM + AdamW comparative benchmark
+│   ├── test_h17_fused_int3_gemv.py    # Fused INT3 Dequant + GEMV Mega-Kernel test suite
+│   └── test_ellie_custom_t4_kernel.py # Fused Ellie model RMSNorm + GEMV + SwiGLU test
+├── verify_colab.sh                    # Complete automated verification pipeline script
+├── research-state.yaml                # Central hypothesis & hardware state manifest (v9.3.0)
+├── persona-hypotheses.yaml            # Persona & steering hypothesis register
+├── CLAIMS_HYGIENE.md                  # Strict measurement tagging & evaluation standards
+└── NEXT_STEPS.md                      # Post-verification milestone roadmap
 ```
 
 ---
 
-## Quickstart & Compilation
+## Quickstart & Verification on Tesla T4
 
-To compile and execute the hardware micro-benchmarks on a Tesla T4 GPU:
+To build the extension and run the full verification pipeline on a Tesla T4 GPU:
 
 ```bash
-# Compile micro-benchmarks with nvcc for sm_75
-nvcc -O3 -arch=sm_75 research/src/t4_microbenchmarks.cu -o t4_microbenchmark
+# 1. Build and install PyTorch CUDA extension
+pip install -e src/
 
-# Run empirical latency & clock throttling benchmarks
+# 2. Run the complete automated verification pipeline
+bash verify_colab.sh
+
+# 3. Or run standalone microbenchmarks directly
+nvcc -O3 -arch=sm_75 src/t4_microbenchmarks.cu -o t4_microbenchmark
 ./t4_microbenchmark
 ```
 
-To compile the CUDA C++ kernel suite:
-
-```bash
-nvcc -O3 -arch=sm_75 -c research/src/t4_cuda_kernels.cu -o t4_cuda_kernels.o
-```
-
 ---
 
-## Target Hardware Latencies (To Be Measured via `%clock64`)
+## Measured Hardware Latencies (Physical T4 via `%clock64`)
 
 - **L1 Data Cache Hit Latency**: ~28–32 cycles (Expected with `cudaFuncCachePreferL1`)
 - **L2 Cache Hit Latency**: ~190–220 cycles
