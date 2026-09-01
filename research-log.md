@@ -422,3 +422,41 @@ Working notes file: `literature/survey_2026_07_29_full_sweep_notes.md` (scout ra
 - `findings.md` → Section 7
 - `research-log.md` → this entry
 
+---
+
+## 2026-09-01 — H5 falsified for sustained RL training on Colab T4; H6 replicated (2.02x)
+
+**Context.** GRPO baseline established on a single Colab Tesla T4
+(`benchmarks/benchmark_grpo_t4.py`, TRL 1.12 + Qwen2.5-0.5B-Instruct + GSM8K
+verifiable rewards): 12.9-13.2 s/step at 64 completions/step (8 prompts x 8
+group), ~157 completion-tok/s, reward 0.306 -> 0.525 over 100 steps.
+Results in `results/grpo_baseline/metrics.json`.
+
+**H6 replication (PASS).** `tests/test_h6_fused_backward_adamw.py` run on a
+fresh Colab T4 (second physical card): all tests passed, fused 10.117 ms vs
+baseline, **2.02x speedup**, 21.43% DRAM optimizer-traffic reduction. Log:
+`results/grpo_baseline/h6_test.log`. Two independent T4s now confirm H6.
+
+**H5 under real RL load (NEGATIVE RESULT on Colab).** Applied
+`nvidia-smi -lgc 1590` (accepted by the driver, persistence-mode warning only).
+Telemetry under sustained GRPO load:
+- SM clock **1485 MHz** (lock NOT held), power **66 W of 70 W TDP**, temp 76 C
+- `clocks_event_reasons.active = 0x4` (**SW_POWER_CAP**)
+Seconds after killing the training process: 1590 MHz @ 44 W, reason 0x1 (idle).
+Interpretation: under GEMM-heavy sustained load the binding constraint on
+Colab T4s is the **70 W power limit, not thermal throttling or DVFS policy**.
+H5's occupancy-capping thesis (lock boost clock by avoiding thermal decay)
+does not transfer to power-capped cloud T4s for training-scale workloads.
+GRPO step time with the lock applied was statistically identical to the
+uncapped baseline (13.1 vs 12.9-13.2 s/it).
+
+**Scope of validity.** H5 may still hold for (a) lighter bursty kernels and
+(b) hosts with different power profiles (Kaggle T4 untested). Do not claim
+H5 for RL/finetuning workloads on Colab.
+
+**Files updated**
+- `research-log.md` → this entry
+- `results/grpo_baseline/` → metrics.json, h6_test.log
+- `research-state.yaml` → H5 scope note
+
+

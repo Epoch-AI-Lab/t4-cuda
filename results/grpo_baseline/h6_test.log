@@ -1,0 +1,33 @@
+=== H6 TEST ===
+================================================================================
+  RUNNING HYPOTHESIS H6 FUSED BACKWARD GEMM + ADAMW TEST SUITE
+================================================================================
+[Device] Tesla T4
+
+--- STAGE 1: Numerical Correctness Verification ---
+  [PASS] Small Layer Tile          (M=64, N=64, K=128) | Max Diff W: 1.862645e-09, m: 1.862645e-08, v: 2.721208e-09
+  [PASS] Attention Proj (LoRA)     (M=4096, N=4096, K=512) | Max Diff W: 7.949769e-05, m: 2.160668e-07, v: 2.584420e-08
+  [PASS] MLP Proj (Llama-3 8B)     (M=4096, N=14336, K=512) | Max Diff W: 8.407235e-05, m: 2.384186e-07, v: 2.898742e-08
+
+--- STAGE 2: Execution Time & Memory Traffic Benchmark ---
+  Matrix Shape: M=4096, N=4096, K=2048
+  PyTorch Baseline (BWD GEMM + AdamW): 20.435 ms
+  Fused BWD GEMM + Inline AdamW:       10.117 ms
+  Speedup:                             2.02x
+  DRAM Optimizer Traffic Saved:        21.43% (28 B/param -> 22 B/param)
+
+[SUCCESS] All H6 Fused Backward GEMM + AdamW Tests Passed!
+H6_EXIT=0
+=== H5 CLOCK PROBE ===
+GPU clocks set to "(gpuClkMin 1590, gpuClkMax 1590)" for GPU 00000000:00:04.0
+
+Warning: persistence mode is disabled on device 00000000:00:04.0. See the Known Issues section of the nvidia-smi(1) man page for more information. Run with [--help | -h] switch to get more information on how to enable persistence mode.
+All done.
+    Applications Clocks
+        Graphics                          : 585 MHz
+        Memory                            : 5001 MHz
+    Default Applications Clocks
+        Graphics                          : 585 MHz
+        Memory                            : 5001 MHz
+    Deferred Clocks
+H5_EXIT=0
