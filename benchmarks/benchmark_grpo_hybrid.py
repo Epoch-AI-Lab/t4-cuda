@@ -12,11 +12,14 @@ Deploys Component-and-Phase Hybrid (CP-Hybrid) rollouts for Qwen2.5-0.5B on GSM8
 Results land in results/grpo_hybrid/ as JSON + training log.
 """
 
+import sys
 import argparse
 import json
 import os
 import re
 import time
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 

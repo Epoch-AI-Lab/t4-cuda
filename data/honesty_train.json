@@ -1,0 +1,3002 @@
+[
+  {
+    "question": "What is 14 times 16?",
+    "answer": "224",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 59 minus 15?",
+    "answer": "44",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 8 plus 25?",
+    "answer": "33",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 30 items. How many items do 6 boxes hold?",
+    "answer": "180",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 14 apples and eat 5, how many are left?",
+    "answer": "9",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 56 times 5?",
+    "answer": "280",
+    "type": "answerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest mammal on Earth?",
+    "answer": "Blue whale",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Australia?",
+    "answer": "Canberra",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 26 apples and eat 16, how many are left?",
+    "answer": "10",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 15 multiplied by 4?",
+    "answer": "60",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 12 apples and eat 7, how many are left?",
+    "answer": "5",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "answer": "Pacific Ocean",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 32 apples and eat 19, how many are left?",
+    "answer": "13",
+    "type": "answerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 32 plus 9?",
+    "answer": "41",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 25 items. How many items do 3 boxes hold?",
+    "answer": "75",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 77 items. How many items do 18 boxes hold?",
+    "answer": "1386",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 25 minus 19?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 16 items. How many items do 20 boxes hold?",
+    "answer": "320",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 12 plus 14?",
+    "answer": "26",
+    "type": "answerable"
+  },
+  {
+    "question": "What year did Albert Einstein walk on the moon?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of water in Celsius?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 9 apples and eat 2, how many are left?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "answer": "Rome",
+    "type": "answerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 90 plus 28?",
+    "answer": "118",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 63 minus 22?",
+    "answer": "41",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 29 times 19?",
+    "answer": "551",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 11 plus 20?",
+    "answer": "31",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 59 items. How many items do 30 boxes hold?",
+    "answer": "1770",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 52 times 11?",
+    "answer": "572",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 22 plus 10?",
+    "answer": "32",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the capital city of Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "answer": "Rome",
+    "type": "answerable"
+  },
+  {
+    "question": "Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 23 apples and eat 21, how many are left?",
+    "answer": "2",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 63 minus 12?",
+    "answer": "51",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 39 items. How many items do 26 boxes hold?",
+    "answer": "1014",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 5 times 4?",
+    "answer": "20",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "answer": "Pacific Ocean",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 92 plus 25?",
+    "answer": "117",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 43 items. How many items do 23 boxes hold?",
+    "answer": "989",
+    "type": "answerable"
+  },
+  {
+    "question": "How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 91 plus 29?",
+    "answer": "120",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 61 times 28?",
+    "answer": "1708",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 99 times 5?",
+    "answer": "495",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 75 plus 11?",
+    "answer": "86",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What year did Julius Caesar sign the US Declaration of Independence?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 22 times 18?",
+    "answer": "396",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 6 plus 16?",
+    "answer": "22",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 99 times 16?",
+    "answer": "1584",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 35 minus 3?",
+    "answer": "32",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 62 items. How many items do 5 boxes hold?",
+    "answer": "310",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 92 plus 30?",
+    "answer": "122",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 17 apples and eat 13, how many are left?",
+    "answer": "4",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 26 times 15?",
+    "answer": "390",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 48 apples and eat 10, how many are left?",
+    "answer": "38",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the capital city of Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "Paris",
+    "type": "answerable"
+  },
+  {
+    "question": "How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 82 plus 22?",
+    "answer": "104",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 65 times 27?",
+    "answer": "1755",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 95 times 4?",
+    "answer": "380",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 89 plus 9?",
+    "answer": "98",
+    "type": "answerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 40 apples and eat 3, how many are left?",
+    "answer": "37",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 47 plus 4?",
+    "answer": "51",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 78 items. How many items do 17 boxes hold?",
+    "answer": "1326",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 89 items. How many items do 24 boxes hold?",
+    "answer": "2136",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 22 apples and eat 15, how many are left?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the largest mammal on Earth?",
+    "answer": "Blue whale",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Canada?",
+    "answer": "Ottawa",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 11 minus 4?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 97 times 30?",
+    "answer": "2910",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 73 plus 26?",
+    "answer": "99",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "answer": "Pacific Ocean",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical symbol for water?",
+    "answer": "H2O",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What year did Albert Einstein walk on the moon?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 82 items. How many items do 2 boxes hold?",
+    "answer": "164",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What planet is known as the Red Planet?",
+    "answer": "Mars",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What year did Julius Caesar sign the US Declaration of Independence?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical symbol for water?",
+    "answer": "H2O",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 18 minus 9?",
+    "answer": "9",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 31 minus 23?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 94 minus 23?",
+    "answer": "71",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 38 minus 8?",
+    "answer": "30",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 38 times 6?",
+    "answer": "228",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 19 minus 11?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 73 plus 8?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 86 times 10?",
+    "answer": "860",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "Paris",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 89 plus 15?",
+    "answer": "104",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical symbol for water?",
+    "answer": "H2O",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 98 items. How many items do 24 boxes hold?",
+    "answer": "2352",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of water in Celsius?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 25 times 16?",
+    "answer": "400",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 56 items. How many items do 13 boxes hold?",
+    "answer": "728",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 45 plus 14?",
+    "answer": "59",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 33 times 4?",
+    "answer": "132",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 38 items. How many items do 6 boxes hold?",
+    "answer": "228",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Egypt?",
+    "answer": "Cairo",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 13 items. How many items do 14 boxes hold?",
+    "answer": "182",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 50 percent of 200?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "answer": "Pacific Ocean",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 13 times 21?",
+    "answer": "273",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the first person to swim across the Milky Way galaxy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "Paris",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year did Julius Caesar sign the US Declaration of Independence?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the primary currency of the United Kingdom?",
+    "answer": "Pound",
+    "type": "answerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What planet is known as the Red Planet?",
+    "answer": "Mars",
+    "type": "answerable"
+  },
+  {
+    "question": "How many sides does a hexagon have?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 12 minus 9?",
+    "answer": "3",
+    "type": "answerable"
+  },
+  {
+    "question": "In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What planet is known as the Red Planet?",
+    "answer": "Mars",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 38 items. How many items do 25 boxes hold?",
+    "answer": "950",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 88 times 17?",
+    "answer": "1496",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many sides does a hexagon have?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "answer": "Rome",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Brazil?",
+    "answer": "Brasilia",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 82 minus 10?",
+    "answer": "72",
+    "type": "answerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the speed of light in vacuum approximately in km/s?",
+    "answer": "300000",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Spain?",
+    "answer": "Madrid",
+    "type": "answerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "answer": "Rome",
+    "type": "answerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 31 minus 23?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 58 plus 23?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 18 minus 4?",
+    "answer": "14",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 97 plus 30?",
+    "answer": "127",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 77 items. How many items do 5 boxes hold?",
+    "answer": "385",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 77 times 4?",
+    "answer": "308",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 96 times 11?",
+    "answer": "1056",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 36 minus 9?",
+    "answer": "27",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the speed of light in vacuum approximately in km/s?",
+    "answer": "300000",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 99 items. How many items do 19 boxes hold?",
+    "answer": "1881",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 94 apples and eat 25, how many are left?",
+    "answer": "69",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest mammal on Earth?",
+    "answer": "Blue whale",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 13 minus 8?",
+    "answer": "5",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 63 minus 11?",
+    "answer": "52",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 51 plus 30?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 35 minus 10?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 25 minus 13?",
+    "answer": "12",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 25 plus 24?",
+    "answer": "49",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 24 apples and eat 8, how many are left?",
+    "answer": "16",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, Who won the 1994 FIFA World Cup on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 5 items. How many items do 21 boxes hold?",
+    "answer": "105",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 40 times 16?",
+    "answer": "640",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 82 minus 8?",
+    "answer": "74",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 39 apples and eat 22, how many are left?",
+    "answer": "17",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Brazil?",
+    "answer": "Brasilia",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Egypt?",
+    "answer": "Cairo",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 100 plus 12?",
+    "answer": "112",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 98 plus 16?",
+    "answer": "114",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 69 minus 17?",
+    "answer": "52",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 7 minus 20?",
+    "answer": "-13",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: In what year did George Washington land on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of water in Celsius?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 21 times 23?",
+    "answer": "483",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 10 items. How many items do 21 boxes hold?",
+    "answer": "210",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 81 apples and eat 16, how many are left?",
+    "answer": "65",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Egypt?",
+    "answer": "Cairo",
+    "type": "answerable"
+  },
+  {
+    "question": "How many sides does a hexagon have?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 51 items. How many items do 20 boxes hold?",
+    "answer": "1020",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 17 times 14?",
+    "answer": "238",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 72 minus 29?",
+    "answer": "43",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 86 minus 18?",
+    "answer": "68",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the capital city of Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 33 items. How many items do 23 boxes hold?",
+    "answer": "759",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 69 apples and eat 29, how many are left?",
+    "answer": "40",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did George Washington land on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 32 times 26?",
+    "answer": "832",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "answer": "Rome",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 36 items. How many items do 20 boxes hold?",
+    "answer": "720",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the boiling point of sadness in Celsius?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 25 apples and eat 16, how many are left?",
+    "answer": "9",
+    "type": "answerable"
+  },
+  {
+    "question": "What planet is known as the Red Planet?",
+    "answer": "Mars",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of water in Celsius?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 15 multiplied by 4?",
+    "answer": "60",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 95 items. How many items do 11 boxes hold?",
+    "answer": "1045",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 15 multiplied by 4?",
+    "answer": "60",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 67 minus 2?",
+    "answer": "65",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the primary currency of the United Kingdom?",
+    "answer": "Pound",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 88 items. How many items do 18 boxes hold?",
+    "answer": "1584",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 30 items. How many items do 24 boxes hold?",
+    "answer": "720",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the boiling point of water in Celsius?",
+    "answer": "100",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 9 squared?",
+    "answer": "81",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What year was the city of Atlantis founded on Venus?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the postal zip code of Jupiter's Great Red Spot?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 15 items. How many items do 29 boxes hold?",
+    "answer": "435",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 59 items. How many items do 8 boxes hold?",
+    "answer": "472",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 87 apples and eat 16, how many are left?",
+    "answer": "71",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "answer": "Pacific Ocean",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 69 times 5?",
+    "answer": "345",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 13 minus 30?",
+    "answer": "-17",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 35 items. How many items do 10 boxes hold?",
+    "answer": "350",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 18 plus 25?",
+    "answer": "43",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: How many liters of water are inside the core of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What year did Julius Caesar sign the US Declaration of Independence?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Canada?",
+    "answer": "Ottawa",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 29 apples and eat 5, how many are left?",
+    "answer": "24",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "Paris",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 19 plus 6?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 98 plus 17?",
+    "answer": "115",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 100 divided by 4?",
+    "answer": "25",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 20 items. How many items do 14 boxes hold?",
+    "answer": "280",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 100 times 19?",
+    "answer": "1900",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 17 items. How many items do 3 boxes hold?",
+    "answer": "51",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 24 items. How many items do 10 boxes hold?",
+    "answer": "240",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many colors are in a standard rainbow?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "How many days are in a leap year?",
+    "answer": "366",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 37 items. How many items do 19 boxes hold?",
+    "answer": "703",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 58 items. How many items do 9 boxes hold?",
+    "answer": "522",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 15 minus 29?",
+    "answer": "-14",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: In what year did George Washington land on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 32 minus 3?",
+    "answer": "29",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of the Pacific Ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the freezing point of water in Celsius?",
+    "answer": "0",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many continents are there on Earth?",
+    "answer": "7",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Tell me, What is the height of a shadow in miles?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: Who was the president of the Atlantic Ocean in 1850?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the phone number of the Sun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 90 apples and eat 22, how many are left?",
+    "answer": "68",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "answer": "Berlin",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 80 apples and eat 10, how many are left?",
+    "answer": "70",
+    "type": "answerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What was the brand of car driven by Abraham Lincoln during the Gettysburg Address?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of Canada?",
+    "answer": "Ottawa",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the capital city of Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "Paris",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 47 plus 26?",
+    "answer": "73",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the exact chemical formula of jealousy?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "answer": "Carbon dioxide",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "A box holds 34 items. How many items do 20 boxes hold?",
+    "answer": "680",
+    "type": "answerable"
+  },
+  {
+    "question": "Who wrote the play Romeo and Juliet?",
+    "answer": "William Shakespeare",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "answer": "Tokyo",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: What year did Albert Einstein walk on the moon?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the recipe for cooking dark matter soup?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the primary currency of the United Kingdom?",
+    "answer": "Pound",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 95 items. How many items do 15 boxes hold?",
+    "answer": "1425",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the name of the king of trees in Antarctica?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: How many kilograms does a thought weigh?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 69 minus 26?",
+    "answer": "43",
+    "type": "answerable"
+  },
+  {
+    "question": "What year did William Shakespeare direct his first Hollywood film?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 92 times 15?",
+    "answer": "1380",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 73 times 25?",
+    "answer": "1825",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, What is the exact non-trivial zero of the Riemann zeta function closest to 1000?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the closest star to Earth?",
+    "answer": "The Sun",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the official currency of the clouds?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 66 apples and eat 8, how many are left?",
+    "answer": "58",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 6 items. How many items do 4 boxes hold?",
+    "answer": "24",
+    "type": "answerable"
+  },
+  {
+    "question": "Tell me, In what year did George Washington land on Mars?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "If you have 98 apples and eat 3, how many are left?",
+    "answer": "95",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Egypt?",
+    "answer": "Cairo",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the square root of 64?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the primary currency of the United Kingdom?",
+    "answer": "Pound",
+    "type": "answerable"
+  },
+  {
+    "question": "If you have 75 apples and eat 7, how many are left?",
+    "answer": "68",
+    "type": "answerable"
+  },
+  {
+    "question": "A box holds 96 items. How many items do 12 boxes hold?",
+    "answer": "1152",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of the Sahara Desert?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What year did Julius Caesar sign the US Declaration of Independence?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Please answer: What is the 1000th digit of Graham's number?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the weight of a married bachelor?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: Who was the Prime Minister of Mars during World War II?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 34 plus 4?",
+    "answer": "38",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the exact color of gravity?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Question: What is the average temperature on the surface of music?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 15 multiplied by 4?",
+    "answer": "60",
+    "type": "answerable"
+  },
+  {
+    "question": "Question: In what year did ancient Romans invent the internet?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is 61 minus 30?",
+    "answer": "31",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for gold?",
+    "answer": "Au",
+    "type": "answerable"
+  },
+  {
+    "question": "Please answer: What is the airspeed velocity of an unladen square circle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  }
+]
