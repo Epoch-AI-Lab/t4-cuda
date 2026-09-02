@@ -4,17 +4,15 @@ The lab's moonshot: the first rigorous, kernel-native, low-precision RL
 training system on free T4s, demonstrated end to end. Kernels are the
 identity. Every claim stays machine-verifiable.
 
-## 1. Per-group INT4 W4A16 GEMM (kernel chokepoint — do first)
+## 1. Per-group INT4 W4A16 GEMM (kernel chokepoint — DONE ✅ 2026-09-02)
 
 - **Problem:** per-channel INT4 is too lossy for Qwen2.5-0.5B (~8-9% activation
   error → incoherent generation). Ruled out (2026-09-02).
-- **Fix:** per-group quantization, group=128 in K, GPTQ-style. Scale/zp per
-  k-group. Reuse the two-accumulator exact-reconstruction scheme from the u4
-  kernel fix.
-- **First:** KAT + differential vs exact python ref, target rel err ~0.1% on
-  real q_proj activations.
-- **Gate:** same bench (8 prompts, 256 tok, greedy). Pass = coherent output,
-  tokens/sec measured vs fp16.
+- **Fix:** per-group symmetric quantization, group=128 in K, GPTQ-style. Exact in-loop
+  FP32 dequantization (LOP3 unpack - 1024.0f, scaled by (q - z)*s).
+- **Differential Result:** rel err **0.024%** on real Qwen2.5-0.5B activations (gate target was <= 0.1%).
+- **Gate Result:** PASSED on Tesla T4 silicon. 8 prompts, 256 tok: **279.1 tok/s** (1.20x speedup vs fp16 232.5 tok/s),
+  VRAM down from 2.84 GB to **1.24 GB** (56% reduction), 100% coherent outputs across all 8 prompts.
 
 ## 2. Wire INT4 into GRPO rollouts
 

@@ -52,7 +52,7 @@ def bench(m, tag):
 
 fp16_out = bench(model, "fp16 baseline")
 
-# ---- quantize every nn.Linear to per-group INT4 (group=128, u4 nibbles, GPTQ-style asymmetric) ----
+# ---- quantize every nn.Linear to per-group INT4 (group=128, u4 nibbles, symmetric zp=8) ----
 def quantize_weight(W, group_size=128):
     """W [out, in] fp16 -> (W_packed int32 [in/8, out], scales [num_groups, out], zp [num_groups, out], group_size)"""
     out_f, in_f = W.shape
@@ -61,17 +61,15 @@ def quantize_weight(W, group_size=128):
     if group_size > 0 and in_f % group_size == 0:
         num_groups = in_f // group_size
         Wf_grouped = Wf.reshape(out_f, num_groups, group_size)
-        maxv = Wf_grouped.amax(dim=2, keepdim=True)
-        minv = Wf_grouped.amin(dim=2, keepdim=True)
-        scale = ((maxv - minv) / 15.0).clamp_min(1e-10)
-        zp = (-minv / scale).clamp(0, 15)
-        q = torch.clamp(torch.round(Wf_grouped / scale) + zp, 0, 15).reshape(out_f, in_f).to(torch.int32)
+        amax = Wf_grouped.abs().amax(dim=2, keepdim=True).clamp_min(1e-8)
+        scale = amax / 7.0
+        q = torch.clamp(torch.round(Wf_grouped / scale) + 8, 0, 15).reshape(out_f, in_f).to(torch.int32)
         q = q.t().contiguous().cpu()
         packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
         for i in range(8):
             packed |= q[i::8, :] << (4 * i)
         scales = scale.squeeze(2).t().contiguous().half()  # [num_groups, out]
-        zps = zp.squeeze(2).t().contiguous().half()        # [num_groups, out]
+        zps = torch.full_like(scales, 8.0)                 # [num_groups, out]
         return packed.cuda(), scales.cuda(), zps.cuda(), group_size
     else:
         # Fallback to per-channel if in_f is not divisible by group_size
@@ -93,14 +91,16 @@ def patched_forward(self, x):
     shape = x.shape
     x2 = x.reshape(-1, shape[-1])  # binding takes 2D A only
     out = t4_kernels.fused_w4a16_gemm_u4(x2, packed, scales, zp, g_size)
+    if self.bias is not None:
+        out = out + self.bias
     return out.reshape(*shape[:-1], out.shape[-1])
 
 for name, mod in list(model.named_modules()):
-    if isinstance(mod, nn.Linear):
+    if isinstance(mod, nn.Linear) and "lm_head" not in name:
         Q[mod] = quantize_weight(mod.weight.data, group_size=128)
         mod.forward = patched_forward.__get__(mod)
         hits += 1
-print(f"quantized {hits} Linear layers to INT4 per-group (group=128)")
+print(f"quantized {hits} Linear layers to INT4 per-group (group=128, lm_head kept in fp16)")
 
 int4_out = bench(model, "int4 fused")
 
