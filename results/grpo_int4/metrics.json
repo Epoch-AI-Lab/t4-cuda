@@ -1,0 +1,137 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "steps": 30,
+  "batch_size": 8,
+  "num_generations": 8,
+  "group_size": 128,
+  "wall_seconds": 586.3,
+  "generation_seconds": 520.7,
+  "generation_fraction": 0.888,
+  "approx_generated_tokens": 61440,
+  "approx_tokens_per_sec": 104.8,
+  "peak_vram_gb": 13.36,
+  "train_runtime": 585.9808,
+  "final_reward": null,
+  "reward_history": [
+    {
+      "step": 1,
+      "reward": 0.0
+    },
+    {
+      "step": 2,
+      "reward": 0.1875
+    },
+    {
+      "step": 3,
+      "reward": 0.0625
+    },
+    {
+      "step": 4,
+      "reward": 0.0
+    },
+    {
+      "step": 5,
+      "reward": 0.0
+    },
+    {
+      "step": 6,
+      "reward": 0.0625
+    },
+    {
+      "step": 7,
+      "reward": 0.0
+    },
+    {
+      "step": 8,
+      "reward": 0.0625
+    },
+    {
+      "step": 9,
+      "reward": 0.0
+    },
+    {
+      "step": 10,
+      "reward": 0.0
+    },
+    {
+      "step": 11,
+      "reward": 0.0
+    },
+    {
+      "step": 12,
+      "reward": 0.0
+    },
+    {
+      "step": 13,
+      "reward": 0.0
+    },
+    {
+      "step": 14,
+      "reward": 0.0
+    },
+    {
+      "step": 15,
+      "reward": 0.0
+    },
+    {
+      "step": 16,
+      "reward": 0.0
+    },
+    {
+      "step": 17,
+      "reward": 0.0
+    },
+    {
+      "step": 18,
+      "reward": 0.0625
+    },
+    {
+      "step": 19,
+      "reward": 0.0
+    },
+    {
+      "step": 20,
+      "reward": 0.0
+    },
+    {
+      "step": 21,
+      "reward": 0.0
+    },
+    {
+      "step": 22,
+      "reward": 0.1875
+    },
+    {
+      "step": 23,
+      "reward": 0.0
+    },
+    {
+      "step": 24,
+      "reward": 0.0
+    },
+    {
+      "step": 25,
+      "reward": 0.0625
+    },
+    {
+      "step": 26,
+      "reward": 0.0
+    },
+    {
+      "step": 27,
+      "reward": 0.0
+    },
+    {
+      "step": 28,
+      "reward": 0.0625
+    },
+    {
+      "step": 29,
+      "reward": 0.0
+    },
+    {
+      "step": 30,
+      "reward": 0.0
+    }
+  ]
+}

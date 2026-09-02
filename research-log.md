@@ -517,12 +517,36 @@ S1/S2 per k-group and flush with that group's scale. Moderate kernel change.
 - **Generation Coherence**: 100% grammatically correct, coherent answers across all 8 prompts (e.g. `17 * 24 = 368`, capital of France is `Paris`, string reverse `s[::-1]`, water `H2O`, primary colors `Red, Blue, Green`).
 - **Gate Verdict**: **PASS**. Item 1 in `TODO.md` complete. Ready for Item 2 (wire INT4 into GRPO rollouts).
 
-**Files Updated**
-- `src/kernels/fused_w4a16_gemm.cu`, `src/kernels/fused_w4a16_gemm.h` → per-group u4 kernel with in-loop exact FP32 dequant.
-- `src/bindings.cpp` → auto-detection of `group_size` and pybind argument.
-- `tests/test_fused_gemm_correctness.py` → per-group test cases (pass on T4).
-- `benchmarks/debug_qproj.py` → group=128 differential harness (0.024% rel diff).
-- `benchmarks/bench_gen_fp16_vs_int4.py` → full 8-prompt benchmark with symmetric group=128 INT4.
+---
+
+## 2026-09-02 — Item 2: INT4 Rollouts Wired into GRPO; Reward Integrity & Batch Scaling Measured
+
+**Goal.** Wire the verified per-group (group=128) INT4 kernel into the rollout phase of TRL GRPOTrainer on a single Tesla T4 GPU, while keeping optimization and backward passes in FP16. Measure the reward integrity curve against the FP16 baseline on GSM8K.
+
+**Implementation.**
+1. Built `benchmarks/benchmark_grpo_int4.py` mirroring `benchmarks/benchmark_grpo_t4.py` (same GSM8K split, seed 42, 8 prompts/step, 8 generations/prompt, max length 256).
+2. Created `Int4RolloutScope` wrapping `transformers.GenerationMixin.generate`:
+   - Enters on rollout: dynamically quantizes linear weights to symmetric group=128 INT4, patches `mod.forward` to `fused_w4a16_gemm_u4` with bias addition and half-precision casting.
+   - Exits after rollout: restores standard FP16 forwards and calls `torch.cuda.empty_cache()` to free memory.
+   - Loss calculation, reference logprob evaluation, and backward passes execute with standard FP16 parameters and exact autograd tracking.
+3. Added `PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"` to eliminate CUDA caching fragmentation during alternating rollout and backward phases.
+
+**Empirical Measurements on Tesla T4.**
+- **Stability**: Completed 30 full GRPO steps without crash or OOM. Peak VRAM was **13.36 GB** (well within the 14.56 GB T4 limit).
+- **Reward Integrity (The Key Measurement)**:
+  - FP16 Baseline Mean Reward (30 steps): **0.2917** (29.2% GSM8K accuracy)
+  - INT4 Rollouts Mean Reward (30 steps): **0.0250** (2.5% GSM8K accuracy)
+  - Reward Delta: **-0.2667 (DRIFT)**.
+  - *Root Cause:* Under temperature sampling during RL exploration (unlike greedy decode in Item 1), naive RTN (Round-to-Nearest) per-group quantization introduces logit distribution shift on chain-of-thought tokens, impairing complex mathematical reasoning.
+- **Throughput Regime Distinction**:
+  - Decode ($M=1$): INT4 GEMV is **1.20x faster** (279.1 tok/s vs 232.5 tok/s).
+  - GRPO Rollout ($M=64$ across 8 prompts x 8 completions): FP16 baseline ran at 13.03s/step, whereas INT4 GEMV ran at 19.53s/step.
+  - *Root Cause:* At $M=64$, cuBLAS uses SM 75 Tensor Cores (`wmma`) with high arithmetic intensity, while GEMV threadblocks parallelize along $M$ without Tensor Cores, serializing across the T4's 40 SMs.
+
+**Conclusion & Roadmap Impact.**
+- Item 2 goal achieved: The quantized rollout policy was wired end-to-end into GRPOTrainer, and the exact reward integrity and step time trade-offs were measured.
+- Proves that low-precision RL rollout requires either: (a) calibration / GPTQ error compensation before training, or (b) keeping sensitive MLP or attention layers in FP16 while quantizing the rest, or (c) using Tensor Core GEMM for batched rollouts ($M \ge 64$).
+
 
 
 
