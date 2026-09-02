@@ -67,7 +67,8 @@ torch::Tensor fused_w4a16_gemm_u4_cuda(
     torch::Tensor A,
     torch::Tensor W_packed,
     torch::Tensor scales,
-    torch::Tensor zero_points)
+    torch::Tensor zero_points,
+    int64_t group_size = 0)
 {
     TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
     TORCH_CHECK(W_packed.is_cuda(), "W_packed must be a CUDA tensor");
@@ -80,6 +81,11 @@ torch::Tensor fused_w4a16_gemm_u4_cuda(
     int M = A.size(0);
     int K = A.size(1);
     int N = W_packed.size(1);
+
+    int g_size = static_cast<int>(group_size);
+    if (g_size <= 0 && scales.dim() == 2 && scales.size(0) > 1) {
+        g_size = K / scales.size(0);
+    }
 
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(A.device());
     torch::Tensor C = torch::empty({M, N}, options);
@@ -93,6 +99,7 @@ torch::Tensor fused_w4a16_gemm_u4_cuda(
         reinterpret_cast<const half*>(zero_points.data_ptr<at::Half>()),
         reinterpret_cast<half*>(C.data_ptr<at::Half>()),
         M, N, K,
+        g_size,
         stream);
 
     return C;
@@ -102,7 +109,8 @@ torch::Tensor fused_w4a16_gemm_s4_cuda(
     torch::Tensor A,
     torch::Tensor W_packed,
     torch::Tensor scales,
-    torch::Tensor zero_points)
+    torch::Tensor zero_points,
+    int64_t group_size = 0)
 {
     TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
     TORCH_CHECK(W_packed.is_cuda(), "W_packed must be a CUDA tensor");
@@ -116,6 +124,11 @@ torch::Tensor fused_w4a16_gemm_s4_cuda(
     int K = A.size(1);
     int N = W_packed.size(1);
 
+    int g_size = static_cast<int>(group_size);
+    if (g_size <= 0 && scales.dim() == 2 && scales.size(0) > 1) {
+        g_size = K / scales.size(0);
+    }
+
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(A.device());
     torch::Tensor C = torch::empty({M, N}, options);
 
@@ -128,6 +141,7 @@ torch::Tensor fused_w4a16_gemm_s4_cuda(
         reinterpret_cast<const half*>(zero_points.data_ptr<at::Half>()),
         reinterpret_cast<half*>(C.data_ptr<at::Half>()),
         M, N, K,
+        g_size,
         stream);
 
     return C;
@@ -488,8 +502,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("dequantize_s4", &dequantize_lop3_s4_cuda, "LOP3 Fast Signed INT4 Dequantization (CUDA)");
     m.def("dequantize_s3", &dequantize_lop3_s3_cuda, "LOP3 Fast Signed INT3 Dequantization (CUDA)");
     m.def("dequantize_fp8", &dequantize_lop3_fp8_cuda, "LOP3 Fast FP8 E4M3 Dequantization (CUDA)");
-    m.def("fused_w4a16_gemm_u4", &fused_w4a16_gemm_u4_cuda, "Fused Unsigned W4A16 GEMM with LOP3 0xEA Dequant (CUDA)");
-    m.def("fused_w4a16_gemm_s4", &fused_w4a16_gemm_s4_cuda, "Fused Signed S4A16 GEMM with LOP3 0x6A Dequant (CUDA)");
+    m.def("fused_w4a16_gemm_u4", &fused_w4a16_gemm_u4_cuda, "Fused Unsigned W4A16 GEMM with LOP3 0xEA Dequant (CUDA)",
+          py::arg("A"), py::arg("W_packed"), py::arg("scales"), py::arg("zero_points"), py::arg("group_size") = 0);
+    m.def("fused_w4a16_gemm_s4", &fused_w4a16_gemm_s4_cuda, "Fused Signed S4A16 GEMM with LOP3 0x6A Dequant (CUDA)",
+          py::arg("A"), py::arg("W_packed"), py::arg("scales"), py::arg("zero_points"), py::arg("group_size") = 0);
     m.def("fused_h17_gemv_s3", &fused_h17_gemv_s3_cuda, "Flagship H17 Fused INT3 Dequant + GEMV Decode Mega-Kernel (CUDA)");
     m.def("fused_backward_gemm_adamw", &fused_backward_gemm_adamw_cuda, "H6 Fused Backward GEMM + Inline AdamW Optimizer Kernel (CUDA)");
     m.def("fused_ellie_rmsnorm", &fused_ellie_rmsnorm_cuda, "Fused Ellie 4B RMSNorm Kernel (CUDA)");

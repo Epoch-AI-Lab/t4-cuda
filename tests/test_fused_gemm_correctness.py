@@ -19,7 +19,7 @@ def unpack_s4(W_packed, K, N):
     unpacked[unpacked >= 8] -= 16
     return unpacked
 
-def dequantize_ref(W_packed, scales, zero_points, signed=False):
+def dequantize_ref(W_packed, scales, zero_points, signed=False, group_size=0):
     K_8, N = W_packed.shape
     K = K_8 * 8
     if signed:
@@ -27,16 +27,24 @@ def dequantize_ref(W_packed, scales, zero_points, signed=False):
     else:
         unpacked = unpack_u4(W_packed, K, N).float()
     
-    W_dequant = (unpacked - zero_points.float()) * scales.float()
+    if scales.dim() == 2 and scales.shape[0] > 1:
+        num_groups = scales.shape[0]
+        g_size = K // num_groups if group_size <= 0 else group_size
+        unpacked_g = unpacked.reshape(num_groups, g_size, N)
+        sc_3d = scales.float().unsqueeze(1)
+        zp_3d = zero_points.float().unsqueeze(1)
+        W_dequant = ((unpacked_g - zp_3d) * sc_3d).reshape(K, N)
+    else:
+        W_dequant = (unpacked - zero_points.float()) * scales.float()
     return W_dequant.half()
 
-def cpu_reference_gemm(A, W_packed, scales, zero_points, signed=False):
-    W_dequant = dequantize_ref(W_packed, scales, zero_points, signed=signed)
+def cpu_reference_gemm(A, W_packed, scales, zero_points, signed=False, group_size=0):
+    W_dequant = dequantize_ref(W_packed, scales, zero_points, signed=signed, group_size=group_size)
     C_ref = torch.matmul(A.float(), W_dequant.float())
     return C_ref.half()
 
-def run_test_case(M, K, N, name, signed=False, tol=None, mean_tol=1.0):
-    print(f"Running Test: {name} (M={M}, K={K}, N={N}, Signed={signed})")
+def run_test_case(M, K, N, name, signed=False, tol=None, mean_tol=1.0, group_size=0):
+    print(f"Running Test: {name} (M={M}, K={K}, N={N}, Signed={signed}, GroupSize={group_size})")
     
     if tol is None:
         # FP16 GEMM accumulation error scales with sqrt(K)
@@ -45,19 +53,25 @@ def run_test_case(M, K, N, name, signed=False, tol=None, mean_tol=1.0):
     # Generate random inputs
     A = torch.randn(M, K, dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu')
     W_packed = torch.randint(0, 2**31 - 1, (K // 8, N), dtype=torch.int32, device='cuda' if HAS_T4_KERNELS else 'cpu')
-    scales = torch.randn(1, N, dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu') * 0.1
-    zero_points = torch.randint(0, 16, (1, N), dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu')
+    
+    if group_size > 0:
+        num_groups = K // group_size
+        scales = torch.randn(num_groups, N, dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu') * 0.1
+        zero_points = torch.randint(0, 16, (num_groups, N), dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu')
+    else:
+        scales = torch.randn(1, N, dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu') * 0.1
+        zero_points = torch.randint(0, 16, (1, N), dtype=torch.float16, device='cuda' if HAS_T4_KERNELS else 'cpu')
 
-    C_ref = cpu_reference_gemm(A.cpu(), W_packed.cpu(), scales.cpu(), zero_points.cpu(), signed=signed)
+    C_ref = cpu_reference_gemm(A.cpu(), W_packed.cpu(), scales.cpu(), zero_points.cpu(), signed=signed, group_size=group_size)
 
     if not HAS_T4_KERNELS:
         print(f"  [SKIPPED] Missing t4_kernels")
         return True
 
     if signed:
-        C_out = t4_kernels.fused_w4a16_gemm_s4(A, W_packed, scales, zero_points)
+        C_out = t4_kernels.fused_w4a16_gemm_s4(A, W_packed, scales, zero_points, group_size)
     else:
-        C_out = t4_kernels.fused_w4a16_gemm_u4(A, W_packed, scales, zero_points)
+        C_out = t4_kernels.fused_w4a16_gemm_u4(A, W_packed, scales, zero_points, group_size)
 
     max_err = torch.max(torch.abs(C_out.cpu() - C_ref)).item()
     mean_err = torch.mean(torch.abs(C_out.cpu() - C_ref)).item()
@@ -89,10 +103,16 @@ def test_identity():
 
 def run_all_tests():
     test_identity()
-    run_test_case(1, 8, 4, "Known Small Matrix", signed=False)
-    run_test_case(1, 3584, 3584, "Eli Model Sizes (Decode)", signed=False)
+    run_test_case(1, 8, 4, "Known Small Matrix (Per-Channel)", signed=False, group_size=0)
+    run_test_case(1, 3584, 3584, "Eli Model Sizes (Decode, Per-Channel)", signed=False, group_size=0)
     for b in [1, 2, 4, 8]:
-        run_test_case(b, 2048, 4096, f"Batch Decode M={b}", signed=True)
+        run_test_case(b, 2048, 4096, f"Batch Decode M={b} (Per-Channel)", signed=True, group_size=0)
+    
+    # Per-group tests (group=128, GPTQ-style)
+    run_test_case(1, 896, 896, "Qwen2.5-0.5B q_proj Decode (Group=128)", signed=False, group_size=128)
+    run_test_case(1, 896, 4864, "Qwen2.5-0.5B gate_proj Decode (Group=128)", signed=False, group_size=128)
+    for b in [1, 2, 4]:
+        run_test_case(b, 896, 896, f"Qwen2.5-0.5B Batch={b} (Group=128)", signed=False, group_size=128)
     
     print("\nRunning Random Fuzz...")
     max_errors = []
