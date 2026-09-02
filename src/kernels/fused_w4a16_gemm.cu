@@ -206,6 +206,217 @@ __global__ void fused_w4a16_gemv_s4_kernel(
     }
 }
 
+// ============================================================================
+// Tensor Core WMMA Batched Kernel for M > 4 (sm_75)
+// ============================================================================
+#include <mma.h>
+using namespace nvcuda;
+
+#define WMMA_M 16
+#define WMMA_N 16
+#define WMMA_K 16
+#define BLOCK_M 32
+#define BLOCK_N 32
+// ============================================================================
+// Tensor Core WMMA Batched Kernel for M > 4 (sm_75)
+// 64x64 Tile with 2-Stage Double-Buffering & Zero Warp Divergence
+// ============================================================================
+#include <mma.h>
+using namespace nvcuda;
+
+#define WMMA_M 16
+#define WMMA_N 16
+#define WMMA_K 16
+#define BLOCK_M 64
+#define BLOCK_N 64
+#define BLOCK_K 32
+#define PADDED_K_A 40 // 32 + 8 padding to avoid bank conflicts
+#define PADDED_N_B 72 // 64 + 8 padding to avoid bank conflicts
+#define PADDED_N_C 72 // 64 + 8 padding to avoid bank conflicts
+
+__global__ void fused_w4a16_wmma_gemm_u4_kernel(
+    const half* __restrict__ A,
+    const uint32_t* __restrict__ W_packed,
+    const half* __restrict__ scale,
+    const half* __restrict__ zero_point,
+    half* __restrict__ C,
+    int M, int N, int K,
+    int group_size)
+{
+    int block_m = blockIdx.y * BLOCK_M;
+    int block_n = blockIdx.x * BLOCK_N;
+
+    int warp_id = threadIdx.x / 32;
+    int warp_m = (warp_id / 2) * 32; // 0 or 32
+    int warp_n = (warp_id % 2) * 32; // 0 or 32
+
+    // Double buffers for Matrix A and Matrix B
+    __shared__ half shmem_A[2][BLOCK_M * PADDED_K_A]; // 2 x 64 x 40 x 2B = 10,240B
+    __shared__ half shmem_B[2][BLOCK_K * PADDED_N_B]; // 2 x 32 x 72 x 2B = 9,216B
+
+    // Accumulators for 32x32 sub-tile per warp (4 fragments of 16x16)
+    wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag[2][2];
+    #pragma unroll
+    for (int i = 0; i < 2; ++i) {
+        #pragma unroll
+        for (int j = 0; j < 2; ++j) {
+            wmma::fill_fragment(c_frag[i][j], 0.0f);
+        }
+    }
+
+    int num_stages = K / BLOCK_K;
+
+    // --- Prologue: Load Stage 0 ---
+    {
+        // Load Matrix A for stage 0 (64 x 32 = 2048 elements / 128 threads = 16 elements/thread)
+        #pragma unroll
+        for (int i = 0; i < 16; ++i) {
+            int elem = threadIdx.x * 16 + i;
+            int r = elem / BLOCK_K;
+            int c = elem % BLOCK_K;
+            int gm = block_m + r;
+            int gk = c;
+            half val = __float2half(0.0f);
+            if (gm < M && gk < K) {
+                val = A[gm * K + gk];
+            }
+            shmem_A[0][r * PADDED_K_A + c] = val;
+        }
+
+        // Load & Dequantize Matrix B for stage 0 (32 x 64 elements = 256 uint32_t / 128 threads = 2 uint32_t/thread)
+        #pragma unroll
+        for (int i = 0; i < 2; ++i) {
+            int elem = threadIdx.x * 2 + i;
+            int r_pack = elem / BLOCK_N;
+            int c_col = elem % BLOCK_N;
+            int gn = block_n + c_col;
+
+            if (gn < N) {
+                uint32_t p = W_packed[r_pack * N + gn];
+                int k_act = r_pack * 8;
+                int g = (group_size == 128) ? (k_act >> 7) : ((group_size > 0) ? (k_act / group_size) : 0);
+                float s = __half2float(scale[g * N + gn]);
+                float z = __half2float(zero_point[g * N + gn]);
+
+                #pragma unroll
+                for (int w = 0; w < 8; ++w) {
+                    int q = (p >> (4 * w)) & 0xF;
+                    float deq = ((float)q - z) * s;
+                    shmem_B[0][(r_pack * 8 + w) * PADDED_N_B + c_col] = __float2half(deq);
+                }
+            } else {
+                #pragma unroll
+                for (int w = 0; w < 8; ++w) {
+                    shmem_B[0][(r_pack * 8 + w) * PADDED_N_B + c_col] = __float2half(0.0f);
+                }
+            }
+        }
+    }
+
+    __syncthreads();
+
+    // --- Main Loop: 2-Stage Pipelining ---
+    for (int s = 0; s < num_stages; ++s) {
+        int curr = s % 2;
+        int next = (s + 1) % 2;
+        int next_k_base = (s + 1) * BLOCK_K;
+
+        // 1. Prefetch next stage if available
+        if (s + 1 < num_stages) {
+            #pragma unroll
+            for (int i = 0; i < 16; ++i) {
+                int elem = threadIdx.x * 16 + i;
+                int r = elem / BLOCK_K;
+                int c = elem % BLOCK_K;
+                int gm = block_m + r;
+                int gk = next_k_base + c;
+                half val = __float2half(0.0f);
+                if (gm < M && gk < K) {
+                    val = A[gm * K + gk];
+                }
+                shmem_A[next][r * PADDED_K_A + c] = val;
+            }
+
+            #pragma unroll
+            for (int i = 0; i < 2; ++i) {
+                int elem = threadIdx.x * 2 + i;
+                int r_pack = elem / BLOCK_N;
+                int c_col = elem % BLOCK_N;
+                int gn = block_n + c_col;
+
+                if (gn < N) {
+                    int k_pack_idx = (next_k_base / 8) + r_pack;
+                    uint32_t p = W_packed[k_pack_idx * N + gn];
+                    int k_act = next_k_base + r_pack * 8;
+                    int g = (group_size == 128) ? (k_act >> 7) : ((group_size > 0) ? (k_act / group_size) : 0);
+                    float sc = __half2float(scale[g * N + gn]);
+                    float zp = __half2float(zero_point[g * N + gn]);
+
+                    #pragma unroll
+                    for (int w = 0; w < 8; ++w) {
+                        int q = (p >> (4 * w)) & 0xF;
+                        float deq = ((float)q - zp) * sc;
+                        shmem_B[next][(r_pack * 8 + w) * PADDED_N_B + c_col] = __float2half(deq);
+                    }
+                } else {
+                    #pragma unroll
+                    for (int w = 0; w < 8; ++w) {
+                        shmem_B[next][(r_pack * 8 + w) * PADDED_N_B + c_col] = __float2half(0.0f);
+                    }
+                }
+            }
+        }
+
+        // 2. Tensor Core Math on current stage (2 sub-steps of K=16)
+        #pragma unroll
+        for (int k_sub = 0; k_sub < 2; ++k_sub) {
+            int k_off = k_sub * WMMA_K;
+
+            wmma::fragment<wmma::matrix_a, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> a0, a1;
+            wmma::fragment<wmma::matrix_b, WMMA_M, WMMA_N, WMMA_K, half, wmma::row_major> b0, b1;
+
+            wmma::load_matrix_sync(a0, &shmem_A[curr][warp_m * PADDED_K_A + k_off], PADDED_K_A);
+            wmma::load_matrix_sync(a1, &shmem_A[curr][(warp_m + 16) * PADDED_K_A + k_off], PADDED_K_A);
+
+            wmma::load_matrix_sync(b0, &shmem_B[curr][k_off * PADDED_N_B + warp_n], PADDED_N_B);
+            wmma::load_matrix_sync(b1, &shmem_B[curr][k_off * PADDED_N_B + warp_n + 16], PADDED_N_B);
+
+            wmma::mma_sync(c_frag[0][0], a0, b0, c_frag[0][0]);
+            wmma::mma_sync(c_frag[0][1], a0, b1, c_frag[0][1]);
+            wmma::mma_sync(c_frag[1][0], a1, b0, c_frag[1][0]);
+            wmma::mma_sync(c_frag[1][1], a1, b1, c_frag[1][1]);
+        }
+
+        // Single barrier per loop to synchronize shared memory for next stage
+        __syncthreads();
+    }
+
+    // --- Epilogue: Store results to global memory ---
+    // Overlay shmem_C on shmem_A & shmem_B (which are no longer needed)
+    float* shmem_C = reinterpret_cast<float*>(shmem_A);
+
+    wmma::store_matrix_sync(&shmem_C[warp_m * PADDED_N_C + warp_n], c_frag[0][0], PADDED_N_C, wmma::mem_row_major);
+    wmma::store_matrix_sync(&shmem_C[warp_m * PADDED_N_C + warp_n + 16], c_frag[0][1], PADDED_N_C, wmma::mem_row_major);
+    wmma::store_matrix_sync(&shmem_C[(warp_m + 16) * PADDED_N_C + warp_n], c_frag[1][0], PADDED_N_C, wmma::mem_row_major);
+    wmma::store_matrix_sync(&shmem_C[(warp_m + 16) * PADDED_N_C + warp_n + 16], c_frag[1][1], PADDED_N_C, wmma::mem_row_major);
+
+    __syncthreads();
+
+    // Write out to C in FP16 (64 x 64 = 4096 elements / 128 threads = 32 elements/thread)
+    #pragma unroll
+    for (int i = 0; i < 32; ++i) {
+        int elem = threadIdx.x * 32 + i;
+        int r = elem / BLOCK_N;
+        int c = elem % BLOCK_N;
+        int gm = block_m + r;
+        int gn = block_n + c;
+
+        if (gm < M && gn < N) {
+            C[gm * N + gn] = __float2half(shmem_C[r * PADDED_N_C + c]);
+        }
+    }
+}
+
 // Host Launcher Wrappers
 void launch_fused_w4a16_gemm_u4(
     const half* d_A,
@@ -217,10 +428,19 @@ void launch_fused_w4a16_gemm_u4(
     int group_size,
     cudaStream_t stream)
 {
-    dim3 grid((N + 3) / 4, M);
-    dim3 block(256);
-    fused_w4a16_gemv_u4_kernel<<<grid, block, 0, stream>>>(
-        d_A, d_W_packed, d_scale, d_zero, d_C, M, N, K, group_size);
+    if (M <= 4) {
+        // Scalar GEMV kernel optimized for single-sequence decode
+        dim3 grid((N + 3) / 4, M);
+        dim3 block(256);
+        fused_w4a16_gemv_u4_kernel<<<grid, block, 0, stream>>>(
+            d_A, d_W_packed, d_scale, d_zero, d_C, M, N, K, group_size);
+    } else {
+        // Tensor Core WMMA kernel for batched rollouts (M > 4)
+        dim3 grid((N + BLOCK_N - 1) / BLOCK_N, (M + BLOCK_M - 1) / BLOCK_M);
+        dim3 block(128);
+        fused_w4a16_wmma_gemm_u4_kernel<<<grid, block, 0, stream>>>(
+            d_A, d_W_packed, d_scale, d_zero, d_C, M, N, K, group_size);
+    }
 }
 
 void launch_fused_w4a16_gemm_s4(
