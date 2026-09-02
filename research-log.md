@@ -459,4 +459,48 @@ H5 for RL/finetuning workloads on Colab.
 - `results/grpo_baseline/` → metrics.json, h6_test.log
 - `research-state.yaml` → H5 scope note
 
+---
+
+## 2026-09-02 — u4 W4A16 GEMV numerical bug found & fixed; per-channel INT4 ruled out for Qwen2.5-0.5B
+
+**Goal.** Quantized rollout policy (INT4) inside GRPO generation, since profiling
+showed generation = 85.4% of step time. Go/no-go gate: isolated fp16 vs INT4
+generation benchmark (8 prompts, 256 new tokens, greedy) on T4.
+
+**Bug found (fused_w4a16_gemm.cu, u4 kernel).** The LOP3 trick returns
+(1024 + q) in fp16. The old epilogue folded (-1024 - z)*s into an fp16 FMA,
+which rounds (1024+q)*s to fp16 first and injects ~ulp(1024*s) absolute noise
+per weight. Across K=896 with real activations the noise drowns the signal and
+generation is garbage (12% token agreement with fp16). The repo's KAT/GEMM
+tests didn't catch it because they compare against the same math in Python
+(shared blind spot).
+
+**Fix.** Two changes to the u4 kernel (s4 kernel untouched, still suspect):
+1. Keep the LOP3 unpack exact: accumulate S1 = sum (1024+q)*a and S2 = sum a
+   in fp32, reconstruct C = s * (S1 - (1024 + z) * S2) in the epilogue.
+2. Do the multiply in fp32, not fp16. fp16 products at magnitude ~1024 round
+   with ulp ~1.0 and that noise dominates after zero-point cancellation.
+   (First fix alone left ~13% error; fp32 MAC fixed it.)
+
+**Verified on T4.** kernel vs exact python reconstruction now
+0.04% relative error (was 13-15%). Real q_proj at real activations:
+kernel-vs-python-ref 0.00033 rel; torch-vs-python-ref 0.78 abs (~8.6%) —
+the kernel is correct, the residual error is pure quantization.
+
+**Negative result (important).** Naive per-channel INT4 (both amax/7, z=8
+and asymmetric min/max) gives ~8-9% activation error on Qwen2.5-0.5B, which
+compounds through attention and produces incoherent generation. Per-channel
+INT4 cannot carry this model. The kernel only supports per-output-channel
+scale today. Fix requires per-group (group=128, GPTQ-style) scale: accumulate
+S1/S2 per k-group and flush with that group's scale. Moderate kernel change.
+
+**Files**
+- `src/kernels/fused_w4a16_gemm.cu` → u4 kernel fixed (fp32 MAC + exact
+  reconstruction); s4 kernel still has the old fold, needs the same fix.
+- `benchmarks/debug_kernel_shape.py`, `debug_minimal.py`, `debug_pattern.py`,
+  `debug_qproj.py`, `debug_layers.py` → differential harnesses that caught it.
+- `benchmarks/bench_gen_fp16_vs_int4.py` → the gate benchmark (needs the
+  group-wise quantizer before it can produce a real speed number).
+
+
 
