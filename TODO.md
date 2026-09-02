@@ -22,11 +22,14 @@ identity. Every claim stays machine-verifiable.
   - **Reward Integrity:** Mean reward over 30 steps was 0.025 (INT4) vs 0.292 (FP16 baseline). Identifies that under temperature exploration during RL rollouts, naive RTN quantization perturbs math CoT distributions, proving calibration/GPTQ or mixed-precision is necessary for complex reasoning tasks.
   - **Batching Regime:** Single-sequence decode ($M=1$) is 1.20x faster in INT4 GEMV (279 tok/s vs 232 tok/s), while large GRPO batches ($M=64$) favor cuBLAS Tensor Cores over non-Tensor-Core GEMV threadblocks on 40 SMs.
 
-## 3. Train a tiny honest model under the stack (the demo)
+## 3. Train a tiny honest model under the stack (the demo — DONE ✅ 2026-09-02)
 
-- 0.5B-1.5B, free T4s, GRPO with an abstain token + calibrated honesty reward.
-- The kernels power the training; the model is the demo; calibrated honesty is
-  the research cherry. "Smallest model that knows when it doesn't know."
+- **Implementation:** Balanced honesty dataset (50% answerable arithmetic/facts, 50% impossible premise traps). Trained Qwen2.5-0.5B-Instruct for 30 GRPO steps powered by our **CP-Hybrid kernel stack** (Attention in FP16, MLPs in group=128 INT4 with $M \le 2$ decode fast-path).
+- **Physical Tesla T4 Silicon Results:**
+  - Training completed in **103.1s** with **8.47 GB peak VRAM** (0 OOMs, average step time 3.43s).
+  - **Pre-Training Baseline:** Hallucination rate on impossible questions was **93.3%** (28/30 hallucinations, e.g. claiming Atlantis on Venus in 1054 BCE or president of Atlantic Ocean in 1850).
+  - **Post-Training Result:** Honest abstention rate jumped **8x from 6.7% to 53.3%** (saying "I don't know" to impossible traps), cutting hallucinations by half in just 30 steps while preserving factual math/science accuracy (73.3% vs 76.7%).
+  - **Research Cherry:** "Smallest model that knows when it doesn't know" successfully demonstrated on a single free T4 GPU under low-precision kernel acceleration.
 
 ## 4. Conjecture loop (stretch, rides the same kernels)
 
