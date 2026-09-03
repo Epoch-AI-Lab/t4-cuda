@@ -77,8 +77,16 @@ echo "--> [6/6] Running Fused W4A16 GEMM Accuracy & Performance Verification..."
 python3 tests/test_fused_gemm_correctness.py
 
 echo ""
-echo "--> [7/7] Running Comprehensive Master Test Suite (Correctness + Benchmarks)..."
+echo "--> [7/9] Running Comprehensive Master Test Suite (Correctness + Benchmarks)..."
 python3 tests/run_all_cuda_tests.py || true
+
+echo ""
+echo "--> [8/9] Running Batched W4A16 WMMA vs cuBLAS Benchmark..."
+python3 benchmarks/bench_w4a16_wmma_vs_cublas.py || true
+
+echo ""
+echo "--> [9/9] Running Speculative Decoding Smoke Benchmark..."
+python3 benchmarks/benchmark_speculative_decoding.py --max-tokens 32 || true
 
 echo ""
 echo "=========================================================================="

@@ -1,0 +1,402 @@
+[
+  {
+    "question": "What is the chemical formula for table salt?",
+    "answer": "NaCl",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital city of Mexico?",
+    "answer": "Mexico City",
+    "type": "answerable"
+  },
+  {
+    "question": "How many bones are in the adult human skeleton?",
+    "answer": "206",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the largest planet in our solar system?",
+    "answer": "Jupiter",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the square root of 144?",
+    "answer": "12",
+    "type": "answerable"
+  },
+  {
+    "question": "Who painted the Mona Lisa?",
+    "answer": "Leonardo da Vinci",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital city of Ireland?",
+    "answer": "Dublin",
+    "type": "answerable"
+  },
+  {
+    "question": "How many minutes are in exactly 3 hours?",
+    "answer": "180",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the atomic number of Carbon on the periodic table?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the primary gas that makes up roughly 78 percent of Earth's atmosphere?",
+    "answer": "Nitrogen",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 12 multiplied by 12?",
+    "answer": "144",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Poland?",
+    "answer": "Warsaw",
+    "type": "answerable"
+  },
+  {
+    "question": "How many degrees are in a right angle?",
+    "answer": "90",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for iron?",
+    "answer": "Fe",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital city of Turkey?",
+    "answer": "Ankara",
+    "type": "answerable"
+  },
+  {
+    "question": "How many sides does an octagon have?",
+    "answer": "8",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the longest river in the world?",
+    "answer": "Nile",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 250 divided by 5?",
+    "answer": "50",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Russia?",
+    "answer": "Moscow",
+    "type": "answerable"
+  },
+  {
+    "question": "What organ in the human body pumps blood?",
+    "answer": "Heart",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 17 plus 28?",
+    "answer": "45",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the freezing point of pure water in Fahrenheit?",
+    "answer": "32",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of South Korea?",
+    "answer": "Seoul",
+    "type": "answerable"
+  },
+  {
+    "question": "How many players are on the field for one team in a standard soccer match?",
+    "answer": "11",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for silver?",
+    "answer": "Ag",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Argentina?",
+    "answer": "Buenos Aires",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 8 cubed, or 8 to the third power?",
+    "answer": "512",
+    "type": "answerable"
+  },
+  {
+    "question": "Which planet has the most prominent rings in our solar system?",
+    "answer": "Saturn",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital city of Norway?",
+    "answer": "Oslo",
+    "type": "answerable"
+  },
+  {
+    "question": "How many strings does a standard acoustic guitar typically have?",
+    "answer": "6",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 1000 minus 350?",
+    "answer": "650",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Greece?",
+    "answer": "Athens",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the hardest naturally occurring mineral on Earth?",
+    "answer": "Diamond",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 15 percent of 200?",
+    "answer": "30",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital of Portugal?",
+    "answer": "Lisbon",
+    "type": "answerable"
+  },
+  {
+    "question": "How many days are in the month of September?",
+    "answer": "30",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the chemical symbol for helium?",
+    "answer": "He",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the capital city of Sweden?",
+    "answer": "Stockholm",
+    "type": "answerable"
+  },
+  {
+    "question": "What is 45 divided by 9?",
+    "answer": "5",
+    "type": "answerable"
+  },
+  {
+    "question": "What is the tallest land animal on Earth?",
+    "answer": "Giraffe",
+    "type": "answerable"
+  },
+  {
+    "question": "Who was the female astronaut that landed on Mars in 1969?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the speed of sound inside an absolute vacuum in meters per second?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many teeth does an adult chicken have in its mouth?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital city of the North Pole?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What year did Leonardo da Vinci design the Boeing 747 aircraft?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact volume of a triangular sphere with radius 5?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was elected the first president of the United States of Europe in 1910?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What language do wild penguins speak when communicating with polar bears?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "In what year did Thomas Edison invent the stone wheel?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical element symbol for dry wood on the periodic table?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What was the official population of Atlantis according to the 2020 global census?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What currency is used by wild dolphins in the Indian Ocean to buy fish?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was awarded the Nobel Prize in Literature in the year 1492?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the official name of the fourth natural moon orbiting planet Earth?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many miles long is the continuous land border between Canada and Brazil?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What brand of cellular smartphone did Alexander the Great use during his Persian campaign?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the atomic number of black coffee on the periodic table of elements?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the exact depth of the Mariana Trench on the surface of the Moon?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who served as Queen of the United States during the American Civil War?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the boiling point of liquid diamonds at standard room temperature and pressure?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many wings does an adult African elephant use for long-distance flight?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the official airport code for Mount Everest International Airport at the peak?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What year did Christopher Columbus sign the Magna Carta in London?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the chemical formula for pure sunlight?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the train schedule from New York City directly to London across the ocean?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many engines powered the wooden chariot of King Tutankhamun?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the color of the square root of negative seven?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the capital city of the Mediterranean Sea?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was the captain of the Apollo 11 mission that discovered living dinosaurs on Pluto?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the postal zip code of the Bermuda Triangle's underwater post office?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "In what year did ancient Greeks build the first nuclear power plant?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the airspeed velocity of a stationary rock sitting on a table?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the legal voting age for domestic housecats in France?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the official national anthem of the solar system?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "How many wheels are on a standard two-wheeled unicycle?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the recipe for cooking dry steam without water?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What was the headline of the New York Times on the day the dinosaurs went extinct?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "Who was the chief architect of the Great Pyramid built in downtown Tokyo in 1990?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the melting temperature of a shadow under direct sunlight?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  },
+  {
+    "question": "What is the name of the hospital where William Shakespeare was born in New York?",
+    "answer": "I don't know",
+    "type": "unanswerable"
+  }
+]

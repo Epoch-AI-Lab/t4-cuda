@@ -1,0 +1,17 @@
+{
+  "target_model": "Qwen/Qwen2.5-3B-Instruct",
+  "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "baseline_tok_sec": 14.37000671776708,
+  "eager_speculative": {
+    "tok_sec": 10.86531225775109,
+    "speedup": 0.7561104508265271,
+    "acceptance_pct": 60.267857142857146,
+    "tok_per_target_step": 1.9444444444444444
+  },
+  "cuda_graph_speculative": {
+    "tok_sec": 11.629534148074995,
+    "speedup": 0.8092921859038685,
+    "acceptance_pct": 14.102564102564102,
+    "tok_per_target_step": 1.1868131868131868
+  }
+}

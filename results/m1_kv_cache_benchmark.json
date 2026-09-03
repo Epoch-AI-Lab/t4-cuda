@@ -1,0 +1,43 @@
+{
+  "hardware": {
+    "device": "cpu",
+    "cuda_available": false,
+    "gpu_name": "CPU"
+  },
+  "config": {
+    "num_layers": 28,
+    "num_heads": 2,
+    "head_dim": 128,
+    "seq_len": 1024,
+    "dtype": "torch.float32"
+  },
+  "rollback_benchmark": {
+    "num_layers": 28,
+    "num_heads": 2,
+    "head_dim": 128,
+    "seq_len": 1024,
+    "drop_k": 3,
+    "iterations": 100,
+    "static_latency_us": 0.5111,
+    "dynamic_latency_us": 7353.5707,
+    "speedup_factor": 14388.58
+  },
+  "update_benchmark": {
+    "num_layers": 28,
+    "seq_len": 1024,
+    "decode_steps": 100,
+    "static_time_us_per_token": 465.664,
+    "dynamic_time_us_per_token": 7965.554,
+    "static_time_us_per_layer": 16.631,
+    "dynamic_time_us_per_layer": 284.484,
+    "update_speedup": 17.11,
+    "static_traffic_kb_per_token": 56.0,
+    "dynamic_traffic_kb_per_token": 120344.0,
+    "traffic_reduction_ratio": 2149.0
+  },
+  "allocation_benchmark": {
+    "status": "skipped_on_cpu",
+    "reason": "torch.cuda.memory_stats only available on CUDA devices",
+    "guarantee": "data_ptr invariance verified in unit tests"
+  }
+}

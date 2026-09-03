@@ -28,6 +28,7 @@ void launch_fused_w4a16_gemm_u4(
     const half* d_zero,
     half* d_C,
     int M, int N, int K,
+    int group_size = 0,
     cudaStream_t stream = 0);
 
 /**
@@ -43,6 +44,7 @@ void launch_fused_w4a16_gemm_s4(
     const half* d_zero,
     half* d_C,
     int M, int N, int K,
+    int group_size = 0,
     cudaStream_t stream = 0);
 
 #endif // FUSED_W4A16_GEMM_H

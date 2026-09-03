@@ -52,40 +52,55 @@ def bench(m, tag):
 
 fp16_out = bench(model, "fp16 baseline")
 
-# ---- quantize every nn.Linear to per-output-channel INT4 (u4 nibbles, zp=8) ----
-def quantize_weight(W):
-    """W [out, in] fp16 -> (W_packed int32 [in/8, out], scales [1,out], zp [1,out])
-    q = clamp(round(W/scale)+8, 0, 15); dequant (q-8)*scale ~ W"""
+# ---- quantize every nn.Linear to per-group INT4 (group=128, u4 nibbles, symmetric zp=8) ----
+def quantize_weight(W, group_size=128):
+    """W [out, in] fp16 -> (W_packed int32 [in/8, out], scales [num_groups, out], zp [num_groups, out], group_size)"""
     out_f, in_f = W.shape
     assert in_f % 8 == 0, in_f
     Wf = W.float()
-    amax = Wf.abs().amax(dim=1, keepdim=True).clamp_min(1e-8)
-    scale = (amax / 7.0)
-    q = torch.clamp(torch.round(Wf / scale) + 8, 0, 15).to(torch.int32)  # [out, in]
-    q = q.t().contiguous().cpu()  # [in, out]
-    packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
-    for i in range(8):
-        packed |= q[i::8, :] << (4 * i)
-    packed = packed.to(W.device)
-    scales = scale.squeeze(1).half().unsqueeze(0).contiguous()  # [1, out]
-    zp = torch.full((1, out_f), 8.0, dtype=torch.float16)
-    return packed.cuda(), scales.cuda(), zp.cuda()
+    if group_size > 0 and in_f % group_size == 0:
+        num_groups = in_f // group_size
+        Wf_grouped = Wf.reshape(out_f, num_groups, group_size)
+        amax = Wf_grouped.abs().amax(dim=2, keepdim=True).clamp_min(1e-8)
+        scale = amax / 7.0
+        q = torch.clamp(torch.round(Wf_grouped / scale) + 8, 0, 15).reshape(out_f, in_f).to(torch.int32)
+        q = q.t().contiguous().cpu()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(2).t().contiguous().half()  # [num_groups, out]
+        zps = torch.full_like(scales, 8.0)                 # [num_groups, out]
+        return packed.cuda(), scales.cuda(), zps.cuda(), group_size
+    else:
+        # Fallback to per-channel if in_f is not divisible by group_size
+        amax = Wf.abs().amax(dim=1, keepdim=True).clamp_min(1e-8)
+        scale = amax / 7.0
+        q = torch.clamp(torch.round(Wf / scale) + 8, 0, 15).to(torch.int32)
+        q = q.t().contiguous().cpu()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(1).half().unsqueeze(0).contiguous()
+        zps = torch.full((1, out_f), 8.0, dtype=torch.float16)
+        return packed.cuda(), scales.cuda(), zps.cuda(), 0
 
 Q = {}
 hits = 0
 def patched_forward(self, x):
-    packed, scales, zp = Q[self]
+    packed, scales, zp, g_size = Q[self]
     shape = x.shape
     x2 = x.reshape(-1, shape[-1])  # binding takes 2D A only
-    out = t4_kernels.fused_w4a16_gemm_u4(x2, packed, scales, zp)
+    out = t4_kernels.fused_w4a16_gemm_u4(x2, packed, scales, zp, g_size)
+    if self.bias is not None:
+        out = out + self.bias
     return out.reshape(*shape[:-1], out.shape[-1])
 
 for name, mod in list(model.named_modules()):
-    if isinstance(mod, nn.Linear):
-        Q[mod] = quantize_weight(mod.weight.data)
+    if isinstance(mod, nn.Linear) and "lm_head" not in name:
+        Q[mod] = quantize_weight(mod.weight.data, group_size=128)
         mod.forward = patched_forward.__get__(mod)
         hits += 1
-print(f"quantized {hits} Linear layers to INT4 per-channel")
+print(f"quantized {hits} Linear layers to INT4 per-group (group=128, lm_head kept in fp16)")
 
 int4_out = bench(model, "int4 fused")
 
