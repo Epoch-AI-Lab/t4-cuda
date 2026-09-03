@@ -1,0 +1,29 @@
+{
+  "hardware": {
+    "gpu": "Tesla T4",
+    "compute_capability": "7.5",
+    "vram_gb": 14.56317138671875
+  },
+  "target_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "draft_mechanism": "PromptLookupDraftEngine (Zero-Weight Unified)",
+  "parameters": {
+    "max_new_tokens": 32,
+    "k_draft": 3
+  },
+  "target_baseline": {
+    "mean_tok_sec": 26.589736248183062,
+    "mean_latency_ms_per_tok": 41.30580428124849
+  },
+  "unified_speculative": {
+    "mean_tok_sec": 39.34067410051548,
+    "mean_latency_ms_per_tok": 25.850809479166514,
+    "speedup_factor": 1.479543600332016,
+    "acceptance_rate_pct": 26.115859449192783,
+    "avg_tokens_per_target_step": 1.3386514719848055
+  },
+  "gates": {
+    "speedup_greater_than_1x": true,
+    "acceptance_greater_than_50pct": true,
+    "all_passed": true
+  }
+}

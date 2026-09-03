@@ -250,9 +250,17 @@ __global__ void fused_w4a16_wmma_gemm_u4_kernel(
     int warp_m = (warp_id / 2) * 32; // 0 or 32
     int warp_n = (warp_id % 2) * 32; // 0 or 32
 
-    // Double buffers for Matrix A and Matrix B
-    __shared__ half shmem_A[2][BLOCK_M * PADDED_K_A]; // 2 x 64 x 40 x 2B = 10,240B
-    __shared__ half shmem_B[2][BLOCK_K * PADDED_N_B]; // 2 x 32 x 72 x 2B = 9,216B
+    // Aligned shared memory union for double buffers (Stage 0/1) and Epilogue (Matrix C)
+    union alignas(16) SharedStorage {
+        struct {
+            half A[2][BLOCK_M * PADDED_K_A]; // 2 x 64 x 40 x 2B = 10,240B
+            half B[2][BLOCK_K * PADDED_N_B]; // 2 x 32 x 72 x 2B = 9,216B
+        } stages;
+        float C[BLOCK_M * PADDED_N_C];       // 64 x 72 x 4B = 18,432B (fits inside 19,456B)
+    };
+    __shared__ SharedStorage shmem;
+    half (*shmem_A)[BLOCK_M * PADDED_K_A] = shmem.stages.A;
+    half (*shmem_B)[BLOCK_K * PADDED_N_B] = shmem.stages.B;
 
     // Accumulators for 32x32 sub-tile per warp (4 fragments of 16x16)
     wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, float> c_frag[2][2];
@@ -392,8 +400,7 @@ __global__ void fused_w4a16_wmma_gemm_u4_kernel(
     }
 
     // --- Epilogue: Store results to global memory ---
-    // Overlay shmem_C on shmem_A & shmem_B (which are no longer needed)
-    float* shmem_C = reinterpret_cast<float*>(shmem_A);
+    float* shmem_C = shmem.C;
 
     wmma::store_matrix_sync(&shmem_C[warp_m * PADDED_N_C + warp_n], c_frag[0][0], PADDED_N_C, wmma::mem_row_major);
     wmma::store_matrix_sync(&shmem_C[warp_m * PADDED_N_C + warp_n + 16], c_frag[0][1], PADDED_N_C, wmma::mem_row_major);
