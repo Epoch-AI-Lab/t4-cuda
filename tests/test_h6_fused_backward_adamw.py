@@ -175,7 +175,7 @@ def test_h6_correctness_and_benchmark():
 
     start_event.record()
     for _ in range(iters):
-        dW = torch.matmul(dY.t().float(), X.float())
+        dW = torch.matmul(dY.t(), X).float()
         W_master -= lr * weight_decay * W_master
         exp_avg.mul_(beta1).add_(dW, alpha=1.0 - beta1)
         exp_avg_sq.mul_(beta2).addcmul_(dW, dW, value=1.0 - beta2)

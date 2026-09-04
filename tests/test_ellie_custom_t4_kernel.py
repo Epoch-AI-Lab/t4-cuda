@@ -158,10 +158,10 @@ def run_tests():
             group_size, eps
         )
         diff_mega_max = (fused_out.cpu() - swiglu_ref).abs().max().item()
-        diff_mega_mean = (fused_out.cpu() - swiglu_ref).abs().mean().item()
-        print(f"  [✓] Fused Mega-Kernel Max Abs Diff: {diff_mega_max:.4f} (Gate: < 3.50), Mean Abs Diff: {diff_mega_mean:.4f} (Gate: < 0.35)")
-        assert diff_mega_max < 3.50, f"Mega-kernel max diff {diff_mega_max} exceeds tolerance!"
-        assert diff_mega_mean < 0.35, f"Mega-kernel mean diff {diff_mega_mean} exceeds tolerance!"
+        print(f"  [✓] Fused Mega-Kernel Max Abs Diff: {diff_mega_max:.4f} (Gate: < 0.15), Mean Abs Diff: {diff_mega_mean:.4f} (Gate: < 0.02)")
+        assert diff_mega_max < 0.15, f"Mega-kernel max diff {diff_mega_max} exceeds tolerance 0.15!"
+        assert diff_mega_mean < 0.02, f"Mega-kernel mean diff {diff_mega_mean} exceeds tolerance 0.02!"
+
 
         print("\n[3/3] Benchmarking Kernel Latency on Tesla T4...")
         torch.cuda.synchronize()
@@ -198,25 +198,23 @@ def run_tests():
         print(f"  [⚡] Effective Memory Bandwidth: {achieved_gbps:.1f} GB/s ({achieved_gbps/320.0*100:.1f}% of T4 Roofline)")
 
     else:
-        print("\n[2/3] Verification in Simulation Mode (Bit-Exact Mathematical Emulation)...")
+        print("\n[2/3] [SKIP] CUDA device or t4_kernels not available. Running CPU bitwise verification...")
         # Validate mathematical properties of LOP3 0x6A dequantization
         # LUT 0x6A = (A ^ C) & B | C & ~B where B=0xF, C=0x6408 (FP16 1032.0)
         # Check all 16 signed 4-bit nibbles [-8..7]
         for nib in range(16):
             s4_val = nib - 16 if nib >= 8 else nib
-            # Apply LOP3 math
             c = 0x6408
             b = 0x000F
             a = nib
             raw = ((a ^ c) & b) | (c & (~b & 0xFFFF))
-            # Treat raw as FP16
             f16_val = torch.tensor(raw, dtype=torch.int16).view(torch.float16).item()
             recovered = f16_val - 1032.0
             assert abs(recovered - s4_val) < 1e-4, f"Mismatch on nibble {nib}: got {recovered}, expected {s4_val}"
 
-        print("  [✓] LOP3.b32 0x6A PTX Emulation: 16/16 Bit-Exact Signed INT4 States Verified!")
-        print("  [✓] SwiGLU Mathematical Identity: Verified!")
-        print("  [✓] 128-bit Alignment & Bank Conflict Free Shared Memory: Verified!")
+        print("  [✓] LOP3.b32 0x6A Logic: 16/16 Bit-Exact Signed INT4 States Verified on CPU!")
+        print("  [SKIP] CUDA Kernel Latency and Hardware Benchmarks Skipped (No GPU/Extension).")
+
 
     print("\n" + "=" * 70)
     print("  ALL ELLIE 4B CUSTOM T4 KERNEL VERIFICATIONS: PASSED (100%)")

@@ -175,7 +175,7 @@ def run_all_training_tests():
         print(f"  -> Measured Latency    : {time_swiglu_ms:.3f} ms")
         print(f"  -> Effective Bandwidth : {bw_achieved:.1f} GB/s ({bw_achieved/320.0*100:.1f}% of T4 Peak)")
     else:
-        print("  [✓] Mathematical Simulation Check: PASSED")
+        print("  [SKIP] CUDA device or t4_kernels extension not available; skipping Test 1")
 
     # --------------------------------------------------------------------------
     # Test 2: Fused SFT LoRA Adapter Backward + AdamW (Fine-Tuning)
@@ -269,7 +269,7 @@ def run_all_training_tests():
         time_sft_ms = t0.elapsed_time(t1) / 200.0
         print(f"  -> Fused SFT Step Latency   : {time_sft_ms:.3f} ms (Single Fused Kernel Launch)")
     else:
-        print("  [✓] Mathematical Simulation Check: PASSED")
+        print("  [SKIP] CUDA device or t4_kernels extension not available; skipping Test 2")
 
     # --------------------------------------------------------------------------
     # Test 3: Pre-Training Fused Backward GEMM + AdamW (H6)
@@ -289,7 +289,7 @@ def run_all_training_tests():
     v_W = torch.zeros((M_pre, N_pre), dtype=torch.float32, device=device)
 
     # Reference
-    dW_ref = torch.matmul(dY_pre.t().float(), X_pre.float()) # (M, N)
+    dW_ref = torch.matmul(dY_pre.t(), X_pre).float() # (M, N) via Tensor Cores
     mW_ref = 0.9 * m_W + 0.1 * dW_ref
     vW_ref = 0.999 * v_W + 0.001 * (dW_ref ** 2)
     W_ref  = W_master - 1e-3 * (mW_ref / (torch.sqrt(vW_ref) + 1e-8) + 0.01 * W_master)
@@ -341,7 +341,7 @@ def run_all_training_tests():
         # PyTorch Eager timing
         t0.record()
         for _ in range(100):
-            grad = torch.matmul(dY_pre.t().float(), X_pre.float())
+            grad = torch.matmul(dY_pre.t(), X_pre).float()
             m_W = 0.9 * m_W + 0.1 * grad
             v_W = 0.999 * v_W + 0.001 * (grad ** 2)
             W_master = W_master - 1e-3 * (m_W / (torch.sqrt(v_W) + 1e-8) + 0.01 * W_master)
@@ -354,13 +354,14 @@ def run_all_training_tests():
         print(f"  -> Fused Kernel Latency       : {fused_ms:.3f} ms")
         print(f"  -> Training Speedup on T4     : {speedup_training:.2f}x (DRAM Traffic: 28B -> 22B/param)")
     else:
-        print("  [✓] Mathematical Simulation Check: PASSED")
+        print("  [SKIP] CUDA device or t4_kernels extension not available; skipping Test 3")
 
     print("\n" + "=" * 80)
     if all_passed:
         print("  ALL PRE-TRAINING & SFT CUDA KERNEL VERIFICATIONS: PASSED (100%)")
     else:
         print("  SOME VERIFICATIONS FAILED!")
+        sys.exit(1)
     print("=" * 80)
 
 

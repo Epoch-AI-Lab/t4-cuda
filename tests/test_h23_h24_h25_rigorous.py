@@ -410,34 +410,26 @@ def test_microbenchmarks_speed_of_light():
     bw_gbs = 320.0  # T4 GPU Bandwidth
     lat_fp16_us = (bytes_fp16 / (bw_gbs * 1e9)) * 1e6
     lat_h23_us = (bytes_h23_ternary / (bw_gbs * 1e9)) * 1e6
-
     speedup_h23 = lat_fp16_us / lat_h23_us
-    print(f"  H23 Bit-Serial Memory Latency: FP16 = {lat_fp16_us:.2f} us | H23 Ternary = {lat_h23_us:.2f} us | Speedup = {speedup_h23:.2f}x")
+    print(f"  H23 Analytical Traffic Model: FP16 = {lat_fp16_us:.2f} us | H23 Ternary = {lat_h23_us:.2f} us | Ratio = {speedup_h23:.2f}x")
 
     # --------------------------------------------------------------------------
-    # H24 Microbenchmark: In-Register KV Cache Latency vs HBM DRAM Latency
+    # H24 Analytical Estimation: Register vs DRAM Latency Model
     # --------------------------------------------------------------------------
-    # HBM DRAM random access latency ~100 ns
-    # CUDA Register File access latency ~1.2 ns (warp shuffle)
     lat_dram_ns = 100.0
     lat_register_ns = 1.2
-    speedup_h24 = lat_dram_ns / lat_register_ns
-    print(f"  H24 KV-Cache Access Latency: HBM DRAM = {lat_dram_ns:.1f} ns | Warp Register = {lat_register_ns:.1f} ns | Speedup = {speedup_h24:.2f}x")
+    ratio_h24 = lat_dram_ns / lat_register_ns
+    print(f"  H24 Analytical Latency Model: HBM DRAM = {lat_dram_ns:.1f} ns | Warp Register = {lat_register_ns:.1f} ns | Ratio = {ratio_h24:.1f}x")
 
     # --------------------------------------------------------------------------
-    # H25 Microbenchmark: Constant Bank Broadcast Latency vs GMEM Scale Latency
+    # H25 Analytical Estimation: Constant Bank vs GMEM Scale Latency Model
     # --------------------------------------------------------------------------
-    # Constant Bank Broadcast ~1 cycle (1.5 ns) vs Global Memory scale read ~100 cycles (150 ns)
     lat_gmem_scale_ns = 150.0
     lat_constant_bank_ns = 1.5
-    speedup_h25 = lat_gmem_scale_ns / lat_constant_bank_ns
-    print(f"  H25 Constant-Bank Broadcast: GMEM Read = {lat_gmem_scale_ns:.1f} ns | Constant Bank = {lat_constant_bank_ns:.1f} ns | Speedup = {speedup_h25:.2f}x")
+    ratio_h25 = lat_gmem_scale_ns / lat_constant_bank_ns
+    print(f"  H25 Analytical Broadcast Model: GMEM Read = {lat_gmem_scale_ns:.1f} ns | Constant Bank = {lat_constant_bank_ns:.1f} ns | Ratio = {ratio_h25:.1f}x")
+    print("\n  [INFO] Microarchitectural latency models calculated (analytical estimates).")
 
-    # Assertions for microbenchmarks
-    assert speedup_h23 > 6.0, "H23 Speedup assertion failed"
-    assert speedup_h24 > 50.0, "H24 Speedup assertion failed"
-    assert speedup_h25 > 50.0, "H25 Speedup assertion failed"
-    print("\n  [ASSERT] Microbenchmarks for Hypotheses H23, H24, and H25 mathematically validated.")
 
 
 def main():

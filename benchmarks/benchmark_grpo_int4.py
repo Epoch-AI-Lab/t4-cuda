@@ -207,7 +207,8 @@ def main():
 
     peak_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
 
-    gen_tokens_per_step = (args.batch_size * args.max_completion_len)
+    # tokens/sec estimate: completion tokens generated per step across group generations
+    gen_tokens_per_step = (args.batch_size * args.num_generations * args.max_completion_len)
     total_gen_tokens = gen_tokens_per_step * args.steps
 
     metrics = {

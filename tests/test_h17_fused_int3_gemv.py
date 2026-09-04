@@ -517,11 +517,12 @@ def test_h17_gpu_extension():
     # Same FP16 accumulation envelope (<= 2.0) used for fused_w4a16_gemm in
     # harness/empirical/expected.yaml. A sign-inversion or layout bug would
     # blow this gate by ~|C_ref|; FP16 rounding stays well under it.
-    GATE = 2.0
+    GATE = 0.25
     print(f"  non-zero GEMV: M={M} K={K} N={N} num_groups={num_groups}")
     print(f"  max_abs_diff (GPU vs CPU FP16-dequant ref) = {max_abs_diff:.6f}  (gate <= {GATE})")
     assert max_abs_diff <= GATE, (
         f"H17 GEMV correctness FAILED: max_abs_diff={max_abs_diff:.4f} > {GATE}")
+
     # Guard against a vacuous pass: reference must be non-trivial.
     assert float(np.max(np.abs(C_ref))) > 1e-3, "Reference output near-zero - test is vacuous"
     print(f"  [PASS] Live GPU execution + non-vacuous correctness gate. Output shape: {C_out.shape}")

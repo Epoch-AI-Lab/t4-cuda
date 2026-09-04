@@ -175,10 +175,10 @@ def run_benchmark(
     print("=" * 85)
 
     passed_speedup = net_speedup > 1.00
-    passed_alpha = mean_spec_alpha >= 50.0 or mean_spec_tok_per_step > 1.2
+    passed_alpha = mean_spec_alpha >= 50.0
 
     print(f">> Speedup Gate (>1.00x):     {'PASS' if passed_speedup else 'FAIL'} ({net_speedup:.2f}x)")
-    print(f">> Acceptance Gate (>=50%):   {'PASS' if passed_alpha else 'PASS (tok/step > 1.2)'} ({mean_spec_alpha:.1f}%)")
+    print(f">> Acceptance Gate (>=50%):   {'PASS' if passed_alpha else 'FAIL'} ({mean_spec_alpha:.1f}%)")
 
     # Record standard report
     report = {
@@ -207,7 +207,7 @@ def run_benchmark(
         "gates": {
             "speedup_greater_than_1x": passed_speedup,
             "acceptance_greater_than_50pct": passed_alpha,
-            "all_passed": passed_speedup,
+            "all_passed": passed_speedup and passed_alpha,
         },
     }
 

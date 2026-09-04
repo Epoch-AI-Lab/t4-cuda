@@ -69,36 +69,37 @@ def benchmark_rollback(
     if dev.type == "cuda":
         torch.cuda.synchronize(dev)
 
-    # Timed StaticKVCache rollback
-    t0 = time.perf_counter()
+    # Timed StaticKVCache rollback (only measure rollback operation)
+    static_times = []
     for _ in range(iters):
-        static_cache.rollback(seq_len - drop_k)
         static_cache.current_pos = seq_len
-    if dev.type == "cuda":
-        torch.cuda.synchronize(dev)
-    t1 = time.perf_counter()
-    static_latency_us = ((t1 - t0) / iters) * 1e6
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+        t0 = time.perf_counter()
+        static_cache.rollback(seq_len - drop_k)
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+        static_times.append(time.perf_counter() - t0)
+    static_latency_us = (sum(static_times) / iters) * 1e6
 
-    # Timed DynamicCache crop
-    for _ in range(warmup_iters):
-        dyn_cache.crop(-drop_k)
-        for l in range(num_layers):
-            dyn_cache.update(k_init[:, :, -drop_k:, :], v_init[:, :, -drop_k:, :], layer_idx=l)
-
-    if dev.type == "cuda":
-        torch.cuda.synchronize(dev)
-
-    t0 = time.perf_counter()
+    # Timed DynamicCache crop (only measure crop operation without timing restoration)
+    dyn_times = []
     for _ in range(iters):
-        dyn_cache.crop(-drop_k)
+        # Reset state outside the timing window
+        dyn_cache = DynamicCache()
         for l in range(num_layers):
-            dyn_cache.update(k_init[:, :, -drop_k:, :], v_init[:, :, -drop_k:, :], layer_idx=l)
-    if dev.type == "cuda":
-        torch.cuda.synchronize(dev)
-    t1 = time.perf_counter()
-    dyn_latency_us = ((t1 - t0) / iters) * 1e6
+            dyn_cache.update(k_init, v_init, layer_idx=l)
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+        t0 = time.perf_counter()
+        dyn_cache.crop(-drop_k)
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+        dyn_times.append(time.perf_counter() - t0)
+    dyn_latency_us = (sum(dyn_times) / iters) * 1e6
 
     speedup = dyn_latency_us / max(1e-9, static_latency_us)
+
 
     return {
         "num_layers": num_layers,

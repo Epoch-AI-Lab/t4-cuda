@@ -28,13 +28,20 @@ def main():
 
     base_time = base.get("wall_seconds", 0)
     int4_time = int4.get("wall_seconds", 0)
-    speedup = (base_time / int4_time) if int4_time > 0 else 0
+    base_steps = max(1, base.get("steps", 1))
+    int4_steps = max(1, int4.get("steps", 1))
+
+    base_s_per_step = base_time / base_steps
+    int4_s_per_step = int4_time / int4_steps
+    speedup = (base_s_per_step / int4_s_per_step) if int4_s_per_step > 0 else 0
 
     base_tok_s = base.get("approx_tokens_per_sec", 0)
     int4_tok_s = int4.get("approx_tokens_per_sec", 0)
 
-    print(f"Wall time:        FP16: {base_time:.1f}s | INT4: {int4_time:.1f}s (Speedup: {speedup:.2f}x)")
+    print(f"Total Wall time:  FP16: {base_time:.1f}s ({base_steps} steps) | INT4: {int4_time:.1f}s ({int4_steps} steps)")
+    print(f"Time per step:    FP16: {base_s_per_step:.2f}s/step | INT4: {int4_s_per_step:.2f}s/step (Normalized Speedup: {speedup:.2f}x)")
     print(f"Tokens/sec:       FP16: {base_tok_s:.1f} | INT4: {int4_tok_s:.1f}")
+
 
     if "peak_vram_gb" in int4:
         print(f"Peak VRAM:        INT4: {int4['peak_vram_gb']} GB")

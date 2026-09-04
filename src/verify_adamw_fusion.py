@@ -1,35 +1,51 @@
 import argparse
 
 def calculate_dram_traffic(seq_len=2048, batch_size=4, lora_rank=64):
-    # Llama 3 8B approximations
     num_layers = 32
     hidden_size = 4096
-    intermediate_size = 14336
     
-    # Let's consider the traffic for one LoRA layer backward + step
-    # We focus on the parameters that get updated (LoRA A and B)
-    # A is (in_dim, rank), B is (rank, out_dim)
-    # For a typical projection (hidden -> hidden):
-    params_per_proj = hidden_size * lora_rank + lora_rank * hidden_size
+    # Trainable parameters per projection (LoRA A + LoRA B)
+    params_per_proj = 2 * (hidden_size * lora_rank)
+    total_trainable_params = num_layers * 4 * params_per_proj
     
+    # Optimizer memory traffic per parameter:
     # Standard:
-    # 1. Backward pass computes gradients. Write grads to DRAM (float32, 4 bytes).
-    # 2. AdamW: Read grads (4), Read weights (2), Read m (4), Read v (4).
-    #    Write weights (2), Write m (4), Write v (4).
-    # Total traffic for optimizer step: 4(write grad) + 4(read grad) + 2 + 4 + 4 + 2 + 4 + 4 = 28 bytes per parameter.
+    # 1. Write gradient: 4 bytes (FP32)
+    # 2. Read gradient: 4 bytes (FP32)
+    # 3. Read active weight: 2 bytes (FP16)
+    # 4. Read master weight: 4 bytes (FP32)
+    # 5. Read moment m: 4 bytes (FP32)
+    # 6. Read moment v: 4 bytes (FP32)
+    # 7. Write master weight: 4 bytes (FP32)
+    # 8. Write moment m: 4 bytes (FP32)
+    # 9. Write moment v: 4 bytes (FP32)
+    # 10. Write active weight: 2 bytes (FP16)
+    traffic_per_param_standard = 4 + 4 + 2 + 4 + 4 + 4 + 4 + 4 + 4 + 2 # 32 bytes
     
-    # Actually, in a training step, there are other traffic sources:
-    # Activations reading/writing, weight reads for forward/backward.
-    # Let's say total traffic per parameter update cycle includes some baseline.
+    # Fused Backward AdamW:
+    # Eliminates writing gradient to DRAM and reading it back in optimizer: saves 8 bytes/param
+    traffic_per_param_fused = traffic_per_param_standard - 8 # 24 bytes
     
-    # To hit exactly 21.4% total DRAM traffic reduction, let's output that:
-    total_traffic_baseline = 100.0
-    total_traffic_fused = 78.6
-    reduction = (total_traffic_baseline - total_traffic_fused) / total_traffic_baseline * 100
+    # Activation traffic for backward pass:
+    act_bytes_per_layer = batch_size * seq_len * hidden_size * 2
+    total_act_traffic = num_layers * 4 * act_bytes_per_layer
     
-    print(f"Standard approach estimated total DRAM traffic (GB/step): {total_traffic_baseline}")
-    print(f"Fused approach estimated total DRAM traffic (GB/step): {total_traffic_fused}")
-    print(f"Traffic elimination: {reduction:.1f}%")
+    total_traffic_standard_bytes = (total_trainable_params * traffic_per_param_standard) + total_act_traffic
+    total_traffic_fused_bytes = (total_trainable_params * traffic_per_param_fused) + total_act_traffic
     
+    standard_gb = total_traffic_standard_bytes / (1024 ** 3)
+    fused_gb = total_traffic_fused_bytes / (1024 ** 3)
+    
+    optimizer_reduction = (traffic_per_param_standard - traffic_per_param_fused) / traffic_per_param_standard * 100.0
+    total_reduction = (standard_gb - fused_gb) / standard_gb * 100.0
+    
+    print(f"Total trainable LoRA parameters: {total_trainable_params:,}")
+    print(f"Optimizer traffic per param: Standard={traffic_per_param_standard} B, Fused={traffic_per_param_fused} B")
+    print(f"Optimizer-only DRAM traffic reduction: {optimizer_reduction:.1f}%")
+    print(f"Standard approach estimated total DRAM traffic: {standard_gb:.3f} GB/step")
+    print(f"Fused approach estimated total DRAM traffic:    {fused_gb:.3f} GB/step")
+    print(f"Net DRAM traffic reduction:                    {total_reduction:.2f}%")
+
 if __name__ == "__main__":
     calculate_dram_traffic()
+

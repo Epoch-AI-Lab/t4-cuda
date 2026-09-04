@@ -102,8 +102,8 @@ def main():
     trainer.train()
     wall = time.time() - t0
 
-    # tokens/sec estimate: completion tokens actually generated per step
-    gen_tokens_per_step = (args.batch_size * args.max_completion_len)
+    # tokens/sec estimate: completion tokens generated per step across group generations
+    gen_tokens_per_step = (args.batch_size * args.num_generations * args.max_completion_len)
     total_gen_tokens = gen_tokens_per_step * args.steps
 
     metrics = {
