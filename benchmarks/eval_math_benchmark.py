@@ -409,7 +409,8 @@ def evaluate_model_on_dataset(
                     "is_correct": is_correct,
                     "num_tokens": num_tokens,
                     "tok_s": num_tokens / max(t1 - t0, 1e-4),
-                    "completion_snippet": completion_text[:200] + "..." if len(completion_text) > 200 else completion_text
+                    "completion_text": completion_text,
+                    "completion_snippet": completion_text
                 })
 
             results.append({
