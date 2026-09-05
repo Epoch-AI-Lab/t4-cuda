@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
 .agents/
+.env
+.env.local
+!.env.example
+results/chalk_math_1.5b_sft/
 
