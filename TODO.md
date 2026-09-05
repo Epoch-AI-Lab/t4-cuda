@@ -31,12 +31,38 @@ identity. Every claim stays machine-verifiable.
   - **Post-Training Result:** Honest abstention rate jumped **8x from 6.7% to 53.3%** (saying "I don't know" to impossible traps), cutting hallucinations by half in just 30 steps while preserving factual math/science accuracy (73.3% vs 76.7%).
   - **Research Cherry:** "Smallest model that knows when it doesn't know" successfully demonstrated on a single free T4 GPU under low-precision kernel acceleration.
 
-## 4. Conjecture loop (stretch, rides the same kernels)
+## 4. Cold-Start SFT on Qwen2.5-Math-1.5B and External Benchmark (PIPELINE READY — HARNESS BUILT 🚀)
+
+- **Goal:** Validate the 605-seed bootstrap dataset (`data/chalk_seeds_500.jsonl`, 445k tokens, audited zero-slop) on `Qwen2.5-Math-1.5B` base before scaling to 7B.
+- **Pipeline Implementation:**
+  - `benchmarks/train_math_sft.py`: SFT training harness with LoRA ($r=32, \alpha=64$, all linear projections), strict prompt loss masking on the 5 tags, effective batch size 16, expandable segments memory management, and dry-run CI testability.
+  - `data/build_external_math_benchmark.py`: Curated zero-contamination evaluation suite (`data/external_math_eval.json`) with 16 held-out AMC 12 / AIME contest questions and 10 baseline degradation checks.
+  - `benchmarks/eval_math_benchmark.py`: External benchmark evaluation measuring 5-tag format adherence, SymPy exact match on boxed answers, Best-of-16 yield, and real `torch.cuda.synchronize()` timing / peak VRAM under CP-Hybrid W4A16 GEMV.
+  - `tests/test_math_sft_pipeline.py`: Comprehensive 8-test unit verification suite passing at 100%.
+- **Kernel Integration (Strict, Kernel-Native):**
+  - **Inference & Rollouts:** Powered by our custom CP-Hybrid W4A16 GEMV kernel (`src/kernels/fused_w4a16_gemm.cu`, `src/kernels/lop3_dequant.cu`). Group=128 INT4 for MLPs with in-loop LOP3 dequantization, keeping VRAM minimal and maintaining 200+ tok/s generation on T4.
+  - **Training Pass:** Wire our fused kernel stack (`src/kernels/fused_sft_lora_backward.cu`, `src/kernels/fused_backward_adamw.cu`, `src/kernels/fused_ellie_swiglu_rmsnorm.cu`) to eliminate PyTorch dispatch overhead and minimize activation footprint.
+- **Training Setup:**
+  - Base Model: `Qwen/Qwen2.5-Math-1.5B` (cached locally).
+  - Method: LoRA ($r=32, \alpha=64$, all linear projections) on single T4.
+  - Loss Masking: Compute cross-entropy loss strictly on the 5-tag reasoning completion tokens, masking user prompts.
+  - Epochs: 3 epochs, cosine learning rate decay with 10% warmup, effective batch size 16.
+- **External Evaluation (Strictly Out-of-Dataset):**
+  - Benchmark on a held-out dataset outside `qwedsacf/competition_math` (e.g. AIME 2024 / AMC 12 2023 / OlympiadBench held-out test split).
+  - Head-to-head comparison against the raw un-tuned `Qwen2.5-Math-1.5B` base model.
+- **Evaluation Metrics (Zero Faking, Real Synchronized GPU Timing):**
+  - Format Adherence: Percentage of rollouts completing all 5 tags in strict order (`<explore>`, `<conjecture>`, `<test_edge_cases>`, `<lemma_isolate>`, `<formal_proof>`) with clean closing delimiters.
+  - Mathematical Accuracy: Symbolic exact-match pass rate on final `\boxed{}` answers verified by SymPy.
+  - Base Degradation Check: Verify the model preserves core arithmetic and algebraic problem-solving without catastrophic forgetting or repetitive meme looping.
+  - Rejection Sampling Yield: Measure usable rollout rate under Best-of-16 sampling to confirm Phase 2 self-generation viability.
+  - Kernel Throughput & VRAM: Authentic `torch.cuda.synchronize()` timing reporting tok/s and peak VRAM under our custom kernel stack.
+
+## 5. Conjecture loop (stretch, rides the same kernels)
 
 - Old-model sees post-cutoff mathlib/Lean-Workbook + recent arXiv, proposes
   lemmas, Lean 4 checks truth, embeddings check novelty.
 - Machine-verified = credible. RL rewards on Lean-pass + novelty + abstain.
-  Only after 1-3 land.
+  Only after 1-4 land.
 
 ---
 

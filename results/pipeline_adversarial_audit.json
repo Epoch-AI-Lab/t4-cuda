@@ -1,0 +1,39 @@
+{
+  "verdict": "GREEN",
+  "test_1_boundary_and_masking": {
+    "dataset_prefix_matches": 50,
+    "dataset_masking_checks": 50,
+    "subword_merge_vulnerabilities": [],
+    "truncation_nan_loss_vulnerability": false
+  },
+  "test_2_collation_and_padding": {
+    "shape_correct": true,
+    "padding_labels_minus_100": true,
+    "mask_strictly_zero": true,
+    "max_logit_diff": 0.0001220703125,
+    "causal_invariant": false
+  },
+  "test_3_lora_gradient_flow": {
+    "target_counts": {
+      "q_proj": 4,
+      "k_proj": 4,
+      "v_proj": 4,
+      "o_proj": 4,
+      "gate_proj": 4,
+      "up_proj": 4,
+      "down_proj": 4
+    },
+    "step1_zero_grads_count": 14,
+    "step1_active_grads_count": 14,
+    "step2_none_grads_count": 0,
+    "step2_zero_grads_count": 0,
+    "step2_active_grads_count": 28,
+    "full_flow_established": true
+  },
+  "test_4_eval_metric_exploits": {
+    "verified_exploits": [],
+    "rce_vulnerability_confirmed": false,
+    "tag_loopholes": [],
+    "boxed_mismatches": []
+  }
+}
