@@ -284,6 +284,9 @@ def verify_math_answer_sympy(pred_raw: Optional[str], gold_raw: str) -> bool:
     return False
 
 
+import contextlib
+
+
 class CPHybridInferenceScope:
     """Dispatches W4A16 GEMV kernel on MLP linear layers during inference."""
 
@@ -297,37 +300,37 @@ class CPHybridInferenceScope:
         if not HAS_T4_KERNELS or not torch.cuda.is_available():
             return self
 
-        self.Q.clear()
-        self.orig_forwards.clear()
+        if not self.Q:
+            print("  [CP-Hybrid] Pre-quantizing MLP weights to INT4...")
+            for name, mod in self.model.named_modules():
+                if isinstance(mod, torch.nn.Linear) and is_mlp_module(name) and not is_attention_module(name):
+                    self.Q[mod] = quantize_weight_sym_int4(mod.weight.data, group_size=self.group_size)
 
-        for name, mod in self.model.named_modules():
-            if isinstance(mod, torch.nn.Linear) and is_mlp_module(name) and not is_attention_module(name):
-                self.Q[mod] = quantize_weight_sym_int4(mod.weight.data, group_size=self.group_size)
-                self.orig_forwards[mod] = mod.forward
+        for mod, (packed, scales, zp, g_size) in self.Q.items():
+            self.orig_forwards[mod] = mod.forward
 
-                def make_patched(m):
-                    def patched_forward(x):
-                        x_shape = x.shape
-                        orig_dtype = x.dtype
-                        x_flat = x.reshape(-1, x_shape[-1])
-                        M = x_flat.shape[0]
+            def make_patched(m, p, s, z, g):
+                def patched_forward(x):
+                    x_shape = x.shape
+                    orig_dtype = x.dtype
+                    x_flat = x.reshape(-1, x_shape[-1])
+                    M = x_flat.shape[0]
 
-                        if M <= 2:
-                            packed, scales, zp, g_size = self.Q[m]
-                            if x_flat.dtype != torch.float16:
-                                x_flat = x_flat.half()
-                            out = t4_kernels.fused_w4a16_gemm_u4(x_flat, packed, scales, zp, g_size)
-                            if m.bias is not None:
-                                out = out + m.bias
-                            if orig_dtype != torch.float16:
-                                out = out.to(orig_dtype)
-                        else:
-                            out = torch.nn.functional.linear(x_flat, m.weight, m.bias)
+                    if M <= 2:
+                        if x_flat.dtype != torch.float16:
+                            x_flat = x_flat.half()
+                        out = t4_kernels.fused_w4a16_gemm_u4(x_flat, p, s, z, g)
+                        if m.bias is not None:
+                            out = out + m.bias
+                        if orig_dtype != torch.float16:
+                            out = out.to(orig_dtype)
+                    else:
+                        out = torch.nn.functional.linear(x_flat, m.weight, m.bias)
 
-                        return out.reshape(*x_shape[:-1], out.shape[-1])
-                    return patched_forward
+                    return out.reshape(*x_shape[:-1], out.shape[-1])
+                return patched_forward
 
-                mod.forward = make_patched(mod)
+            mod.forward = make_patched(mod, packed, scales, zp, g_size)
 
         return self
 
@@ -335,7 +338,6 @@ class CPHybridInferenceScope:
         for mod, orig_fwd in self.orig_forwards.items():
             mod.forward = orig_fwd
         self.orig_forwards.clear()
-        self.Q.clear()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -354,36 +356,26 @@ def evaluate_model_on_dataset(
     total_tokens_generated = 0
     total_generation_time = 0.0
 
-    scope = CPHybridInferenceScope(model) if use_kernels else None
+    scope = CPHybridInferenceScope(model) if use_kernels else contextlib.nullcontext()
 
-    for idx, item in enumerate(dataset):
-        prompt = (
-            f"<|im_start|>system\n{SYSTEM_PROMPT}<|im_end|>\n"
-            f"<|im_start|>user\n{item['problem']}<|im_end|>\n"
-            f"<|im_start|>assistant\n"
-        )
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
-        input_len = inputs["input_ids"].shape[1]
+    with scope:
+        for idx, item in enumerate(dataset):
+            prompt = (
+                f"<|im_start|>system\n{SYSTEM_PROMPT}<|im_end|>\n"
+                f"<|im_start|>user\n{item['problem']}<|im_end|>\n"
+                f"<|im_start|>assistant\n"
+            )
+            inputs = tokenizer(prompt, return_tensors="pt").to(device)
+            input_len = inputs["input_ids"].shape[1]
 
-        problem_rollouts = []
-        any_correct = False
+            problem_rollouts = []
+            any_correct = False
 
-        for s_idx in range(num_samples_per_problem):
-            if device == "cuda":
-                torch.cuda.synchronize()
-            t0 = time.perf_counter()
+            for s_idx in range(num_samples_per_problem):
+                if device == "cuda":
+                    torch.cuda.synchronize()
+                t0 = time.perf_counter()
 
-            if scope:
-                with scope:
-                    outputs = model.generate(
-                        **inputs,
-                        max_new_tokens=max_new_tokens,
-                        do_sample=(num_samples_per_problem > 1),
-                        temperature=0.7 if num_samples_per_problem > 1 else 1.0,
-                        pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-                        eos_token_id=tokenizer.encode("<|im_end|>")[0]
-                    )
-            else:
                 outputs = model.generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
@@ -393,44 +385,45 @@ def evaluate_model_on_dataset(
                     eos_token_id=tokenizer.encode("<|im_end|>")[0]
                 )
 
-            if device == "cuda":
-                torch.cuda.synchronize()
-            t1 = time.perf_counter()
+                if device == "cuda":
+                    torch.cuda.synchronize()
+                t1 = time.perf_counter()
 
-            gen_tokens = outputs[0][input_len:]
-            num_tokens = len(gen_tokens)
-            total_tokens_generated += num_tokens
-            total_generation_time += (t1 - t0)
+                gen_tokens = outputs[0][input_len:]
+                num_tokens = len(gen_tokens)
+                total_tokens_generated += num_tokens
+                total_generation_time += (t1 - t0)
 
-            completion_text = tokenizer.decode(gen_tokens, skip_special_tokens=False)
+                completion_text = tokenizer.decode(gen_tokens, skip_special_tokens=False)
 
-            adherence = check_5tag_adherence(completion_text)
-            pred_boxed = extract_boxed_answer(completion_text)
-            is_correct = verify_math_answer_sympy(pred_boxed, item["ground_truth"])
-            if is_correct:
-                any_correct = True
+                adherence = check_5tag_adherence(completion_text)
+                pred_boxed = extract_boxed_answer(completion_text)
+                is_correct = verify_math_answer_sympy(pred_boxed, item["ground_truth"])
+                if is_correct:
+                    any_correct = True
 
-            problem_rollouts.append({
-                "sample_idx": s_idx,
-                "adherence": adherence,
-                "pred_boxed": pred_boxed,
-                "is_correct": is_correct,
-                "num_tokens": num_tokens,
-                "tok_s": num_tokens / max(t1 - t0, 1e-4),
-                "completion_snippet": completion_text[:200] + "..." if len(completion_text) > 200 else completion_text
+                problem_rollouts.append({
+                    "sample_idx": s_idx,
+                    "adherence": adherence,
+                    "pred_boxed": pred_boxed,
+                    "is_correct": is_correct,
+                    "num_tokens": num_tokens,
+                    "tok_s": num_tokens / max(t1 - t0, 1e-4),
+                    "completion_snippet": completion_text[:200] + "..." if len(completion_text) > 200 else completion_text
+                })
+
+            results.append({
+                "problem_id": item.get("id", f"prob_{idx}"),
+                "ground_truth": item["ground_truth"],
+                "pass_at_1": problem_rollouts[0]["is_correct"],
+                "best_of_n": any_correct,
+                "rollouts": problem_rollouts
             })
 
-        results.append({
-            "problem_id": item.get("id", f"prob_{idx}"),
-            "ground_truth": item["ground_truth"],
-            "pass_at_1": problem_rollouts[0]["is_correct"],
-            "best_of_n": any_correct,
-            "rollouts": problem_rollouts
-        })
-
-        status_icon = "PASS" if any_correct else "FAIL"
-        tok_s = problem_rollouts[0]["tok_s"]
-        print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:20]:20s} | {status_icon} | {num_tokens:4d} toks | {tok_s:5.1f} tok/s", flush=True)
+            status_icon = "PASS" if any_correct else "FAIL"
+            tok_s = problem_rollouts[0]["tok_s"]
+            num_tokens = problem_rollouts[0]["num_tokens"]
+            print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:20]:20s} | {status_icon} | {num_tokens:4d} toks | {tok_s:5.1f} tok/s", flush=True)
 
     adherence_rate = sum(r["rollouts"][0]["adherence"]["adherent"] for r in results) / max(len(results), 1)
     pass_1_rate = sum(r["pass_at_1"] for r in results) / max(len(results), 1)
@@ -509,6 +502,9 @@ def main():
         if args.adapter_path and os.path.exists(args.adapter_path):
             print(f"Applying LoRA Adapter from: {args.adapter_path}...")
             model = PeftModel.from_pretrained(model, args.adapter_path)
+            if args.use_kernels:
+                print("Merging LoRA adapter into base weights for INT4 kernel execution...")
+                model = model.merge_and_unload()
         model.eval()
 
     model.to(device)
