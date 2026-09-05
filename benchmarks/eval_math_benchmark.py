@@ -447,20 +447,21 @@ def evaluate_model_on_dataset(
 
 def parse_args():
     parser = argparse.ArgumentParser(description="External Math Benchmark Evaluation")
-    parser.add_argument("--base_model", default="Qwen/Qwen2.5-Math-1.5B")
+    parser.add_argument("--base_model", "--model_name_or_path", dest="base_model", default="Qwen/Qwen2.5-Math-1.5B")
     parser.add_argument("--adapter_path", default=None, help="Path to fine-tuned LoRA adapter checkpoint")
-    parser.add_argument("--eval_dataset", default="data/external_math_eval.json")
+    parser.add_argument("--eval_dataset", "--benchmark_path", dest="eval_dataset", default="data/external_math_eval.json")
     parser.add_argument("--num_samples", type=int, default=1, help="Samples per problem (e.g. 16 for Best-of-16)")
     parser.add_argument("--max_tokens", type=int, default=1024)
     parser.add_argument("--use_kernels", action="store_true", help="Enable CP-Hybrid W4A16 GEMV kernel")
-    parser.add_argument("--output_file", default="results/external_eval_summary.json")
+    parser.add_argument("--output_file", "--output_path", dest="output_file", default="results/external_eval_summary.json")
+    parser.add_argument("--device", default=None, help="Target device (default: cuda if available)")
     parser.add_argument("--dry_run", action="store_true", help="Dry run on mock/miniature config for pipeline verification")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    device = "cuda" if torch.cuda.is_available() and not args.dry_run else "cpu"
+    device = args.device or ("cuda" if torch.cuda.is_available() and not args.dry_run else "cpu")
     os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
 
     print("=" * 75)
