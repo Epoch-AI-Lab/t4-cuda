@@ -428,6 +428,10 @@ def evaluate_model_on_dataset(
             "rollouts": problem_rollouts
         })
 
+        status_icon = "PASS" if any_correct else "FAIL"
+        tok_s = problem_rollouts[0]["tok_s"]
+        print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:20]:20s} | {status_icon} | {num_tokens:4d} toks | {tok_s:5.1f} tok/s", flush=True)
+
     adherence_rate = sum(r["rollouts"][0]["adherence"]["adherent"] for r in results) / max(len(results), 1)
     pass_1_rate = sum(r["pass_at_1"] for r in results) / max(len(results), 1)
     best_of_n_rate = sum(r["best_of_n"] for r in results) / max(len(results), 1)
