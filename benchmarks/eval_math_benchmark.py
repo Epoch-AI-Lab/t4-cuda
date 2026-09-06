@@ -453,6 +453,7 @@ def parse_args():
     parser.add_argument("--use_kernels", action="store_true", help="Enable CP-Hybrid W4A16 GEMV kernel")
     parser.add_argument("--output_file", "--output_path", dest="output_file", default="results/external_eval_summary.json")
     parser.add_argument("--device", default=None, help="Target device (default: cuda if available)")
+    parser.add_argument("--load_in_4bit", action="store_true", help="Load base model in 4-bit NF4 (QLoRA) for low-memory environments")
     parser.add_argument("--dry_run", action="store_true", help="Dry run on mock/miniature config for pipeline verification")
     return parser.parse_args()
 
@@ -470,34 +471,39 @@ def main():
     with open(args.eval_dataset, "r", encoding="utf-8") as f:
         bench_data = json.load(f)
 
-    contest_probs = bench_data["contest_problems"]
-    degrad_probs = bench_data["degradation_checks"]
+    contest_probs = bench_data.get("contest_problems", [])
+    degrad_probs = bench_data.get("degradation_checks", bench_data.get("degradation_problems", []))
 
-    # Load Tokenizer
-    local_snapshot = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
-    tok_path = local_snapshot if os.path.exists(local_snapshot) else args.base_model
-    tokenizer = AutoTokenizer.from_pretrained(tok_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     if args.dry_run:
-        print("[DRY RUN] Creating miniature test model...")
-        cfg = AutoConfig.from_pretrained(tok_path)
+        print("[DRY RUN] Instantiating miniature test model from configuration...")
+        cfg = AutoConfig.from_pretrained(args.base_model)
         cfg.num_hidden_layers = 2
         cfg.hidden_size = 128
         cfg.intermediate_size = 256
         cfg.num_attention_heads = 4
         cfg.num_key_value_heads = 2
         model = AutoModelForCausalLM.from_config(cfg)
-        model.eval()
-        # Limit evaluation items for quick dry run
         contest_probs = contest_probs[:2]
         degrad_probs = degrad_probs[:2]
     else:
         print(f"Loading Base Model: {args.base_model}...")
+        bnb_config = None
+        if args.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+            )
         model = AutoModelForCausalLM.from_pretrained(
             args.base_model,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            quantization_config=bnb_config,
             device_map="auto" if device == "cuda" else None
         )
         if args.adapter_path and os.path.exists(args.adapter_path):
@@ -508,7 +514,8 @@ def main():
                 model = model.merge_and_unload()
         model.eval()
 
-    model.to(device)
+    if not hasattr(model, "hf_device_map"):
+        model.to(device)
 
     print(f"--> Evaluating Contest Problems (N={len(contest_probs)})...")
     contest_metrics = evaluate_model_on_dataset(

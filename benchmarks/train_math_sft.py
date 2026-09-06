@@ -170,6 +170,7 @@ def parse_args():
     parser.add_argument("--max_steps", type=int, default=-1)
     parser.add_argument("--logging_steps", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--load_in_4bit", action="store_true", help="Load base model in 4-bit NF4 (QLoRA) for low-memory environments")
     parser.add_argument("--dry_run", action="store_true", help="Run with miniature configuration for CI / CPU testing")
     parser.add_argument("--force_cpu", action="store_true", help="Force full 1.5B model execution on CPU despite low system RAM")
     return parser.parse_args()
@@ -204,7 +205,7 @@ def train(args):
                 raise e
 
     print("=" * 75)
-    print("  COLD-START SFT: Qwen2.5-Math-1.5B (LoRA + 5-Tag Loss Masking)")
+    print("  COLD-START SFT: Qwen2.5-Math (LoRA + 5-Tag Loss Masking)")
     print(f"Device: {device} | t4_kernels Available: {HAS_T4_KERNELS}")
     print(f"Epochs: {args.epochs} | Batch: {args.batch_size} | Grad Accum: {args.grad_accum} | Effective BS: {args.batch_size * args.grad_accum}")
     print(f"LoRA: r={args.lora_r}, alpha={args.lora_alpha}, target=all linear projections")
@@ -212,7 +213,7 @@ def train(args):
 
     # 1. Load Tokenizer
     local_snapshot = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
-    tokenizer_path = local_snapshot if os.path.exists(local_snapshot) else args.model_name_or_path
+    tokenizer_path = local_snapshot if os.path.exists(local_snapshot) and "1.5B" in args.model_name_or_path else args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -228,14 +229,26 @@ def train(args):
         cfg.num_key_value_heads = 2
         model = AutoModelForCausalLM.from_config(cfg)
     else:
-        print(f"Loading base model: {args.model_name_or_path} in FP16...")
+        print(f"Loading base model: {args.model_name_or_path}...")
+        bnb_config = None
+        if args.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+            )
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             torch_dtype=torch.float16 if device.type == "cuda" else torch.float32,
+            quantization_config=bnb_config,
             device_map="auto" if device.type == "cuda" else None
         )
         if device.type == "cuda":
             model.gradient_checkpointing_enable()
+            if hasattr(model, "enable_input_require_grads"):
+                model.enable_input_require_grads()
 
     # 3. Setup LoRA
     lora_config = LoraConfig(
@@ -247,7 +260,8 @@ def train(args):
         task_type=TaskType.CAUSAL_LM
     )
     model = get_peft_model(model, lora_config)
-    model.to(device)
+    if not hasattr(model, "hf_device_map"):
+        model.to(device)
     model.print_trainable_parameters()
 
     # 4. Prepare Dataset & DataLoader
@@ -294,9 +308,10 @@ def train(args):
 
     for epoch in range(args.epochs):
         for step, batch in enumerate(dataloader):
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            labels = batch["labels"].to(device)
+            input_device = getattr(model, "device", device)
+            input_ids = batch["input_ids"].to(input_device)
+            attention_mask = batch["attention_mask"].to(input_device)
+            labels = batch["labels"].to(input_device)
 
             outputs = model(
                 input_ids=input_ids,
