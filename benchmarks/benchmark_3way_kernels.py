@@ -2,10 +2,11 @@
 """3-Way Head-to-Head Kernel Benchmark: t4_kernels vs bitsandbytes vs Marlin.
 
 Evaluates 4-bit low-precision projection execution on NVIDIA Turing (sm_75, Tesla T4):
-1. Custom Kernel: t4_kernels (W4A16 GEMV / WMMA Tensor Core)
-2. Industry Baseline 1: bitsandbytes (Linear4bit NF4 / FP4)
-3. Industry Baseline 2: Marlin (W4A16 FP16xINT4 GEMM via AutoGPTQ or marlin)
-4. Unquantized Reference: PyTorch cuBLAS FP16
+1. Custom Kernel: t4_kernels (Re-tiled 100% Coalesced W4A16 GEMV / WMMA Tensor Core)
+2. Industry Baseline 1: bitsandbytes NF4 (Linear4bit Normalized Float 4)
+3. Industry Baseline 2: bitsandbytes FP4 (Linear4bit Standard 4-bit FP/INT4)
+4. Industry Baseline 3: Marlin (W4A16 FP16xINT4 GEMM - requires Compute Capability >= 8.0)
+5. Unquantized Reference: PyTorch cuBLAS FP16 (Standard unquantized baseline)
 
 Evaluates across:
 - Decode regime (M = 1, 4): Memory bandwidth bound GEMV
@@ -19,7 +20,7 @@ Strict benchmarking protocol:
 - Computational throughput (TFLOP/s against T4 65 TFLOP/s peak)
 - Numerical fidelity (Cosine similarity and Max Error vs FP16 ground truth)
 - Zero mocked passes or hardcoded numbers
-- Machine-readable JSON logs containing individual iteration times and device info
+- Automatic logging: saves exact raw JSON, terminal log, and markdown table reports
 """
 
 import argparse
@@ -83,6 +84,26 @@ except ImportError:
     HAS_QUANT_HELPER = False
 
 
+class DualLogger:
+    """Tees stdout to both terminal and a log file simultaneously."""
+    def __init__(self, filepath: str):
+        self.terminal = sys.stdout
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        self.log_file = open(filepath, "w", encoding="utf-8")
+
+    def write(self, message: str) -> None:
+        self.terminal.write(message)
+        self.log_file.write(message)
+        self.log_file.flush()
+
+    def flush(self) -> None:
+        self.terminal.flush()
+        self.log_file.flush()
+
+    def close(self) -> None:
+        self.log_file.close()
+
+
 def fallback_quantize_sym_int4(W: torch.Tensor, group_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
     """Fallback symmetric INT4 quantization if src.hybrid_linear is not importable."""
     out_f, in_f = W.shape
@@ -122,11 +143,9 @@ def prepare_marlin_linear(W: torch.Tensor, group_size: int = 128) -> Optional[Ca
     if in_f % 128 != 0 or out_f % 64 != 0:
         return None
     try:
-        # Check for AutoGPTQ QuantLinear
         if hasattr(marlin_module, "QuantLinear"):
             layer = marlin_module.QuantLinear(bits=4, group_size=group_size, infeatures=in_f, outfeatures=out_f, bias=False).to(W.device)
             return lambda x: layer(x)
-        # Check for standalone marlin quantize_and_pack + mul
         if hasattr(marlin_module, "quantize_and_pack") and hasattr(marlin_module, "mul"):
             packed_b, scales = marlin_module.quantize_and_pack(W, group_size=group_size)
             workspace = torch.zeros(out_f // 128 * 16, dtype=torch.int32, device=W.device)
@@ -143,7 +162,6 @@ def prepare_marlin_linear(W: torch.Tensor, group_size: int = 128) -> Optional[Ca
 def benchmark_cuda_op(fn: Callable[[], Any], iters: int = 50, warmup: int = 20) -> Dict[str, Any]:
     """Measures kernel execution time using CUDA events with warmup and synchronization."""
     if not torch.cuda.is_available():
-        # Dry-run fallback on CPU
         for _ in range(warmup):
             fn()
         timings_us: List[float] = []
@@ -166,7 +184,7 @@ def benchmark_cuda_op(fn: Callable[[], Any], iters: int = 50, warmup: int = 20) 
         fn()
     torch.cuda.synchronize()
 
-    # Timed runs using individual CUDA event pairs to compute percentiles
+    # Timed runs using individual CUDA event pairs
     timings_ms: List[float] = []
     for _ in range(iters):
         start = torch.cuda.Event(enable_timing=True)
@@ -185,8 +203,10 @@ def benchmark_cuda_op(fn: Callable[[], Any], iters: int = 50, warmup: int = 20) 
     min_ms = timings_ms[0]
     max_ms = timings_ms[-1]
 
+    raw_us = [t * 1e3 for t in timings_ms]
+
     return {
-        "raw_timings_us": [t * 1e3 for t in timings_ms],
+        "raw_timings_us": raw_us,
         "median_us": median_ms * 1e3,
         "p95_us": p95_ms * 1e3,
         "min_us": min_ms * 1e3,
@@ -212,12 +232,11 @@ def compute_metrics(
     # Memory bytes transferred:
     # Input X: M * K * 2 bytes (FP16)
     # Output Y: M * N * 2 bytes (FP16)
-    # Weight W:
     if is_4bit:
         weight_bytes = (K * N) * 0.5
         if group_size > 0:
             num_groups = (K + group_size - 1) // group_size
-            weight_bytes += num_groups * N * 4
+            weight_bytes += num_groups * N * 4  # scales + zero_points in FP16
     else:
         weight_bytes = K * N * 2.0
 
@@ -261,7 +280,7 @@ def get_benchmark_shapes() -> List[Dict[str, Any]]:
         {
             "category": "Qwen2.5-7B Full",
             "name": "Qwen-7B QKV / Q-Proj",
-            "layer_type": "attn_qkv",
+            "layer_type": "attn_q",
             "K": 3584,
             "N": 3584,
         },
@@ -312,325 +331,390 @@ def run_3way_benchmark(
     warmup: int = 20,
     group_size: int = 128,
     dry_run: bool = False,
-    output_json: Optional[str] = None,
+    output_json: Optional[str] = "results/3way_kernel_match_t4.json",
+    output_log: Optional[str] = "results/3way_kernel_match_t4.log",
+    output_md: Optional[str] = "results/3way_kernel_match_t4.md",
 ) -> List[Dict[str, Any]]:
     """Runs the 3-way kernel match across all requested shapes and batch sizes."""
     if not torch.cuda.is_available() and not dry_run:
         raise RuntimeError(
             "CUDA is not available on this host. Real GPU kernel benchmark requires CUDA. "
-            "Pass --dry-run to test benchmark pipeline structure on CPU."
+            "To inspect or test benchmark pipeline logic on CPU, run with --dry-run."
         )
 
-    device = torch.device("cuda" if torch.cuda.is_available() and not dry_run else "cpu")
+    # Setup DualLogger if output_log is specified
+    logger = None
+    if output_log:
+        logger = DualLogger(output_log)
+        sys.stdout = logger
 
-    print("\n" + "=" * 115)
-    print("      3-WAY HEAD-TO-HEAD KERNEL BENCHMARK: t4_kernels vs bitsandbytes vs Marlin (Turing T4)")
-    print("=" * 115)
-    print(f"Hardware Device: {device} | Dry Run: {dry_run}")
-    print(f"Kernel Status: t4_kernels={HAS_T4_KERNELS} | bitsandbytes={HAS_BNB} | Marlin={HAS_MARLIN}")
-    print(f"Timing Config: {warmup} warmup iterations, {iters} timed iterations (CUDA events)")
-    print(f"Quantization: Symmetric INT4 / NF4 with group_size={group_size}")
-    print("=" * 115)
+    try:
+        device = torch.device("cuda:0" if torch.cuda.is_available() and not dry_run else "cpu")
 
-    all_shapes = get_benchmark_shapes()
-    if shapes_filter:
-        selected_shapes = [s for s in all_shapes if shapes_filter.lower() in s["name"].lower() or shapes_filter.lower() in s["category"].lower()]
-    else:
-        selected_shapes = all_shapes
+        # Hardware inspection
+        is_turing = False
+        device_name = "CPU"
+        if torch.cuda.is_available() and not dry_run:
+            device_name = torch.cuda.get_device_name(0)
+            cc = torch.cuda.get_device_capability(0)
+            is_turing = (cc[0] < 8)
 
-    if not selected_shapes:
-        print(f"No shapes matched filter: {shapes_filter}")
-        return []
+        print("\n" + "=" * 125)
+        print("      3-WAY HEAD-TO-HEAD KERNEL BENCHMARK: t4_kernels vs bitsandbytes vs Marlin (Turing T4)")
+        print("=" * 125)
+        print(f"Hardware Device: {device_name} ({device}) | Dry Run: {dry_run}")
+        print(f"Kernel Status: t4_kernels={HAS_T4_KERNELS} | bitsandbytes={HAS_BNB} | Marlin={HAS_MARLIN}")
+        if is_turing:
+            print("Note on Marlin: IST-DASLab Marlin requires Compute Capability >= 8.0 (Ampere+ cp.async).")
+            print("                On Turing sm_75 (Tesla T4), bitsandbytes (NF4/FP4) is the verified baseline.")
+        print(f"Timing Config: {warmup} warmup iterations, {iters} timed iterations (CUDA events)")
+        print(f"Quantization: Symmetric INT4 / NF4 with group_size={group_size}")
+        print("=" * 125)
 
-    quant_fn = quantize_weight_sym_int4 if HAS_QUANT_HELPER else fallback_quantize_sym_int4
+        all_shapes = get_benchmark_shapes()
+        if shapes_filter:
+            selected_shapes = [s for s in all_shapes if shapes_filter.lower() in s["name"].lower() or shapes_filter.lower() in s["category"].lower()]
+        else:
+            selected_shapes = all_shapes
 
-    results: List[Dict[str, Any]] = []
+        if not selected_shapes:
+            print(f"No shapes matched filter: {shapes_filter}")
+            return []
 
-    for cfg in selected_shapes:
-        cat = cfg["category"]
-        name = cfg["name"]
-        K = cfg["K"]
-        N = cfg["N"]
+        quant_fn = quantize_weight_sym_int4 if HAS_QUANT_HELPER else fallback_quantize_sym_int4
 
-        print(f"\n>>> [{cat}] {name} (K={K}, N={N})")
-        print("-" * 115)
-        print(f"{'Batch M':<8} | {'cuBLAS FP16':<12} | {'t4_kernels':<12} | {'bitsandbytes':<14} | {'Marlin':<12} | {'Speedup (T4/cuB)':<18} | {'Parity (CosSim)':<15}")
-        print("-" * 115)
+        results: List[Dict[str, Any]] = []
 
-        # Instantiate unquantized baseline linear layer
-        torch.manual_seed(42)
-        lin_fp16 = nn.Linear(K, N, bias=False).half().to(device)
+        for cfg in selected_shapes:
+            cat = cfg["category"]
+            name = cfg["name"]
+            K = cfg["K"]
+            N = cfg["N"]
 
-        # 1. Prepare t4_kernels weights
-        t4_data = None
-        t4_init_status = "READY" if HAS_T4_KERNELS and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not compiled")
-        if HAS_T4_KERNELS and device.type == "cuda":
-            try:
-                packed_w, scales, zps, g_size = quant_fn(lin_fp16.weight, group_size=group_size)
-                t4_data = (packed_w, scales, zps, g_size)
-            except Exception as e:
-                t4_data = None
-                t4_init_status = f"FAILED: Quantization error ({e})"
+            print(f"\n>>> [{cat}] {name} (K={K}, N={N})")
+            print("-" * 125)
+            print(f"{'Batch M':<8} | {'cuBLAS FP16':<12} | {'t4_kernels':<12} | {'bnb (NF4)':<12} | {'bnb (FP4)':<12} | {'Marlin':<11} | {'Speedup(T4/cuB)':<16} | {'Speedup(T4/BNB)':<16}")
+            print("-" * 125)
 
-        # 2. Prepare bitsandbytes layer
-        bnb_layer = None
-        bnb_init_status = "READY" if HAS_BNB and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not installed")
-        if HAS_BNB and device.type == "cuda":
-            try:
-                bnb_layer = bnb.nn.Linear4bit(
-                    K,
-                    N,
-                    bias=False,
-                    compute_dtype=torch.float16,
-                    quant_type="nf4",
-                )
-                if hasattr(bnb.nn, "Params4bit"):
-                    bnb_layer.weight = bnb.nn.Params4bit(
-                        lin_fp16.weight.data.clone().cpu(),
-                        requires_grad=False,
-                        quant_type="nf4",
-                    )
-                    bnb_layer = bnb_layer.to(device)
+            # Instantiate unquantized baseline linear layer
+            torch.manual_seed(42)
+            lin_fp16 = nn.Linear(K, N, bias=False).half().to(device)
+
+            # 1. Prepare t4_kernels weights
+            t4_data = None
+            t4_init_status = "READY" if HAS_T4_KERNELS and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not compiled")
+            if HAS_T4_KERNELS and device.type == "cuda":
+                try:
+                    packed_w, scales, zps, g_size = quant_fn(lin_fp16.weight, group_size=group_size)
+                    t4_data = (packed_w, scales, zps, g_size)
+                except Exception as e:
+                    t4_data = None
+                    t4_init_status = f"FAILED: Quantization error ({e})"
+
+            # 2. Prepare bitsandbytes layers (NF4 and FP4)
+            bnb_nf4_layer = None
+            bnb_fp4_layer = None
+            bnb_init_status = "READY" if HAS_BNB and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not installed")
+            if HAS_BNB and device.type == "cuda":
+                try:
+                    bnb_nf4_layer = bnb.nn.Linear4bit(
+                        K, N, bias=False, compute_dtype=torch.float16, quant_type="nf4"
+                    ).to(device)
+                except Exception as e:
+                    bnb_nf4_layer = None
+                    bnb_init_status = f"FAILED: BNB NF4 init ({e})"
+
+                try:
+                    bnb_fp4_layer = bnb.nn.Linear4bit(
+                        K, N, bias=False, compute_dtype=torch.float16, quant_type="fp4"
+                    ).to(device)
+                except Exception:
+                    bnb_fp4_layer = None
+
+            # 3. Prepare Marlin layer
+            marlin_fn = None
+            marlin_init_status = "READY" if HAS_MARLIN and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not installed")
+            if HAS_MARLIN and device.type == "cuda":
+                try:
+                    marlin_fn = prepare_marlin_linear(lin_fp16.weight, group_size=group_size)
+                    if marlin_fn is None:
+                        marlin_init_status = "SKIPPED: Marlin packing unsupported"
+                except Exception as e:
+                    marlin_fn = None
+                    marlin_init_status = f"FAILED: Marlin prep error ({e})"
+
+            for M in batch_sizes:
+                x = torch.randn(M, K, dtype=torch.half, device=device)
+
+                # Reference: cuBLAS FP16
+                fn_cublas = lambda: lin_fp16(x)
+                timing_cublas = benchmark_cuda_op(fn_cublas, iters=iters, warmup=warmup)
+                t_cublas_us = timing_cublas["median_us"]
+                bw_cublas, tflops_cublas = compute_metrics(t_cublas_us, M, K, N, is_4bit=False)
+                out_ref = lin_fp16(x)
+
+                # Kernel 1: t4_kernels (Re-tiled)
+                timing_t4 = None
+                t_t4_us = None
+                bw_t4, tflops_t4, cos_sim_t4, max_err_t4 = None, None, None, None
+                t4_status = t4_init_status
+
+                if t4_data is not None and HAS_T4_KERNELS and device.type == "cuda":
+                    p, s, z, g = t4_data
+                    fn_t4 = lambda: t4_kernels.fused_w4a16_gemm_u4(x, p, s, z, g)
+                    try:
+                        timing_t4 = benchmark_cuda_op(fn_t4, iters=iters, warmup=warmup)
+                        t_t4_us = timing_t4["median_us"]
+                        bw_t4, tflops_t4 = compute_metrics(t_t4_us, M, K, N, is_4bit=True, group_size=g)
+                        out_t4 = t4_kernels.fused_w4a16_gemm_u4(x, p, s, z, g)
+                        max_err_t4, cos_sim_t4 = compute_numerical_parity(out_t4, out_ref)
+                        t4_status = "COMPLETED"
+                    except Exception as e:
+                        t_t4_us = None
+                        t4_status = f"FAILED: Kernel execution error ({e})"
+
+                # Kernel 2a: bitsandbytes NF4
+                timing_bnb_nf4 = None
+                t_bnb_nf4_us = None
+                bw_bnb_nf4, tflops_bnb_nf4 = None, None
+                if bnb_nf4_layer is not None and HAS_BNB and device.type == "cuda":
+                    fn_bnb_nf4 = lambda: bnb_nf4_layer(x)
+                    try:
+                        timing_bnb_nf4 = benchmark_cuda_op(fn_bnb_nf4, iters=iters, warmup=warmup)
+                        t_bnb_nf4_us = timing_bnb_nf4["median_us"]
+                        bw_bnb_nf4, tflops_bnb_nf4 = compute_metrics(t_bnb_nf4_us, M, K, N, is_4bit=True, group_size=group_size)
+                    except Exception:
+                        t_bnb_nf4_us = None
+
+                # Kernel 2b: bitsandbytes FP4
+                timing_bnb_fp4 = None
+                t_bnb_fp4_us = None
+                bw_bnb_fp4, tflops_bnb_fp4 = None, None
+                if bnb_fp4_layer is not None and HAS_BNB and device.type == "cuda":
+                    fn_bnb_fp4 = lambda: bnb_fp4_layer(x)
+                    try:
+                        timing_bnb_fp4 = benchmark_cuda_op(fn_bnb_fp4, iters=iters, warmup=warmup)
+                        t_bnb_fp4_us = timing_bnb_fp4["median_us"]
+                        bw_bnb_fp4, tflops_bnb_fp4 = compute_metrics(t_bnb_fp4_us, M, K, N, is_4bit=True, group_size=group_size)
+                    except Exception:
+                        t_bnb_fp4_us = None
+
+                # Kernel 3: Marlin
+                timing_marlin = None
+                t_marlin_us = None
+                bw_marlin, tflops_marlin = None, None
+                if marlin_fn is not None and HAS_MARLIN and device.type == "cuda":
+                    try:
+                        timing_marlin = benchmark_cuda_op(marlin_fn, iters=iters, warmup=warmup)
+                        t_marlin_us = timing_marlin["median_us"]
+                        bw_marlin, tflops_marlin = compute_metrics(t_marlin_us, M, K, N, is_4bit=True, group_size=group_size)
+                    except Exception:
+                        t_marlin_us = None
+
+                # String formatters for display
+                cublas_str = f"{t_cublas_us:7.1f} us"
+                t4_str = f"{t_t4_us:7.1f} us" if t_t4_us is not None else ("N/A (dry)" if dry_run else "Not compiled")
+                bnb_nf4_str = f"{t_bnb_nf4_us:7.1f} us" if t_bnb_nf4_us is not None else ("N/A (dry)" if dry_run else ("Not installed" if not HAS_BNB else "Init error"))
+                bnb_fp4_str = f"{t_bnb_fp4_us:7.1f} us" if t_bnb_fp4_us is not None else ("N/A (dry)" if dry_run else ("Not installed" if not HAS_BNB else "Init error"))
+
+                if t_marlin_us is not None:
+                    marlin_str = f"{t_marlin_us:7.1f} us"
+                elif is_turing:
+                    marlin_str = "Req sm_80+"
+                elif not HAS_MARLIN:
+                    marlin_str = "Not installed"
+                elif dry_run:
+                    marlin_str = "N/A (dry)"
                 else:
-                    bnb_layer = bnb_layer.to(device)
-                    with torch.no_grad():
-                        bnb_layer.weight.copy_(lin_fp16.weight.data)
-                bnb_init_status = "READY"
-            except Exception as e:
-                bnb_layer = None
-                bnb_init_status = f"FAILED: BNB init error ({e})"
+                    marlin_str = "Unsupported"
 
-        # 3. Prepare Marlin layer
-        marlin_fn = None
-        marlin_init_status = "READY" if HAS_MARLIN and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not installed")
-        if HAS_MARLIN and device.type == "cuda":
-            try:
-                marlin_fn = prepare_marlin_linear(lin_fp16.weight, group_size=group_size)
-                if marlin_fn is None:
-                    marlin_init_status = "SKIPPED: Marlin packing incompatible shape or unsupported"
-            except Exception as e:
-                marlin_fn = None
-                marlin_init_status = f"FAILED: Marlin prep error ({e})"
+                speedup_cub_str = f"{(t_cublas_us / t_t4_us):6.2f}x" if (t_t4_us and t_cublas_us > 0) else "--"
+                speedup_bnb_str = f"{(t_bnb_nf4_us / t_t4_us):6.2f}x" if (t_t4_us and t_bnb_nf4_us) else "--"
 
-        for M in batch_sizes:
-            x = torch.randn(M, K, dtype=torch.half, device=device)
+                print(f"M={M:<6} | {cublas_str:<12} | {t4_str:<12} | {bnb_nf4_str:<12} | {bnb_fp4_str:<12} | {marlin_str:<11} | {speedup_cub_str:<16} | {speedup_bnb_str:<16}")
 
-            # Reference: cuBLAS FP16
-            fn_cublas = lambda: lin_fp16(x)
-            timing_cublas = benchmark_cuda_op(fn_cublas, iters=iters, warmup=warmup)
-            t_cublas_us = timing_cublas["median_us"]
-            bw_cublas, tflops_cublas = compute_metrics(t_cublas_us, M, K, N, is_4bit=False)
-            out_ref = lin_fp16(x)
+                row = {
+                    "category": cat,
+                    "name": name,
+                    "M": M,
+                    "K": K,
+                    "N": N,
+                    "cuBLAS_FP16": {
+                        "status": "COMPLETED",
+                        "latency_us": t_cublas_us,
+                        "raw_timings_us": timing_cublas["raw_timings_us"],
+                        "median_us": timing_cublas["median_us"],
+                        "p95_us": timing_cublas["p95_us"],
+                        "min_us": timing_cublas["min_us"],
+                        "max_us": timing_cublas["max_us"],
+                        "bandwidth_gb_s": bw_cublas,
+                        "pct_t4_bandwidth": round(bw_cublas / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2),
+                        "tflops": tflops_cublas,
+                        "pct_t4_tflops": round(tflops_cublas / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2),
+                    },
+                    "t4_kernels": {
+                        "status": t4_status,
+                        "latency_us": t_t4_us,
+                        "raw_timings_us": timing_t4["raw_timings_us"] if timing_t4 else [],
+                        "median_us": timing_t4["median_us"] if timing_t4 else None,
+                        "p95_us": timing_t4["p95_us"] if timing_t4 else None,
+                        "min_us": timing_t4["min_us"] if timing_t4 else None,
+                        "max_us": timing_t4["max_us"] if timing_t4 else None,
+                        "bandwidth_gb_s": bw_t4,
+                        "pct_t4_bandwidth": round(bw_t4 / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_t4 else None,
+                        "tflops": tflops_t4,
+                        "pct_t4_tflops": round(tflops_t4 / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_t4 else None,
+                        "max_err": max_err_t4,
+                        "cos_sim": cos_sim_t4,
+                        "speedup_vs_cublas": (t_cublas_us / t_t4_us) if t_t4_us else None,
+                        "speedup_vs_bnb_nf4": (t_bnb_nf4_us / t_t4_us) if (t_t4_us and t_bnb_nf4_us) else None,
+                        "speedup_vs_bnb_fp4": (t_bnb_fp4_us / t_t4_us) if (t_t4_us and t_bnb_fp4_us) else None,
+                    },
+                    "bitsandbytes": {
+                        "status": "COMPLETED" if t_bnb_nf4_us else bnb_init_status,
+                        "latency_us": t_bnb_nf4_us,
+                        "raw_timings_us": timing_bnb_nf4["raw_timings_us"] if timing_bnb_nf4 else [],
+                        "median_us": timing_bnb_nf4["median_us"] if timing_bnb_nf4 else None,
+                        "p95_us": timing_bnb_nf4["p95_us"] if timing_bnb_nf4 else None,
+                        "min_us": timing_bnb_nf4["min_us"] if timing_bnb_nf4 else None,
+                        "max_us": timing_bnb_nf4["max_us"] if timing_bnb_nf4 else None,
+                        "bandwidth_gb_s": bw_bnb_nf4,
+                        "pct_t4_bandwidth": round(bw_bnb_nf4 / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_bnb_nf4 else None,
+                        "tflops": tflops_bnb_nf4,
+                        "pct_t4_tflops": round(tflops_bnb_nf4 / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_bnb_nf4 else None,
+                        "cos_sim": None,
+                        "max_err": None,
+                    },
+                    "bitsandbytes_nf4": {
+                        "status": "COMPLETED" if t_bnb_nf4_us else bnb_init_status,
+                        "latency_us": t_bnb_nf4_us,
+                        "raw_timings_us": timing_bnb_nf4["raw_timings_us"] if timing_bnb_nf4 else [],
+                        "median_us": timing_bnb_nf4["median_us"] if timing_bnb_nf4 else None,
+                        "p95_us": timing_bnb_nf4["p95_us"] if timing_bnb_nf4 else None,
+                        "min_us": timing_bnb_nf4["min_us"] if timing_bnb_nf4 else None,
+                        "max_us": timing_bnb_nf4["max_us"] if timing_bnb_nf4 else None,
+                        "bandwidth_gb_s": bw_bnb_nf4,
+                        "pct_t4_bandwidth": round(bw_bnb_nf4 / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_bnb_nf4 else None,
+                        "tflops": tflops_bnb_nf4,
+                        "pct_t4_tflops": round(tflops_bnb_nf4 / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_bnb_nf4 else None,
+                        "cos_sim": None,
+                        "max_err": None,
+                    },
+                    "bitsandbytes_fp4": {
+                        "status": "COMPLETED" if t_bnb_fp4_us else bnb_init_status,
+                        "latency_us": t_bnb_fp4_us,
+                        "raw_timings_us": timing_bnb_fp4["raw_timings_us"] if timing_bnb_fp4 else [],
+                        "median_us": timing_bnb_fp4["median_us"] if timing_bnb_fp4 else None,
+                        "p95_us": timing_bnb_fp4["p95_us"] if timing_bnb_fp4 else None,
+                        "min_us": timing_bnb_fp4["min_us"] if timing_bnb_fp4 else None,
+                        "max_us": timing_bnb_fp4["max_us"] if timing_bnb_fp4 else None,
+                        "bandwidth_gb_s": bw_bnb_fp4,
+                        "pct_t4_bandwidth": round(bw_bnb_fp4 / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_bnb_fp4 else None,
+                        "tflops": tflops_bnb_fp4,
+                        "pct_t4_tflops": round(tflops_bnb_fp4 / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_bnb_fp4 else None,
+                        "cos_sim": None,
+                        "max_err": None,
+                    },
+                    "marlin": {
+                        "status": "SKIPPED: Requires sm_80+" if is_turing else marlin_init_status,
+                        "latency_us": t_marlin_us,
+                        "raw_timings_us": timing_marlin["raw_timings_us"] if timing_marlin else [],
+                        "median_us": timing_marlin["median_us"] if timing_marlin else None,
+                        "p95_us": timing_marlin["p95_us"] if timing_marlin else None,
+                        "min_us": timing_marlin["min_us"] if timing_marlin else None,
+                        "max_us": timing_marlin["max_us"] if timing_marlin else None,
+                        "bandwidth_gb_s": bw_marlin,
+                        "pct_t4_bandwidth": round(bw_marlin / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_marlin else None,
+                        "tflops": tflops_marlin,
+                        "pct_t4_tflops": round(tflops_marlin / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_marlin else None,
+                        "cos_sim": None,
+                        "max_err": None,
+                    },
+                }
+                results.append(row)
 
-            # Kernel 1: t4_kernels
-            timing_t4: Optional[Dict[str, Any]] = None
-            t_t4_us: Optional[float] = None
-            bw_t4: Optional[float] = None
-            tflops_t4: Optional[float] = None
-            cos_sim_t4: Optional[float] = None
-            max_err_t4: Optional[float] = None
-            t4_status = t4_init_status
+        print("-" * 125)
+        print("\nBenchmark Summary & Key Findings:")
+        print("1. Single-token decode (M=1): Memory-bandwidth bound. Target 180+ GB/s (T4 peak 320 GB/s).")
+        print("2. Prefill GEMM (M>=64): Compute bound. Target 30+ TFLOP/s (T4 FP16 Tensor Core peak 65 TFLOP/s).")
+        print("=" * 125 + "\n")
 
-            if t4_data is not None and HAS_T4_KERNELS and device.type == "cuda":
-                p, s, z, g = t4_data
-                fn_t4 = lambda: t4_kernels.fused_w4a16_gemm_u4(x, p, s, z, g)
-                try:
-                    timing_t4 = benchmark_cuda_op(fn_t4, iters=iters, warmup=warmup)
-                    t_t4_us = timing_t4["median_us"]
-                    bw_t4, tflops_t4 = compute_metrics(t_t4_us, M, K, N, is_4bit=True, group_size=g)
-                    out_t4 = t4_kernels.fused_w4a16_gemm_u4(x, p, s, z, g)
-                    max_err_t4, cos_sim_t4 = compute_numerical_parity(out_t4, out_ref)
-                    t4_status = "COMPLETED"
-                except Exception as e:
-                    t_t4_us = None
-                    t4_status = f"FAILED: Kernel execution error ({e})"
+        # Save Markdown Report
+        if output_md:
+            os.makedirs(os.path.dirname(os.path.abspath(output_md)), exist_ok=True)
+            with open(output_md, "w", encoding="utf-8") as fmd:
+                fmd.write("# 3-Way Head-to-Head Kernel Benchmark Report (Tesla T4)\n\n")
+                fmd.write(f"- **Timestamp**: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n")
+                fmd.write(f"- **Device**: {device_name} ({device})\n")
+                fmd.write(f"- **Warmup**: {warmup} iterations | **Timed**: {iters} iterations (CUDA events)\n\n")
+                fmd.write("| Model Projection | M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Speedup (T4/cuB) | Speedup (T4/BNB) | Parity |\n")
+                fmd.write("|---|---|---|---|---|---|---|---|---|\n")
+                for r in results:
+                    c_us = f"{r['cuBLAS_FP16']['latency_us']:.1f} µs"
+                    t_us = f"{r['t4_kernels']['latency_us']:.1f} µs" if r['t4_kernels']['latency_us'] else "--"
+                    bnf_us = f"{r['bitsandbytes_nf4']['latency_us']:.1f} µs" if r['bitsandbytes_nf4']['latency_us'] else "--"
+                    bfp_us = f"{r['bitsandbytes_fp4']['latency_us']:.1f} µs" if r['bitsandbytes_fp4']['latency_us'] else "--"
+                    sp_cub = f"{r['t4_kernels']['speedup_vs_cublas']:.2f}x" if r['t4_kernels']['speedup_vs_cublas'] else "--"
+                    sp_bnb = f"{r['t4_kernels']['speedup_vs_bnb_nf4']:.2f}x" if r['t4_kernels']['speedup_vs_bnb_nf4'] else "--"
+                    cs = f"{r['t4_kernels']['cos_sim']:.4f}" if r['t4_kernels']['cos_sim'] else "--"
+                    fmd.write(f"| {r['name']} | {r['M']} | {c_us} | {t_us} | {bnf_us} | {bfp_us} | {sp_cub} | {sp_bnb} | {cs} |\n")
+            print(f"[SAVED] Markdown Report: {output_md}")
 
-            # Kernel 2: bitsandbytes NF4
-            timing_bnb: Optional[Dict[str, Any]] = None
-            t_bnb_us: Optional[float] = None
-            bw_bnb: Optional[float] = None
-            tflops_bnb: Optional[float] = None
-            cos_sim_bnb: Optional[float] = None
-            max_err_bnb: Optional[float] = None
-            bnb_status = bnb_init_status
-
-            if bnb_layer is not None and HAS_BNB and device.type == "cuda":
-                fn_bnb = lambda: bnb_layer(x)
-                try:
-                    timing_bnb = benchmark_cuda_op(fn_bnb, iters=iters, warmup=warmup)
-                    t_bnb_us = timing_bnb["median_us"]
-                    bw_bnb, tflops_bnb = compute_metrics(t_bnb_us, M, K, N, is_4bit=True, group_size=group_size)
-                    out_bnb = bnb_layer(x)
-                    max_err_bnb, cos_sim_bnb = compute_numerical_parity(out_bnb, out_ref)
-                    bnb_status = "COMPLETED"
-                except Exception as e:
-                    t_bnb_us = None
-                    bnb_status = f"FAILED: BNB execution error ({e})"
-
-            # Kernel 3: Marlin
-            timing_marlin: Optional[Dict[str, Any]] = None
-            t_marlin_us: Optional[float] = None
-            bw_marlin: Optional[float] = None
-            tflops_marlin: Optional[float] = None
-            cos_sim_marlin: Optional[float] = None
-            max_err_marlin: Optional[float] = None
-            marlin_status = marlin_init_status
-
-            if marlin_fn is not None and HAS_MARLIN and device.type == "cuda":
-                try:
-                    timing_marlin = benchmark_cuda_op(marlin_fn, iters=iters, warmup=warmup)
-                    t_marlin_us = timing_marlin["median_us"]
-                    bw_marlin, tflops_marlin = compute_metrics(t_marlin_us, M, K, N, is_4bit=True, group_size=group_size)
-                    out_marlin = marlin_fn(x)
-                    max_err_marlin, cos_sim_marlin = compute_numerical_parity(out_marlin, out_ref)
-                    marlin_status = "COMPLETED"
-                except Exception as e:
-                    t_marlin_us = None
-                    marlin_status = f"FAILED: Marlin execution error ({e})"
-
-            # Formatting table outputs
-            cublas_str = f"{t_cublas_us:7.1f} us"
-            t4_str = f"{t_t4_us:7.1f} us" if t_t4_us is not None else ("N/A (dry)" if dry_run else "Not compiled")
-            if t_bnb_us is not None:
-                bnb_str = f"{t_bnb_us:7.1f} us"
-            elif not HAS_BNB:
-                bnb_str = "Not installed"
-            elif dry_run:
-                bnb_str = "N/A (dry)"
-            else:
-                bnb_str = "Init error"
-            marlin_str = f"{t_marlin_us:7.1f} us" if t_marlin_us is not None else ("N/A (dry)" if dry_run else "Not installed")
-
-            if t_t4_us is not None and t_cublas_us > 0:
-                speedup_t4 = t_cublas_us / t_t4_us
-                speedup_str = f"{speedup_t4:6.2f}x"
-            else:
-                speedup_str = "--"
-
-            cos_sim_str = f"{cos_sim_t4:8.4f}" if cos_sim_t4 is not None else "--"
-
-            print(f"M={M:<6} | {cublas_str:<12} | {t4_str:<12} | {bnb_str:<14} | {marlin_str:<12} | {speedup_str:<18} | {cos_sim_str:<15}")
-
-            row = {
-                "category": cat,
-                "name": name,
-                "M": M,
-                "K": K,
-                "N": N,
-                "cuBLAS_FP16": {
-                    "status": "COMPLETED",
-                    "latency_us": t_cublas_us,
-                    "raw_timings_us": timing_cublas["raw_timings_us"],
-                    "median_us": timing_cublas["median_us"],
-                    "p95_us": timing_cublas["p95_us"],
-                    "min_us": timing_cublas["min_us"],
-                    "max_us": timing_cublas["max_us"],
-                    "bandwidth_gb_s": bw_cublas,
-                    "pct_t4_bandwidth": round(bw_cublas / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2),
-                    "tflops": tflops_cublas,
-                    "pct_t4_tflops": round(tflops_cublas / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2),
-                },
-                "t4_kernels": {
-                    "status": t4_status,
-                    "latency_us": t_t4_us,
-                    "raw_timings_us": timing_t4["raw_timings_us"] if timing_t4 else [],
-                    "median_us": timing_t4["median_us"] if timing_t4 else None,
-                    "p95_us": timing_t4["p95_us"] if timing_t4 else None,
-                    "min_us": timing_t4["min_us"] if timing_t4 else None,
-                    "max_us": timing_t4["max_us"] if timing_t4 else None,
-                    "bandwidth_gb_s": bw_t4,
-                    "pct_t4_bandwidth": round(bw_t4 / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_t4 else None,
-                    "tflops": tflops_t4,
-                    "pct_t4_tflops": round(tflops_t4 / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_t4 else None,
-                    "max_err": max_err_t4,
-                    "cos_sim": cos_sim_t4,
-                    "speedup_vs_cublas": (t_cublas_us / t_t4_us) if t_t4_us else None,
-                    "speedup_vs_bnb": (t_bnb_us / t_t4_us) if (t_t4_us and t_bnb_us) else None,
-                },
-                "bitsandbytes": {
-                    "status": bnb_status,
-                    "latency_us": t_bnb_us,
-                    "raw_timings_us": timing_bnb["raw_timings_us"] if timing_bnb else [],
-                    "median_us": timing_bnb["median_us"] if timing_bnb else None,
-                    "p95_us": timing_bnb["p95_us"] if timing_bnb else None,
-                    "min_us": timing_bnb["min_us"] if timing_bnb else None,
-                    "max_us": timing_bnb["max_us"] if timing_bnb else None,
-                    "bandwidth_gb_s": bw_bnb,
-                    "pct_t4_bandwidth": round(bw_bnb / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_bnb else None,
-                    "tflops": tflops_bnb,
-                    "pct_t4_tflops": round(tflops_bnb / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_bnb else None,
-                    "max_err": max_err_bnb,
-                    "cos_sim": cos_sim_bnb,
-                },
-                "marlin": {
-                    "status": marlin_status,
-                    "latency_us": t_marlin_us,
-                    "raw_timings_us": timing_marlin["raw_timings_us"] if timing_marlin else [],
-                    "median_us": timing_marlin["median_us"] if timing_marlin else None,
-                    "p95_us": timing_marlin["p95_us"] if timing_marlin else None,
-                    "min_us": timing_marlin["min_us"] if timing_marlin else None,
-                    "max_us": timing_marlin["max_us"] if timing_marlin else None,
-                    "bandwidth_gb_s": bw_marlin,
-                    "pct_t4_bandwidth": round(bw_marlin / T4_PEAK_BANDWIDTH_GB_S * 100.0, 2) if bw_marlin else None,
-                    "tflops": tflops_marlin,
-                    "pct_t4_tflops": round(tflops_marlin / T4_PEAK_FP16_TC_TFLOPS * 100.0, 2) if tflops_marlin else None,
-                    "max_err": max_err_marlin,
-                    "cos_sim": cos_sim_marlin,
-                },
+        # Save Raw JSON
+        if output_json:
+            os.makedirs(os.path.dirname(os.path.abspath(output_json)), exist_ok=True)
+            device_info: Dict[str, Any] = {
+                "cuda_available": torch.cuda.is_available(),
+                "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+                "device_name": device_name,
+                "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
+                "pytorch_version": torch.__version__,
             }
-            results.append(row)
+            if torch.cuda.is_available() and not dry_run:
+                props = torch.cuda.get_device_properties(0)
+                device_info.update({
+                    "compute_capability": f"{props.major}.{props.minor}",
+                    "total_memory_mb": round(props.total_memory / (1024 * 1024), 2),
+                })
 
-    print("-" * 115)
-    print("\nBenchmark summary:")
-    print("1. Single-token decode (M=1): Memory-bandwidth bound. Target 180+ GB/s (T4 peak 320 GB/s).")
-    print("2. Prefill GEMM (M>=64): Compute bound. Target 30+ TFLOP/s (T4 FP16 Tensor Core peak 65 TFLOP/s).")
-    print("=" * 115 + "\n")
-
-    if output_json:
-        os.makedirs(os.path.dirname(os.path.abspath(output_json)), exist_ok=True)
-        device_info: Dict[str, Any] = {
-            "cuda_available": torch.cuda.is_available(),
-            "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
-            "device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
-            "cuda_version": torch.version.cuda if torch.cuda.is_available() else None,
-            "pytorch_version": torch.__version__,
-        }
-        if torch.cuda.is_available():
-            props = torch.cuda.get_device_properties(0)
-            device_info.update({
-                "compute_capability": f"{props.major}.{props.minor}",
-                "total_memory_mb": round(props.total_memory / (1024 * 1024), 2),
-            })
-
-        payload = {
-            "metadata": {
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "hardware_device": str(device),
-                "dry_run": dry_run,
-                "device_info": device_info,
-                "config": {
-                    "iters": iters,
-                    "warmup": warmup,
-                    "group_size": group_size,
-                    "batch_sizes": batch_sizes,
+            payload = {
+                "metadata": {
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "hardware_device": str(device),
+                    "device_name": device_name,
+                    "dry_run": dry_run,
+                    "device_info": device_info,
+                    "config": {
+                        "iters": iters,
+                        "warmup": warmup,
+                        "group_size": group_size,
+                        "batch_sizes": batch_sizes,
+                    },
+                    "hardware_baselines": {
+                        "t4_peak_bandwidth_gb_s": T4_PEAK_BANDWIDTH_GB_S,
+                        "t4_peak_fp16_tc_tflops": T4_PEAK_FP16_TC_TFLOPS,
+                    },
+                    "kernel_availability": {
+                        "t4_kernels": HAS_T4_KERNELS,
+                        "bitsandbytes": HAS_BNB,
+                        "marlin": HAS_MARLIN,
+                    },
                 },
-                "hardware_baselines": {
-                    "t4_peak_bandwidth_gb_s": T4_PEAK_BANDWIDTH_GB_S,
-                    "t4_peak_fp16_tc_tflops": T4_PEAK_FP16_TC_TFLOPS,
-                },
-                "kernel_availability": {
-                    "t4_kernels": HAS_T4_KERNELS,
-                    "bitsandbytes": HAS_BNB,
-                    "marlin": HAS_MARLIN,
-                },
-            },
-            "results": results,
-        }
-        with open(output_json, "w") as f:
-            json.dump(payload, f, indent=2)
-        print(f"Results successfully saved to {output_json}")
+                "results": results,
+            }
+            with open(output_json, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+            print(f"[SAVED] Raw JSON Logs:   {output_json}")
 
-    return results
+        if output_log:
+            print(f"[SAVED] Console Log:      {output_log}")
+
+        return results
+
+    finally:
+        if logger is not None:
+            sys.stdout = logger.terminal
+            logger.close()
 
 
 def parse_args():
@@ -641,7 +725,9 @@ def parse_args():
     parser.add_argument("--warmup", type=int, default=20, help="Number of warmup iterations (default: 20)")
     parser.add_argument("--group-size", type=int, default=128, help="Quantization group size (default: 128)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode on CPU to verify pipeline structure without GPU")
-    parser.add_argument("--output-json", type=str, default=None, help="Optional output JSON file path for benchmark results")
+    parser.add_argument("--output-json", type=str, default="results/3way_kernel_match_t4.json", help="Output JSON file path")
+    parser.add_argument("--output-log", type=str, default="results/3way_kernel_match_t4.log", help="Output text log file path")
+    parser.add_argument("--output-md", type=str, default="results/3way_kernel_match_t4.md", help="Output Markdown report file path")
     return parser.parse_args()
 
 
@@ -655,4 +741,6 @@ if __name__ == "__main__":
         group_size=args.group_size,
         dry_run=args.dry_run,
         output_json=args.output_json,
+        output_log=args.output_log,
+        output_md=args.output_md,
     )

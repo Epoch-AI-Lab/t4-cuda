@@ -167,7 +167,7 @@ def test_benchmark_json_output_schema(tmp_path):
     # 2. Verify Per-Row Kernel Metrics and Raw Timings
     for row in data["results"]:
         assert "M" in row and "K" in row and "N" in row
-        for kernel_key in ["cuBLAS_FP16", "t4_kernels", "bitsandbytes", "marlin"]:
+        for kernel_key in ["cuBLAS_FP16", "t4_kernels", "bitsandbytes", "bitsandbytes_nf4", "bitsandbytes_fp4", "marlin"]:
             assert kernel_key in row, f"Missing kernel key '{kernel_key}' in row"
             k_data = row[kernel_key]
             assert "status" in k_data, f"Missing 'status' in {kernel_key}"
