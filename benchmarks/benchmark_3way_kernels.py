@@ -33,10 +33,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Add repository root to path
+# Add repository root and src to path
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
+SRC_DIR = os.path.join(REPO_ROOT, "src")
+for p in (REPO_ROOT, SRC_DIR):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 # Hardware baseline specifications (NVIDIA Tesla T4 sm_75)
 T4_PEAK_BANDWIDTH_GB_S = 320.0
