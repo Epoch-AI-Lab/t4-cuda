@@ -317,14 +317,6 @@ __global__ void fused_w4a16_gemv_s4_kernel(
 // ============================================================================
 // Tensor Core WMMA Batched Kernel for M > 4 (sm_75)
 // ============================================================================
-#include <mma.h>
-using namespace nvcuda;
-
-#define WMMA_M 16
-#define WMMA_N 16
-#define WMMA_K 16
-#define BLOCK_M 32
-#define BLOCK_N 32
 // ============================================================================
 // Tensor Core WMMA Batched Kernel for M > 4 (sm_75)
 // 64x64 Tile with 2-Stage Double-Buffering & Zero Warp Divergence
