@@ -365,12 +365,8 @@ def main():
     pp_stage1_latencies_ms = []
     pp_step_latencies_ms = []
 
-    start_pp_total = torch.cuda.Event(enable_timing=True)
-    end_pp_total = torch.cuda.Event(enable_timing=True)
     start_s0 = torch.cuda.Event(enable_timing=True)
     end_s0 = torch.cuda.Event(enable_timing=True)
-    start_p2p = torch.cuda.Event(enable_timing=True)
-    end_p2p = torch.cuda.Event(enable_timing=True)
     start_s1 = torch.cuda.Event(enable_timing=True)
     end_s1 = torch.cuda.Event(enable_timing=True)
 
@@ -381,31 +377,32 @@ def main():
         torch.cuda.synchronize(devices[0])
         torch.cuda.synchronize(devices[1])
 
-        start_pp_total.record(stream_s0)
+        t0_step = time.perf_counter()
 
         # Stage 0 forward on devices[0]
         start_s0.record(stream_s0)
         h_stage0, _ = pp_model.stage0(input_ids)
         end_s0.record(stream_s0)
+        end_s0.synchronize()
 
         # P2P Boundary transfer across PCIe
-        start_p2p.record(stream_s0)
+        t0_p2p = time.perf_counter()
         h_boundary = p2p_transfer(h_stage0, dst_device=devices[1])
-        end_p2p.record(stream_s1)
+        torch.cuda.synchronize(devices[1])
+        t1_p2p = time.perf_counter()
 
         # Stage 1 forward on devices[1]
         start_s1.record(stream_s1)
         logits, _ = pp_model.stage1(h_boundary)
         end_s1.record(stream_s1)
+        end_s1.synchronize()
 
-        end_pp_total.record(stream_s1)
-        torch.cuda.synchronize(devices[0])
-        torch.cuda.synchronize(devices[1])
+        t1_step = time.perf_counter()
 
         s0_ms = start_s0.elapsed_time(end_s0)
-        p2p_ms = start_p2p.elapsed_time(end_p2p)
+        p2p_ms = (t1_p2p - t0_p2p) * 1000.0
         s1_ms = start_s1.elapsed_time(end_s1)
-        total_pp_ms = start_pp_total.elapsed_time(end_pp_total)
+        total_pp_ms = (t1_step - t0_step) * 1000.0
 
         pp_stage0_latencies_ms.append(s0_ms)
         pp_comm_latencies_ms.append(p2p_ms)
