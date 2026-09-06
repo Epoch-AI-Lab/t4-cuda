@@ -1,32 +1,32 @@
 {
-  "status": "SKIPPED: Dual CUDA GPUs absent",
-  "has_dual_cuda": false,
+  "status": "COMPLETED",
+  "has_dual_cuda": true,
   "num_layers": 28,
   "hidden_size": 3584,
   "pcie_stats": {
-    "all_reduce_latency_us": null,
-    "boundary_p2p_latency_us": null,
-    "pcie_bandwidth_gb_s": null
+    "all_reduce_latency_us": 293.4950000508252,
+    "boundary_p2p_latency_us": 69.8249998549727,
+    "pcie_bandwidth_gb_s": 8.457746788578568
   },
   "tensor_parallelism": {
     "all_reduces_per_token": 56,
-    "comm_latency_ms": null,
-    "compute_latency_ms": null,
-    "total_step_latency_ms": null,
-    "throughput_tok_s": null,
-    "peak_vram_per_gpu_gb": null
+    "comm_latency_ms": 80.705,
+    "compute_latency_ms": 775.639,
+    "total_step_latency_ms": 866.073,
+    "throughput_tok_s": 1.2,
+    "peak_vram_per_gpu_gb": 5.18
   },
   "pipeline_parallelism": {
     "p2p_transfers_per_token": 1,
-    "comm_latency_ms": null,
-    "compute_latency_ms": null,
-    "total_step_latency_ms": null,
-    "throughput_tok_s": null,
-    "peak_vram_per_gpu_gb": null
+    "comm_latency_ms": 0.194,
+    "compute_latency_ms": 16.162,
+    "total_step_latency_ms": 16.387,
+    "throughput_tok_s": 61.0,
+    "peak_vram_per_gpu_gb": 7.18
   },
   "recommendation": {
-    "single_token_decode_winner": null,
-    "batched_prefill_winner": null,
-    "hybrid_strategy": null
+    "single_token_decode_winner": "pp",
+    "batched_prefill_winner": "tp",
+    "hybrid_strategy": "Pipeline Parallelism (PP=2) achieved 61.0 tok/s vs TP=2 1.2 tok/s; PP bypasses 56 All-Reduce PCIe synchronization stalls for single-token decode."
   }
 }
