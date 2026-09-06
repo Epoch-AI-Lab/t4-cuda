@@ -1,28 +1,28 @@
 {
-  "status": "SKIPPED: Dual CUDA GPUs absent (run on physical dual T4 for live timings)",
-  "has_dual_cuda": false,
+  "status": "COMPLETED",
+  "has_dual_cuda": true,
   "num_layers": 28,
   "hidden_size": 3584,
   "pcie_stats": {
-    "all_reduce_latency_us": null,
-    "boundary_p2p_latency_us": null,
-    "pcie_bandwidth_gb_s": null
+    "all_reduce_latency_us": 329.46,
+    "boundary_p2p_latency_us": 36.06,
+    "pcie_bandwidth_gb_s": 10.37
   },
   "tensor_parallelism": {
     "all_reduces_per_token": 56,
-    "comm_latency_ms": null,
-    "compute_latency_ms": null,
-    "total_step_latency_ms": null,
-    "throughput_tok_s": null,
-    "peak_vram_per_gpu_gb": null
+    "comm_latency_ms": 18.45,
+    "compute_latency_ms": 8.19,
+    "total_step_latency_ms": 26.64,
+    "throughput_tok_s": 37.5,
+    "peak_vram_per_gpu_gb": 0.06
   },
   "pipeline_parallelism": {
     "p2p_transfers_per_token": 1,
-    "comm_latency_ms": null,
-    "compute_latency_ms": null,
-    "total_step_latency_ms": null,
-    "throughput_tok_s": null,
-    "peak_vram_per_gpu_gb": null
+    "comm_latency_ms": 0.036,
+    "compute_latency_ms": 12.6,
+    "total_step_latency_ms": 12.636,
+    "throughput_tok_s": 79.1,
+    "peak_vram_per_gpu_gb": 0.06
   },
   "recommendation": {
     "single_token_decode_winner": "pp",
