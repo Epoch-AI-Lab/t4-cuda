@@ -310,6 +310,25 @@ class DualGPUCommManager:
             self._current_slot = 0
             self._slot_active = [False] * self.num_slots
 
+    def all_reduce_sum(
+        self,
+        tensor_0: torch.Tensor,
+        peer_tensor: Optional[torch.Tensor] = None,
+        inplace: bool = False,
+        async_op: bool = False,
+        slot: Optional[int] = None,
+        **kwargs,
+    ):
+        """Delegates to top-level all_reduce_sum across dual ranks."""
+        return all_reduce_sum(
+            tensor_0=tensor_0,
+            tensor_1=peer_tensor,
+            inplace=inplace,
+            async_op=async_op,
+            slot=slot,
+            **kwargs,
+        )
+
 
 def get_comm_manager() -> DualGPUCommManager:
     """Returns the singleton DualGPUCommManager instance."""

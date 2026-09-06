@@ -52,43 +52,60 @@ def benchmark_pcie_transfers(devices: List[torch.device], hidden_size: int, is_d
             "pcie_bandwidth_gb_s": None,
         }
 
-    from src.sharding.comm import get_comm_manager
-    mgr = get_comm_manager()
+    from src.sharding.comm import all_reduce_dual_inplace
 
     # 1. Measure All-Reduce latency for a single decode token vector [1, hidden_size] (FP16)
-    ar_tensor = torch.randn(1, hidden_size, dtype=torch.float16, device=devices[0])
+    ar_tensor_0 = torch.randn(1, hidden_size, dtype=torch.float16, device=devices[0])
+    ar_tensor_1 = torch.randn(1, hidden_size, dtype=torch.float16, device=devices[1])
+
+    # Warmup
+    for _ in range(10):
+        all_reduce_dual_inplace(ar_tensor_0, ar_tensor_1, async_op=False)
+    torch.cuda.synchronize(devices[0])
+    torch.cuda.synchronize(devices[1])
+
     ar_latencies = []
-    for _ in range(20):
+    for _ in range(30):
         t0 = time.perf_counter()
-        mgr.all_reduce_sum(ar_tensor, peer_tensor=ar_tensor.to(devices[1]))
-        if torch.cuda.is_available():
-            torch.cuda.synchronize(devices[0])
-            torch.cuda.synchronize(devices[1])
+        all_reduce_dual_inplace(ar_tensor_0, ar_tensor_1, async_op=False)
+        torch.cuda.synchronize(devices[0])
+        torch.cuda.synchronize(devices[1])
         ar_latencies.append((time.perf_counter() - t0) * 1e6)
-    ar_latency_us = float(sum(ar_latencies[5:]) / len(ar_latencies[5:]))
+    ar_latencies.sort()
+    ar_latency_us = float(ar_latencies[len(ar_latencies) // 2])
 
     # 2. Measure P2P boundary transfer latency for [1, hidden_size]
     p2p_tensor = torch.randn(1, hidden_size, dtype=torch.float16, device=devices[0])
+
+    # Warmup
+    for _ in range(10):
+        _ = p2p_tensor.to(devices[1], non_blocking=False)
+    torch.cuda.synchronize(devices[1])
+
     p2p_latencies = []
-    for _ in range(20):
+    for _ in range(30):
         t0 = time.perf_counter()
         _ = p2p_tensor.to(devices[1], non_blocking=False)
-        if torch.cuda.is_available():
-            torch.cuda.synchronize(devices[1])
+        torch.cuda.synchronize(devices[1])
         p2p_latencies.append((time.perf_counter() - t0) * 1e6)
-    p2p_latency_us = float(sum(p2p_latencies[5:]) / len(p2p_latencies[5:]))
+    p2p_latencies.sort()
+    p2p_latency_us = float(p2p_latencies[len(p2p_latencies) // 2])
 
     # 3. PCIe Bandwidth (64 MB buffer)
     bw_tensor = torch.randn(32 * 1024 * 1024, dtype=torch.float16, device=devices[0])
+    for _ in range(3):
+        _ = bw_tensor.to(devices[1], non_blocking=False)
+    torch.cuda.synchronize(devices[1])
+
     bw_times = []
     for _ in range(10):
         t0 = time.perf_counter()
         _ = bw_tensor.to(devices[1], non_blocking=False)
-        if torch.cuda.is_available():
-            torch.cuda.synchronize(devices[1])
+        torch.cuda.synchronize(devices[1])
         bw_times.append(time.perf_counter() - t0)
-    avg_bw_s = sum(bw_times[3:]) / len(bw_times[3:])
-    pcie_bw_gb_s = (64.0 / (1024.0 * avg_bw_s))
+    bw_times.sort()
+    median_bw_s = bw_times[len(bw_times) // 2]
+    pcie_bw_gb_s = (64.0 / (1024.0 * median_bw_s)) if median_bw_s > 0 else 0.0
 
     return {
         "all_reduce_latency_us": ar_latency_us,
@@ -99,7 +116,7 @@ def benchmark_pcie_transfers(devices: List[torch.device], hidden_size: int, is_d
 
 def main():
     args = parse_args()
-    has_dual_cuda = is_cuda_available() and check_dual_gpu() and not args.dry_run
+    has_dual_cuda = is_cuda_available() and check_dual_gpu()[0] and not args.dry_run
 
     print("=" * 75)
     print("  EMPIRICAL SHARDING BENCHMARK: TP=2 vs PP=2 on Dual Tesla T4")
