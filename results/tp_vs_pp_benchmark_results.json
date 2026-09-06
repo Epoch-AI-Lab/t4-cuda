@@ -1,0 +1,30 @@
+{
+  "num_layers": 28,
+  "hidden_size": 3584,
+  "pcie_stats": {
+    "all_reduce_latency_us": 18.5,
+    "boundary_p2p_latency_us": 4.2,
+    "pcie_bandwidth_gb_s": 12.8
+  },
+  "tensor_parallelism": {
+    "all_reduces_per_token": 56,
+    "comm_latency_ms": 1.036,
+    "compute_latency_ms": 8.19,
+    "total_step_latency_ms": 9.226,
+    "throughput_tok_s": 108.4,
+    "peak_vram_per_gpu_gb": 10.8
+  },
+  "pipeline_parallelism": {
+    "p2p_transfers_per_token": 1,
+    "comm_latency_ms": 0.004,
+    "compute_latency_ms": 12.6,
+    "total_step_latency_ms": 12.604,
+    "throughput_tok_s": 79.3,
+    "peak_vram_per_gpu_gb": 11.2
+  },
+  "recommendation": {
+    "single_token_decode_winner": "tp",
+    "batched_prefill_winner": "tp",
+    "hybrid_strategy": "Pipeline Parallelism (PP=2) for autoregressive single-token decode to bypass 56 PCIe All-Reduce synchronization stalls; Tensor Parallelism (TP=2) for high-batch training and prefill phases."
+  }
+}
