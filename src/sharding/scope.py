@@ -6,8 +6,9 @@ Supports dynamic model transformation between:
 - 'pp': Inter-layer Pipeline Parallelism (2-stage partitioning with boundary activation transfer)
 Cleanly restores original architecture on context exit.
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, Tuple
 import torch
 import torch.nn as nn
 from src.sharding.tp import TPParallelMLP, TPParallelAttention, TPColumnParallelLinear, TPRowParallelLinear

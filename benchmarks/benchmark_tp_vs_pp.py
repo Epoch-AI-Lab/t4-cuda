@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--warmup_steps", type=int, default=5, help="Warmup iterations")
     parser.add_argument("--measure_steps", type=int, default=20, help="Measurement iterations")
     parser.add_argument("--output_file", type=str, default="results/tp_vs_pp_benchmark_results.json")
-    parser.add_argument("--dry_run", action="store_true", help="Run with miniature configuration on CPU / mock devices")
+    parser.add_argument("--dry_run", "--dry-run", action="store_true", help="Run with miniature configuration on CPU / mock devices")
     return parser.parse_args()
 
 

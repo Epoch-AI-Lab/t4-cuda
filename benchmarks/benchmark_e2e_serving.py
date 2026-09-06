@@ -453,7 +453,7 @@ def parse_args():
     parser.add_argument("--warmup", type=int, default=20, help="Number of warmup iterations")
     parser.add_argument("--iters", type=int, default=50, help="Number of timed iterations")
     parser.add_argument("--quant", type=str, default="asym", choices=["asym", "sym", "gptq"], help="Quantization mode (default: asym)")
-    parser.add_argument("--dry-run", action="store_true", help="Run on CPU dry-run mode")
+    parser.add_argument("--dry-run", "--dry_run", action="store_true", help="Run on CPU dry-run mode")
     parser.add_argument("--output-json", type=str, default="outputs/e2e_serving_t4.json", help="Output JSON path")
     parser.add_argument("--output-md", type=str, default="outputs/e2e_serving_t4.md", help="Output Markdown path")
     parser.add_argument("--output-log", type=str, default="outputs/e2e_serving_t4.log", help="Output log path")
