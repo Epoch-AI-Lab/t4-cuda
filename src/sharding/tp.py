@@ -74,6 +74,56 @@ def quantize_weight_sym_int4(
         return packed, scales, zps, 0
 
 
+def quantize_weight_asym_int4(
+    W: torch.Tensor,
+    group_size: int = 128,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
+    """Quantize 2D weight matrix [out_features, in_features] to asymmetric INT4.
+
+    Per-group min/max uses all 16 levels where the data actually sits. Needs
+    no kernel change: the W4A16 kernel already computes (q - zero_point) *
+    scale per group, and the zero point here is any float value.
+    """
+    out_f, in_f = W.shape
+    if in_f % 8 != 0:
+        raise ValueError(f"in_features ({in_f}) must be divisible by 8")
+    Wf = W.float()
+    target_dtype = W.dtype if W.dtype in (torch.float16, torch.bfloat16, torch.float32) else torch.float16
+
+    if group_size > 0 and in_f % group_size == 0:
+        num_groups = in_f // group_size
+        G = Wf.reshape(out_f, num_groups, group_size)
+        mn = G.amin(dim=2, keepdim=True)
+        mx = G.amax(dim=2, keepdim=True)
+        denom = mx - mn
+        const_mask = (denom == 0)
+        scale = torch.where(const_mask, torch.ones_like(denom), (denom / 15.0).clamp_min(1e-8))
+        zps_f = torch.where(const_mask, -mn, -mn / scale)
+        q = torch.clamp(torch.round((G - mn) / scale), 0, 15).reshape(out_f, in_f).to(torch.int32)
+        q = q.t().contiguous()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32, device=W.device)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(2).t().contiguous().to(dtype=target_dtype, device=W.device)
+        zps = zps_f.squeeze(2).t().contiguous().to(dtype=target_dtype, device=W.device)
+        return packed, scales, zps, group_size
+    else:
+        mn = Wf.amin(dim=1, keepdim=True)
+        mx = Wf.amax(dim=1, keepdim=True)
+        denom = mx - mn
+        const_mask = (denom == 0)
+        scale = torch.where(const_mask, torch.ones_like(denom), (denom / 15.0).clamp_min(1e-8))
+        zps_f = torch.where(const_mask, -mn, -mn / scale)
+        q = torch.clamp(torch.round((Wf - mn) / scale), 0, 15).to(torch.int32)
+        q = q.t().contiguous()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32, device=W.device)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(1).to(target_dtype).unsqueeze(0).contiguous().to(W.device)
+        zps = zps_f.squeeze(1).to(target_dtype).unsqueeze(0).contiguous().to(W.device)
+        return packed, scales, zps, 0
+
+
 def dequantize_sym_int4(
     packed: torch.Tensor,
     scales: torch.Tensor,

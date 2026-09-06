@@ -143,6 +143,8 @@ def test_benchmark_json_output_schema(tmp_path):
         group_size=128,
         dry_run=True,
         output_json=out_file,
+        output_log=str(tmp_path / "bench_results.log"),
+        output_md=str(tmp_path / "bench_results.md"),
     )
     assert len(results) == 2, f"Expected 2 rows, got {len(results)}"
     assert os.path.exists(out_file), "JSON output file was not created"
@@ -203,3 +205,134 @@ def test_cuda_hardware_gate():
     )
     assert len(results) > 0
     assert results[0]["cuBLAS_FP16"]["latency_us"] > 0
+
+
+def _dequant_asym_tuple(packed, scales, zps):
+    """Reference dequant of a (packed, scales, zps) tuple back to [out, in] float."""
+    K8, N = packed.shape
+    K = K8 * 8
+    qt = torch.zeros(K, N, dtype=torch.float32)
+    for i in range(8):
+        qt[i::8, :] = ((packed >> (4 * i)) & 0xF).float()
+    q = qt.t()
+    ng = scales.shape[0]
+    gs = K // ng
+    out = torch.empty_like(q)
+    for g in range(ng):
+        out[:, g * gs:(g + 1) * gs] = (
+            q[:, g * gs:(g + 1) * gs] - zps[g].float().unsqueeze(1)
+        ) * scales[g].float().unsqueeze(1)
+    return out
+
+
+def test_asym_packing_invariants():
+    """Verify asymmetric quantizer tuple shapes, dtypes, and nibble range."""
+    from src.hybrid_linear import quantize_weight_asym_int4
+    torch.manual_seed(0)
+    W = torch.randn(64, 256, dtype=torch.float16)
+    packed, scales, zps, g_size = quantize_weight_asym_int4(W, group_size=128)
+    assert packed.shape == (256 // 8, 64)
+    assert packed.dtype == torch.int32
+    assert scales.shape == (2, 64) and scales.dtype == torch.float16
+    assert zps.shape == scales.shape
+    assert g_size == 128
+    # every nibble in 0..15
+    for i in range(8):
+        nib = (packed >> (4 * i)) & 0xF
+        assert nib.min().item() >= 0 and nib.max().item() <= 15
+
+
+def test_asym_beats_sym_on_skewed_weights():
+    """Asymmetric must clearly beat symmetric on offset (skewed) weights."""
+    from src.hybrid_linear import quantize_weight_asym_int4, quantize_weight_sym_int4
+    torch.manual_seed(0)
+    W = torch.randn(64, 256, dtype=torch.float16) + 3.0
+    pa, sa, za, _ = quantize_weight_asym_int4(W, group_size=128)
+    ps, ss, zs, _ = quantize_weight_sym_int4(W, group_size=128)
+    e_asym = (_dequant_asym_tuple(pa, sa, za) - W.float()).pow(2).mean().item()
+    e_sym = (_dequant_asym_tuple(ps, ss, zs) - W.float()).pow(2).mean().item()
+    assert e_asym < e_sym / 2.0, f"asym {e_asym:.5f} should be < half of sym {e_sym:.5f}"
+
+
+def test_asym_constant_group_exact():
+    """Constant groups must reconstruct exactly (no information to lose)."""
+    from src.hybrid_linear import quantize_weight_asym_int4
+    W = torch.full((8, 128), 2.5, dtype=torch.float16)
+    packed, scales, zps, _ = quantize_weight_asym_int4(W, group_size=128)
+    assert torch.equal(_dequant_asym_tuple(packed, scales, zps), W.float())
+
+
+def test_asym_mirrors_agree():
+    """hybrid_linear, tp mirror, and benchmark fallback must pack identically."""
+    from src.hybrid_linear import quantize_weight_asym_int4
+    from src.sharding.tp import quantize_weight_asym_int4 as tp_asym
+    from benchmarks.benchmark_3way_kernels import fallback_quantize_asym_int4
+    torch.manual_seed(7)
+    W = torch.randn(32, 128, dtype=torch.float16)
+    a = quantize_weight_asym_int4(W, group_size=64)
+    b = tp_asym(W, group_size=64)
+    c = fallback_quantize_asym_int4(W, group_size=64)
+    assert torch.equal(a[0], b[0]) and torch.equal(a[0], c[0])
+    assert torch.equal(a[1], b[1]) and torch.equal(a[1], c[1])
+
+
+def test_group_size_divisibility_matrix():
+    """All benchmark K dims must support group 32/64/128 with no remainder."""
+    for s in get_benchmark_shapes():
+        for gs in (32, 64, 128):
+            assert s["K"] % gs == 0, f"{s['name']} K={s['K']} not divisible by {gs}"
+
+
+def test_gptq_beats_rtn_on_correlated_acts():
+    """GPTQ error feedback must beat plain RTN under correlated activations."""
+    from src.hybrid_linear import quantize_weight_asym_int4, quantize_weight_gptq_int4, compute_hessian
+    torch.manual_seed(1)
+    O, K = 16, 64
+    W = torch.randn(O, K)
+    X = (torch.randn(K, 40) @ torch.randn(40, 200)).t()
+    H = compute_hessian(X)
+    assert H.shape == (K, K)
+    pg, sg, zg, _ = quantize_weight_gptq_int4(W, H, group_size=32, blocksize=32)
+    pr, sr, zr, _ = quantize_weight_asym_int4(W, group_size=32)
+    Xt = torch.randn(50, K)
+    e_gptq = ((Xt @ _dequant_asym_tuple(pg, sg, zg).t()) - (Xt @ W.t())).pow(2).mean().item()
+    e_rtn = ((Xt @ _dequant_asym_tuple(pr, sr, zr).t()) - (Xt @ W.t())).pow(2).mean().item()
+    assert e_gptq < e_rtn, f"gptq {e_gptq:.6f} should beat rtn {e_rtn:.6f}"
+
+
+def test_gptq_none_hessian_falls_back_to_asym():
+    """H=None must behave exactly like the asymmetric RTN path (never crash)."""
+    from src.hybrid_linear import quantize_weight_asym_int4, quantize_weight_gptq_int4
+    torch.manual_seed(3)
+    W = torch.randn(16, 64)
+    g = quantize_weight_gptq_int4(W, None, group_size=32)
+    a = quantize_weight_asym_int4(W, group_size=32)
+    assert torch.equal(g[0], a[0]) and torch.equal(g[1], a[1])
+
+
+def test_gptq_bad_hessian_shape_raises():
+    """Wrong-size Hessian must fail loudly, never silently quantize."""
+    from src.hybrid_linear import quantize_weight_gptq_int4
+    torch.manual_seed(3)
+    W = torch.randn(16, 64)
+    with pytest.raises(ValueError):
+        quantize_weight_gptq_int4(W, torch.eye(32), group_size=32)
+
+
+def test_benchmark_quant_flag_plumbing(tmp_path):
+    """--quant must select the scheme, record it in JSON, and reject junk."""
+    out = str(tmp_path / "q.json")
+    res = run_3way_benchmark(batch_sizes=[1], shapes_filter="KV-Proj", iters=2,
+                             warmup=1, dry_run=True, output_json=out,
+                             output_log=None, output_md=None, quant="asym")
+    assert len(res) > 0
+    with open(out) as f:
+        cfg = json.load(f)["metadata"]["config"]
+    assert cfg["quant"] == "asym"
+    res = run_3way_benchmark(batch_sizes=[1], shapes_filter="KV-Proj", iters=1,
+                             warmup=1, dry_run=True, output_json=out,
+                             output_log=None, output_md=None, quant="gptq")
+    assert len(res) > 0
+    with pytest.raises(ValueError):
+        run_3way_benchmark(batch_sizes=[1], shapes_filter="KV-Proj", dry_run=True,
+                           output_json=out, output_log=None, output_md=None, quant="bogus")

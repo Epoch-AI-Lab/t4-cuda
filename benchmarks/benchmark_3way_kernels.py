@@ -78,10 +78,21 @@ except ImportError:
 
 # Try importing CP-Hybrid helper from repo
 try:
-    from src.hybrid_linear import quantize_weight_sym_int4
+    from src.hybrid_linear import (
+        quantize_weight_sym_int4,
+        quantize_weight_asym_int4,
+        compute_hessian,
+        quantize_weight_gptq_int4,
+    )
     HAS_QUANT_HELPER = True
+    HAS_GPTQ_HELPER = True
 except ImportError:
-    HAS_QUANT_HELPER = False
+    try:
+        from src.hybrid_linear import quantize_weight_sym_int4
+        HAS_QUANT_HELPER = True
+    except ImportError:
+        HAS_QUANT_HELPER = False
+    HAS_GPTQ_HELPER = False
 
 
 class DualLogger:
@@ -132,6 +143,45 @@ def fallback_quantize_sym_int4(W: torch.Tensor, group_size: int = 128) -> Tuple[
             packed |= q[i::8, :] << (4 * i)
         scales = scale.squeeze(1).half().unsqueeze(0).contiguous().to(W.device)
         zps = torch.full((1, out_f), 8.0, dtype=torch.float16, device=W.device)
+        return packed.to(W.device), scales, zps, 0
+
+
+def fallback_quantize_asym_int4(W: torch.Tensor, group_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
+    """Fallback asymmetric INT4 quantization if src.hybrid_linear is not importable."""
+    out_f, in_f = W.shape
+    assert in_f % 8 == 0, f"in_features ({in_f}) must be divisible by 8"
+    Wf = W.float()
+    if group_size > 0 and in_f % group_size == 0:
+        num_groups = in_f // group_size
+        G = Wf.reshape(out_f, num_groups, group_size)
+        mn = G.amin(dim=2, keepdim=True)
+        mx = G.amax(dim=2, keepdim=True)
+        denom = mx - mn
+        const_mask = (denom == 0)
+        scale = torch.where(const_mask, torch.ones_like(denom), (denom / 15.0).clamp_min(1e-8))
+        zps_f = torch.where(const_mask, -mn, -mn / scale)
+        q = torch.clamp(torch.round((G - mn) / scale), 0, 15).reshape(out_f, in_f).to(torch.int32)
+        q = q.t().contiguous().cpu()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(2).t().contiguous().half().to(W.device)
+        zps = zps_f.squeeze(2).t().contiguous().half().to(W.device)
+        return packed.to(W.device), scales, zps, group_size
+    else:
+        mn = Wf.amin(dim=1, keepdim=True)
+        mx = Wf.amax(dim=1, keepdim=True)
+        denom = mx - mn
+        const_mask = (denom == 0)
+        scale = torch.where(const_mask, torch.ones_like(denom), (denom / 15.0).clamp_min(1e-8))
+        zps_f = torch.where(const_mask, -mn, -mn / scale)
+        q = torch.clamp(torch.round((Wf - mn) / scale), 0, 15).to(torch.int32)
+        q = q.t().contiguous().cpu()
+        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
+        for i in range(8):
+            packed |= q[i::8, :] << (4 * i)
+        scales = scale.squeeze(1).half().unsqueeze(0).contiguous().to(W.device)
+        zps = zps_f.squeeze(1).half().unsqueeze(0).contiguous().to(W.device)
         return packed.to(W.device), scales, zps, 0
 
 
@@ -331,9 +381,12 @@ def run_3way_benchmark(
     warmup: int = 20,
     group_size: int = 128,
     dry_run: bool = False,
-    output_json: Optional[str] = "results/3way_kernel_match_t4.json",
-    output_log: Optional[str] = "results/3way_kernel_match_t4.log",
-    output_md: Optional[str] = "results/3way_kernel_match_t4.md",
+    output_json: Optional[str] = "outputs/3way_kernel_match_t4.json",
+    output_log: Optional[str] = "outputs/3way_kernel_match_t4.log",
+    output_md: Optional[str] = "outputs/3way_kernel_match_t4.md",
+    quant: str = "sym",
+    calib_samples: int = 128,
+    gptq_blocksize: int = 128,
 ) -> List[Dict[str, Any]]:
     """Runs the 3-way kernel match across all requested shapes and batch sizes."""
     if not torch.cuda.is_available() and not dry_run:
@@ -368,7 +421,9 @@ def run_3way_benchmark(
             print("Note on Marlin: IST-DASLab Marlin requires Compute Capability >= 8.0 (Ampere+ cp.async).")
             print("                On Turing sm_75 (Tesla T4), bitsandbytes (NF4/FP4) is the verified baseline.")
         print(f"Timing Config: {warmup} warmup iterations, {iters} timed iterations (CUDA events)")
-        print(f"Quantization: Symmetric INT4 / NF4 with group_size={group_size}")
+        quant_label = {"sym": "Symmetric INT4", "asym": "Asymmetric INT4",
+                       "gptq": f"GPTQ INT4 (calib={calib_samples}, block={gptq_blocksize})"}.get(quant, quant)
+        print(f"Quantization: {quant_label} / NF4 with group_size={group_size}")
         print("=" * 125)
 
         all_shapes = get_benchmark_shapes()
@@ -381,7 +436,19 @@ def run_3way_benchmark(
             print(f"No shapes matched filter: {shapes_filter}")
             return []
 
-        quant_fn = quantize_weight_sym_int4 if HAS_QUANT_HELPER else fallback_quantize_sym_int4
+        if quant == "sym":
+            quant_fn = quantize_weight_sym_int4 if HAS_QUANT_HELPER else fallback_quantize_sym_int4
+        elif quant == "asym":
+            if HAS_QUANT_HELPER:
+                quant_fn = quantize_weight_asym_int4
+            else:
+                quant_fn = fallback_quantize_asym_int4
+        elif quant == "gptq":
+            if not HAS_GPTQ_HELPER:
+                raise RuntimeError("quant=gptq needs src.hybrid_linear GPTQ helpers importable from repo root")
+            quant_fn = None  # built per-shape below (needs K-dim calibration acts)
+        else:
+            raise ValueError(f"Unknown quant scheme '{quant}' (choose sym, asym, gptq)")
 
         results: List[Dict[str, Any]] = []
 
@@ -405,7 +472,16 @@ def run_3way_benchmark(
             t4_init_status = "READY" if HAS_T4_KERNELS and device.type == "cuda" else ("SKIPPED: Dry-run CPU mode" if dry_run else "SKIPPED: Not compiled")
             if HAS_T4_KERNELS and device.type == "cuda":
                 try:
-                    packed_w, scales, zps, g_size = quant_fn(lin_fp16.weight, group_size=group_size)
+                    if quant == "gptq":
+                        # Calibration acts drawn from the same randn distribution
+                        # the harness measures parity on. Real-model activations
+                        # (WikiText tokens through Qwen) are the stronger follow-up.
+                        calib = torch.randn(calib_samples, K, dtype=torch.float16, device=device)
+                        H = compute_hessian(calib)
+                        packed_w, scales, zps, g_size = quantize_weight_gptq_int4(
+                            lin_fp16.weight, H, group_size=group_size, blocksize=gptq_blocksize)
+                    else:
+                        packed_w, scales, zps, g_size = quant_fn(lin_fp16.weight, group_size=group_size)
                     t4_data = (packed_w, scales, zps, g_size)
                 except Exception as e:
                     t4_data = None
@@ -689,6 +765,9 @@ def run_3way_benchmark(
                         "warmup": warmup,
                         "group_size": group_size,
                         "batch_sizes": batch_sizes,
+                        "quant": quant,
+                        "calib_samples": calib_samples,
+                        "gptq_blocksize": gptq_blocksize,
                     },
                     "hardware_baselines": {
                         "t4_peak_bandwidth_gb_s": T4_PEAK_BANDWIDTH_GB_S,
@@ -724,10 +803,16 @@ def parse_args():
     parser.add_argument("--iters", type=int, default=50, help="Number of timed iterations (default: 50)")
     parser.add_argument("--warmup", type=int, default=20, help="Number of warmup iterations (default: 20)")
     parser.add_argument("--group-size", type=int, default=128, help="Quantization group size (default: 128)")
+    parser.add_argument("--quant", type=str, default="sym", choices=["sym", "asym", "gptq"],
+                        help="Weight quant scheme for t4_kernels (default: sym)")
+    parser.add_argument("--calib-samples", type=int, default=128,
+                        help="Calibration rows for GPTQ Hessian (default: 128)")
+    parser.add_argument("--gptq-blocksize", type=int, default=128,
+                        help="GPTQ OBQ block size; large-K Cholesky on T4 takes minutes (default: 128)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode on CPU to verify pipeline structure without GPU")
-    parser.add_argument("--output-json", type=str, default="results/3way_kernel_match_t4.json", help="Output JSON file path")
-    parser.add_argument("--output-log", type=str, default="results/3way_kernel_match_t4.log", help="Output text log file path")
-    parser.add_argument("--output-md", type=str, default="results/3way_kernel_match_t4.md", help="Output Markdown report file path")
+    parser.add_argument("--output-json", type=str, default="outputs/3way_kernel_match_t4.json", help="Output JSON file path")
+    parser.add_argument("--output-log", type=str, default="outputs/3way_kernel_match_t4.log", help="Output text log file path")
+    parser.add_argument("--output-md", type=str, default="outputs/3way_kernel_match_t4.md", help="Output Markdown report file path")
     return parser.parse_args()
 
 
@@ -743,4 +828,7 @@ if __name__ == "__main__":
         output_json=args.output_json,
         output_log=args.output_log,
         output_md=args.output_md,
+        quant=args.quant,
+        calib_samples=args.calib_samples,
+        gptq_blocksize=args.gptq_blocksize,
     )
