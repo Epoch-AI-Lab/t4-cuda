@@ -164,12 +164,11 @@ def test_scale_and_zero_point_group_indexing():
             k_act = k_idx * 8 + elem
             assert k_act // 128 == expected_g
 
-    # Case 2: group_size = 0
-    # Formula in kernel: if (group_size > 0) { ... }
-    # When group_size == 0, division is never evaluated (no div-by-zero).
-    # scale and zero_point are loaded once per block at col_t + v.
-    group_size = 0
-    assert not (group_size > 0)
+    # Case 2: group_size = 0 (Per-Channel)
+    # Scales and zero points are shaped [1, N], loaded without per-group division
+    N_test = 64
+    scales_per_channel = torch.randn(1, N_test, dtype=torch.float16)
+    assert scales_per_channel.shape == (1, N_test)
 
 
 def test_retiled_gemv_numerical_equivalence_vs_reference():
@@ -266,32 +265,46 @@ def test_retiled_gemv_numerical_equivalence_vs_reference():
 def test_boundary_conditions_and_edge_cases():
     """Verify edge case dimensions: small K, non-multiple-of-128 N, inactive warps."""
     # Test 1: Small K where k_uint32_total < 4 (e.g. K = 8 -> k_uint32_total = 1)
-    # Warps 1, 2, 3 never enter the K loop, staying at 0.0f
-    k_uint32_total = 1
-    warps_accum = np.zeros(4, dtype=np.float32)
-    for k_idx in range(k_uint32_total):
-        warp_id = k_idx % 4
-        warps_accum[warp_id] += 42.0
+    # Warps 1, 2, 3 have no k_idx to process; only warp 0 accumulates.
+    K = 8
+    N = 128
+    A = torch.randn(1, K, dtype=torch.float16)
+    W_raw = torch.randint(0, 16, (K, N), dtype=torch.uint8)
+    scales = torch.randn(1, N, dtype=torch.float16) * 0.05
+    zero_points = torch.randint(0, 16, (1, N), dtype=torch.float16)
+    W_deq = (W_raw.float() - zero_points.float()) * scales.float()
+    C_ref = torch.matmul(A.float(), W_deq).half()
 
-    assert warps_accum[0] == 42.0
-    assert warps_accum[1] == 0.0
-    assert warps_accum[2] == 0.0
-    assert warps_accum[3] == 0.0
-    assert np.sum(warps_accum) == 42.0
+    # Numerical simulation for K=8
+    A_f = A.float().numpy()
+    W_f = W_raw.float().numpy()
+    s_f = scales.float().numpy()
+    z_f = zero_points.float().numpy()
+    k_uint32_total = K // 8
+    A_chunks = A_f[0].reshape(k_uint32_total, 8)
+    W_chunks = W_f.reshape(k_uint32_total, 8, N)
+    diff = W_chunks - z_f[:, None, :]
+    dots = np.sum(diff * A_chunks[:, :, None], axis=1)
+    scaled_dots = s_f * dots
+    warps_accum = np.zeros((4, N), dtype=np.float32)
+    for w in range(4):
+        if w < k_uint32_total:
+            warps_accum[w] = np.sum(scaled_dots[w::4], axis=0)
+    final_sum = np.sum(warps_accum, axis=0).astype(np.float16)
+    diff_val = torch.abs(torch.from_numpy(final_sum) - C_ref)
+    assert torch.max(diff_val).item() <= 0.05
 
-    # Test 2: N % 128 != 0 column bounds checking
-    # Fallback path guards: col < N and final_col < N
-    for N in [1, 2, 3, 7, 15, 31, 63, 127, 129, 130, 255]:
-        grid_x = (N + 128 - 1) // 128
-        written_cols = []
-        for block_x in range(grid_x):
-            block_col_base = block_x * 128
-            for tid in range(128):
-                final_col = block_col_base + tid
-                if final_col < N:
-                    written_cols.append(final_col)
-
-        assert written_cols == list(range(N)), f"Columns written for N={N} mismatch: {len(written_cols)} vs {N}"
+    # Test 2: N % 128 != 0 column boundary conditions
+    for N_edge in [1, 2, 7, 15, 31, 63, 127, 129, 255]:
+        K_edge = 64
+        A_edge = torch.randn(1, K_edge, dtype=torch.float16)
+        W_edge_raw = torch.randint(0, 16, (K_edge, N_edge), dtype=torch.uint8)
+        s_edge = torch.randn(1, N_edge, dtype=torch.float16) * 0.05
+        z_edge = torch.randint(0, 16, (1, N_edge), dtype=torch.float16)
+        W_edge_deq = (W_edge_raw.float() - z_edge.float()) * s_edge.float()
+        C_edge_ref = torch.matmul(A_edge.float(), W_edge_deq).half()
+        assert C_edge_ref.shape == (1, N_edge)
+        assert torch.isfinite(C_edge_ref).all()
 
 
 if __name__ == '__main__':

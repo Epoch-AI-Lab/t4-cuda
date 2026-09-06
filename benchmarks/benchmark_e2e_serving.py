@@ -13,7 +13,6 @@ across 3 serving backends on physical NVIDIA Tesla T4 GPUs:
 Evaluates:
   - Single-Token Autoregressive Decode (M = 1, B = 1): tokens/second & latency
   - Prefill Prompt Processing (M = 64, 256): prompt latency & TFLOP/s
-  - Multi-GPU Sharding: Tensor Parallelism (TP = 2) & Pipeline Parallelism (PP = 2)
 
 Authentic CUDA event timing, zero hardcoded numbers, strict parity checks.
 Outputs saved to outputs/e2e_serving_t4.json, .md, and .log.
@@ -54,8 +53,6 @@ except ImportError:
     bnb = None
 
 from src.hybrid_linear import HybridLinear, quantize_weight_asym_int4, quantize_weight_sym_int4
-from src.sharding.tp import TPColumnParallelLinear, TPRowParallelLinear
-from src.sharding.comm import DualGPUCommManager
 
 # Hardware specifications for Tesla T4 (Turing sm_75)
 T4_PEAK_BANDWIDTH_GB_S = 320.0
@@ -241,7 +238,24 @@ def run_e2e_serving_benchmark(
 
     try:
         device = torch.device("cuda:0" if torch.cuda.is_available() and not dry_run else "cpu")
-        device_name = torch.cuda.get_device_name(0) if device.type == "cuda" else "CPU"
+        if device.type != "cuda" or dry_run:
+            print("[SKIP] CUDA GPU absent or dry-run requested. No synthetic serving numbers emitted.")
+            payload = {
+                "metadata": {
+                    "device": "CPU" if dry_run else "None",
+                    "status": "SKIPPED: CUDA GPU absent or dry-run requested",
+                    "dry_run": dry_run,
+                },
+                "decode_metrics": None,
+                "prefill_metrics": None,
+            }
+            if output_json:
+                os.makedirs(os.path.dirname(output_json), exist_ok=True)
+                with open(output_json, "w") as f:
+                    json.dump(payload, f, indent=2)
+            return payload
+
+        device_name = torch.cuda.get_device_name(0)
 
         print("\n" + "=" * 115)
         print("      END-TO-END AUTOREGRESSIVE SERVING BENCHMARK: Qwen2.5-7B Profile (Tesla T4)")

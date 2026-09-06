@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Hardware Simulation & Microarchitectural Verification for Ellie 4B Custom T4 CUDA Kernels.
-Simulates:
+[THEORETICAL MODEL] Microarchitectural Analytical Suite for Ellie 4B Custom T4 CUDA Kernels.
+Theoretical simulations:
 1. Pure PTX LOP3.b32 (LUT 0x6A) bitwise signed INT4 dequantization against exact IEEE-754 FP16 bit patterns.
 2. RMSNorm cooperative shared-memory reduction, 128-bit load coalescing, and variance computation.
 3. Fused SwiGLU forward pass with zero HBM round-trips.
-4. Fused Ellie Mega-Kernel (RMSNorm + Dual W4A16 GEMV + SwiGLU) DRAM traffic reduction, arithmetic intensity, and Turing Roofline model at 1590 MHz boost clock.
+4. Fused Ellie Mega-Kernel (RMSNorm + Dual W4A16 GEMV + SwiGLU) DRAM traffic model, arithmetic intensity, and Turing Roofline model at 1590 MHz boost clock.
+(Analytical mathematical models; physical execution requires GPU hardware).
 """
 
 import math
@@ -153,16 +154,16 @@ def simulate_ellie_t4_roofline():
     ai_fused = total_flops / fused_dram_bytes
 
     # Projected Kernel Latency on Tesla T4 @ 278.4 GB/s Achieved Bandwidth
-    unfused_latency_ms = (unfused_dram_bytes / (T4_ACHIEVED_BANDWIDTH_GBPS * 1e9)) * 1000.0
-    fused_latency_ms   = (fused_dram_bytes / (T4_ACHIEVED_BANDWIDTH_GBPS * 1e9)) * 1000.0
-    speedup = unfused_latency_ms / fused_latency_ms
+    analytical_unfused_ms = (unfused_dram_bytes / (T4_ACHIEVED_BANDWIDTH_GBPS * 1e9)) * 1000.0
+    analytical_fused_ms   = (fused_dram_bytes / (T4_ACHIEVED_BANDWIDTH_GBPS * 1e9)) * 1000.0
+    speedup = analytical_unfused_ms / analytical_fused_ms
 
     print(f"  [+] Unfused PyTorch DRAM Traffic: {unfused_dram_mb:.2f} MB / layer")
     print(f"  [+] Fused Ellie T4 INT4 DRAM Traffic: {fused_dram_mb:.2f} MB / layer")
     print(f"  [⚡] DRAM Memory Traffic Reduction: {traffic_reduction:.2f}x ({100.0 * (1.0 - fused_dram_mb/unfused_dram_mb):.1f}% DRAM Bytes Eliminated)")
     print(f"  [+] Arithmetic Intensity (AI): {ai_unfused:.3f} FLOP/B (Unfused) -> {ai_fused:.3f} FLOP/B (Fused)")
-    print(f"  [⚡] Projected Layer Latency: {unfused_latency_ms:.3f} ms (Unfused) -> {fused_latency_ms:.3f} ms (Custom Fused)")
-    print(f"  [⚡] Projected End-to-End Speedup: {speedup:.2f}x on Tesla T4!")
+    print(f"  [⚡] Theoretical Layer Latency: {analytical_unfused_ms:.3f} ms (Unfused) -> {analytical_fused_ms:.3f} ms (Custom Fused)")
+    print(f"  [⚡] Theoretical Model Speedup Projection: {speedup:.2f}x on Tesla T4 (Analytical Model)")
 
 if __name__ == "__main__":
     simulate_lop3_0x6a_s4_dequant()

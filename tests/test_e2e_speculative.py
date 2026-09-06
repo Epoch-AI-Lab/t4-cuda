@@ -21,6 +21,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import pytest
 
 try:
     import torch
@@ -478,24 +479,22 @@ def test_f2_03_rope_rotation_invariance():
 
 def test_f2_04_position_advancement_across_rounds():
     """F2: Validates position advancing correctly when m of K tokens are accepted."""
-    start_pos = 10
+    start_pos = torch.tensor([10], dtype=torch.long)
+    accepted_tokens = torch.tensor([101, 102], dtype=torch.long)  # 2 accepted tokens
     k_draft = 3
-    # Suppose 2 tokens are accepted, then 1 correction token is emitted
-    accepted_count = 2
-    new_start_pos = start_pos + accepted_count + 1
-    assert new_start_pos == 13
-
-    # Next round evaluates positions [13, 14, 15]
+    # Position advances by accepted count + 1 correction token
+    new_start_pos = int(start_pos.item() + len(accepted_tokens) + 1)
     next_positions = np.arange(new_start_pos, new_start_pos + k_draft)
-    np.testing.assert_array_equal(next_positions, [13, 14, 15])
+    np.testing.assert_array_equal(next_positions, np.array([13, 14, 15]))
 
 
 def test_f2_05_position_restoration_after_partial_acceptance():
     """F2: Validates position restoration when draft is rejected at index 0."""
-    start_pos = 25
-    accepted_count = 0  # Immediate rejection
-    new_start_pos = start_pos + accepted_count + 1
-    assert new_start_pos == 26
+    start_pos = torch.tensor([25], dtype=torch.long)
+    accepted_tokens = torch.empty(0, dtype=torch.long)  # 0 accepted tokens (immediate rejection)
+    new_start_pos = int(start_pos.item() + len(accepted_tokens) + 1)
+    expected_pos = int(start_pos.item() + 1)
+    assert new_start_pos == expected_pos
 
 
 # --- F3: Fast Unified Draft Engine (Prompt Lookup) ---
@@ -859,11 +858,8 @@ def test_tier2_03_maximum_context_saturation():
     """Tier 2: Writing past max_seq_len raises ValueError buffer protection."""
     cache = StaticKVCache(max_seq_len=16)
     k_overflow = np.ones((1, 2, 20, 32), dtype=np.float32)
-    try:
+    with pytest.raises(ValueError):
         cache.update(0, k_overflow, k_overflow, start_pos=0)
-        assert False, "Expected ValueError on context overflow"
-    except ValueError:
-        pass
 
 
 def test_tier2_04_zero_accepted_tokens_total_mismatch():
@@ -905,11 +901,8 @@ def test_tier2_06_boundary_rollback_origin_and_full_span():
     assert cache.current_seq_len == 0
 
     # Rollback to invalid negative position must raise
-    try:
+    with pytest.raises(ValueError):
         cache.rollback(-1)
-        assert False, "Expected ValueError on negative rollback"
-    except ValueError:
-        pass
 
 
 def test_tier2_07_extreme_lookahead_k_boundary():

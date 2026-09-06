@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """
-Simulation script for Hypothesis 9 (H9): Emulated FP8 (E4M3/E5M2) via LOP3 Bit Manipulation on Turing CC 7.5 (Tesla T4).
-Simulates SASS instruction count, bank conflict swizzles, arithmetic intensity, memory traffic, and roofline speedups.
+[THEORETICAL MODEL] Microarchitectural Analytical Model for Hypothesis 9 (H9): Emulated FP8 (E4M3/E5M2) via LOP3 Bit Manipulation on Turing CC 7.5 (Tesla T4).
+Simulates SASS instruction counts, bank conflict swizzles, arithmetic intensity, memory traffic, and roofline speedups.
+(Analytical mathematical model; physical execution requires GPU hardware).
 """
 
 import json
 import numpy as np
 
 def simulate_h9():
-    print("=== Running Microarchitectural Simulation for H9 (Emulated FP8 LOP3 Rescaling) ===")
+    print("=== Running Theoretical Analytical Model for H9 (Emulated FP8 LOP3 Rescaling) ===")
     
     # 1. SASS Instruction Count Simulation
     # Naive BFE-based FP8 unpacking sequence (per 2 FP8 elements to FP16x2 register)
-    naive_sass_per_pair = 22.0
-    naive_sass_per_elem = naive_sass_per_pair / 2.0 # 11.0 instrs/elem
+    analytical_naive_sass_per_pair = 22.0
+    naive_sass_per_elem = analytical_naive_sass_per_pair / 2.0 # 11.0 instrs/elem
     
     # LOP3-accelerated FP8 bit manipulation sequence:
     # LOP3.LUT (exp/mant), LOP3.LUT (sign), XOR, PERMT = 4.0 instrs per pair
-    optimized_sass_per_pair = 4.0
-    optimized_sass_per_elem = optimized_sass_per_pair / 2.0 # 2.0 instrs/elem
+    analytical_optimized_sass_per_pair = 4.0
+    optimized_sass_per_elem = analytical_optimized_sass_per_pair / 2.0 # 2.0 instrs/elem
     
     sass_reduction_factor = naive_sass_per_elem / optimized_sass_per_elem # 5.50x
     
@@ -62,7 +63,7 @@ def simulate_h9():
     roofline_speedup = fp8_throughput_tflops / fp16_throughput_tflops # 1.88x
     
     results = {
-        "experiment": "H9: Emulated FP8 LOP3 Rescaling",
+        "experiment": "[Theoretical Model] H9: Emulated FP8 LOP3 Rescaling",
         "sass_instruction_count": {
             "naive_bfe_per_element": naive_sass_per_elem,
             "optimized_lop3_per_element": optimized_sass_per_elem,

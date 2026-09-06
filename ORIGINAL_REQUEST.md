@@ -87,3 +87,55 @@ Strictly enforce the zero-tolerance policy against faking, mock passes, and hard
 - [ ] Peak VRAM stays strictly below 14.0 GB per GPU across 100 consecutive decode steps.
 - [ ] All 140+ unit and integration tests in `tests/` pass with zero failures.
 
+## 2026-09-06T13:04:20Z
+
+SEND A TEAM TO AUDIT AND FIX ALL TESTS AND BENCHMARKS
+
+Audit every test in `tests/` and every benchmark in `benchmarks/` to uncover and eradicate all hardcoded numbers, fake metrics, tautological assertions, and dummy passes, replacing them with authentic dynamic execution under strict zero tolerance.
+
+Working directory: /home/kriday/epoch_website/t4-cuda
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Complete Adversarial Codebase Audit
+Scan every file in `tests/`, `benchmarks/`, and `src/` for fake or hardcoded shortcuts:
+- Hardcoded timing or throughput constants (e.g. fixed `compute_per_layer_ms = 0.45`, scaling multipliers like `0.65`, or dividing constants in python).
+- Tautological assertions (e.g. `assert 1 == 1`, asserting hardcoded numbers against themselves, or mocking execution to claim passes).
+- Baselines that are crippled or given asymmetric execution paths.
+- Output a comprehensive audit report detailing every violation found, file by file and line by line.
+
+### R2. Replace Hardcoded Benchmarks with Live Dynamic Execution
+Fix all benchmark scripts (including `benchmarks/benchmark_tp_vs_pp.py`, `benchmarks/benchmark_e2e_serving.py`, `benchmarks/benchmark_3way_kernels.py`):
+- Eliminate all hardcoded compute estimates. Measure real layer forward passes through instantiated modules (`TPColumnParallelLinear`, `TPRowParallelLinear`, `PipelineParallelQwen2`, `HybridLinear`) using synchronized CUDA events.
+- In `benchmark_tp_vs_pp.py`, instantiate real transformer layer blocks on `devices[0]` and `devices[1]`, execute actual forward passes, and calculate `tok_s` from measured kernel time plus measured PCIe transfer time.
+- Ensure all metric calculations ($TFLOP/s$, $GB/s$, $ms/token$) derive solely from live measured time, parameter shapes, and bytes transferred.
+
+### R3. Fix and Harden Test Suite Integrity
+Refactor and harden tests in `tests/`:
+- Eliminate any tautological assertions or dummy tests.
+- When GPU hardware or custom extensions are unavailable, mark tests explicitly as `[SKIP]`. Never emit `PASSED` for unexecuted or mocked CUDA code.
+- Tests must fail loudly with non-zero exit codes if assertions fail or numerical parity drifts beyond tolerance ($\text{cosine similarity} < 0.999$ or max absolute error threshold).
+
+### R4. Comprehensive Verification Run
+Execute the full test and benchmark suite locally and verify:
+- Zero syntax errors, zero missing imports, zero hardcoded constants.
+- Programmatic AST verification confirming absence of banned patterns (e.g. hardcoded timing constants, tautological assertions).
+- All unit and integration tests pass cleanly or skip explicitly with clear reasons.
+
+## Acceptance Criteria
+
+### Audit & Elimination of Fake Logic
+- [ ] No hardcoded timing, compute, or bandwidth constants in any file under `benchmarks/` or `tests/`.
+- [ ] `benchmarks/benchmark_tp_vs_pp.py` executes real forward passes through instantiated sharded blocks rather than multiplying fixed millisecond constants.
+- [ ] Zero tautological assertions (`assert True`, `assert x == x`, or trivial identity assertions) across the entire test suite.
+
+### Benchmark Authenticity
+- [ ] All reported latencies, throughputs, and memory metrics in `outputs/` and `results/` are calculated dynamically from measured runtimes (`torch.cuda.Event` elapsed time or `time.perf_counter()` on CPU).
+- [ ] Dual-GPU benchmarks run live physical forward passes and communications when dual CUDA devices are present, and cleanly `[SKIP]` with zero synthetic numbers when absent.
+
+### Test Suite Execution
+- [ ] Automated AST scanner script passes with 0 violations found across all `.py` files in `src/`, `tests/`, and `benchmarks/`.
+- [ ] Pytest suite (`pytest tests/`) runs with 0 failures, with all tests either authentically passing or explicitly skipping.
+
+

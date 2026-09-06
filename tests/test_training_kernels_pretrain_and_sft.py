@@ -28,6 +28,7 @@ import math
 import numpy as np
 import torch
 import torch.nn.functional as F
+import pytest
 
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, REPO_DIR)
@@ -357,12 +358,34 @@ def run_all_training_tests():
         print("  [SKIP] CUDA device or t4_kernels extension not available; skipping Test 3")
 
     print("\n" + "=" * 80)
-    if all_passed:
+    if not (device == "cuda" and HAS_T4_KERNELS):
+        print("  HOST CHECKS COMPLETE (CUDA training kernels skipped - no GPU/t4_kernels)")
+    elif all_passed:
         print("  ALL PRE-TRAINING & SFT CUDA KERNEL VERIFICATIONS: PASSED (100%)")
     else:
         print("  SOME VERIFICATIONS FAILED!")
         sys.exit(1)
     print("=" * 80)
+
+
+def test_swiglu_backward_reference_cpu():
+    """Verify PyTorch eager reference implementation of SwiGLU backward on CPU."""
+    M, H = 16, 64
+    dY = torch.randn(M, H, dtype=torch.float16) * 0.1
+    gate = torch.randn(M, H, dtype=torch.float16)
+    up = torch.randn(M, H, dtype=torch.float16)
+    dg, du = reference_swiglu_backward(dY, gate, up)
+    assert dg.shape == (M, H)
+    assert du.shape == (M, H)
+    assert torch.isfinite(dg).all()
+    assert torch.isfinite(du).all()
+
+
+def test_cuda_training_kernels_battery():
+    """Execute live CUDA training kernel verifications if CUDA and t4_kernels are available."""
+    if not torch.cuda.is_available() or not HAS_T4_KERNELS:
+        pytest.skip("Requires CUDA and t4_kernels extension")
+    run_all_training_tests()
 
 
 if __name__ == "__main__":

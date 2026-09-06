@@ -30,7 +30,7 @@ class CPMultiGPUInferenceScope:
             raise ValueError(f"Invalid mode '{mode}'. Must be 'tp' or 'pp'.")
 
         if devices is None:
-            if is_cuda_available() and check_dual_gpu():
+            if is_cuda_available() and check_dual_gpu()[0]:
                 self.devices = [torch.device("cuda:0"), torch.device("cuda:1")]
             elif is_cuda_available():
                 self.devices = [torch.device("cuda:0"), torch.device("cuda:0")]

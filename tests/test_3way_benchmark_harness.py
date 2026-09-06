@@ -63,14 +63,16 @@ def test_shape_filtering_coverage():
 
 def test_regimes_and_timing_defaults():
     """Verify CLI defaults and parameters satisfy R1 (decode M=1,4; prefill M=16,64,256; warmup>=20; iters>=50)."""
-    # Create parser via argparse inspect
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--batch-sizes", type=int, nargs="+", default=[1, 4, 16, 64, 256])
-    parser.add_argument("--warmup", type=int, default=20)
-    parser.add_argument("--iters", type=int, default=50)
+    import sys
+    from benchmarks.benchmark_3way_kernels import parse_args
 
-    defaults = parser.parse_args([])
+    orig_argv = sys.argv
+    try:
+        sys.argv = ["benchmark_3way_kernels.py"]
+        defaults = parse_args()
+    finally:
+        sys.argv = orig_argv
+
     assert 1 in defaults.batch_sizes and 4 in defaults.batch_sizes, "Must include decode batch sizes M=1,4"
     assert 16 in defaults.batch_sizes and 64 in defaults.batch_sizes and 256 in defaults.batch_sizes, "Must include prefill batch sizes M=16,64,256"
     assert defaults.warmup >= 20, f"Warmup must be >= 20, got {defaults.warmup}"
@@ -113,7 +115,7 @@ def test_compute_numerical_parity():
     c = torch.tensor([1.25, 2.0, 3.0, 4.0], dtype=torch.float16)
     max_err2, cos_sim2 = compute_numerical_parity(c, b)
     assert abs(max_err2 - 0.25) < 1e-4
-    assert 0.99 < cos_sim2 < 1.0
+    assert cos_sim2 >= 0.999
 
 
 def test_fallback_quantize_sym_int4():

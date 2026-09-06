@@ -8,9 +8,9 @@ Evaluates:
 1. PCIe Gen3 Communication Latency:
    - TP: 56 All-Reduces per decode token (2 per layer x 28 layers).
    - PP: 1 Boundary Activation Transfer per decode token.
-2. End-to-End Decode Throughput (tok/s) and Latency (ms/token).
+2. End-to-End Decode Throughput (tok/s) and Latency (ms/token) derived solely from live execution.
 3. Peak Memory Footprint per GPU for Qwen2.5-Math-7B (D=3584, Intermediate=18944, Layers=28).
-4. Emits empirical comparison report with concrete architectural recommendation.
+4. Emits empirical comparison report with live architectural recommendation.
 """
 
 import argparse
@@ -21,13 +21,24 @@ import time
 from typing import Dict, Any, List
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, REPO_ROOT)
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import torch
 import torch.nn as nn
-from src.sharding.comm import check_dual_gpu, is_cuda_available, measure_all_reduce_latency, measure_pcie_bandwidth
-from src.sharding.tp import TPColumnParallelLinear, TPRowParallelLinear
-from src.sharding.pp import PipelineParallelQwen2
+from src.sharding.comm import (
+    check_dual_gpu,
+    is_cuda_available,
+    all_reduce_dual_inplace,
+    p2p_transfer,
+)
+from src.sharding.tp import (
+    TPColumnParallelLinear,
+    TPRowParallelLinear,
+    TPParallelAttention,
+    TPParallelMLP,
+)
+from src.sharding.pp import PipelineStage, PipelineParallelQwen2
 
 
 def parse_args():
@@ -51,8 +62,6 @@ def benchmark_pcie_transfers(devices: List[torch.device], hidden_size: int, is_d
             "boundary_p2p_latency_us": None,
             "pcie_bandwidth_gb_s": None,
         }
-
-    from src.sharding.comm import all_reduce_dual_inplace
 
     # 1. Measure All-Reduce latency for a single decode token vector [1, hidden_size] (FP16)
     ar_tensor_0 = torch.randn(1, hidden_size, dtype=torch.float16, device=devices[0])
@@ -132,7 +141,7 @@ def main():
         print(f"  Architectural comm operations: TP={tp_comms_per_token} All-Reduces/token, PP={pp_comms_per_token} P2P Transfer/token")
         comm_stats = benchmark_pcie_transfers([], args.hidden_size, is_dry_run=True)
         results = {
-            "status": "SKIPPED: Dual CUDA GPUs absent (run on physical dual T4 for live timings)",
+            "status": "SKIPPED: Dual CUDA GPUs absent",
             "has_dual_cuda": False,
             "num_layers": args.num_layers,
             "hidden_size": args.hidden_size,
@@ -154,9 +163,9 @@ def main():
                 "peak_vram_per_gpu_gb": None,
             },
             "recommendation": {
-                "single_token_decode_winner": "pp",
-                "batched_prefill_winner": "tp",
-                "hybrid_strategy": "Pipeline Parallelism (PP=2) for autoregressive single-token decode to bypass 56 PCIe All-Reduce synchronization stalls; Tensor Parallelism (TP=2) for high-batch training and prefill phases.",
+                "single_token_decode_winner": None,
+                "batched_prefill_winner": None,
+                "hybrid_strategy": None,
             }
         }
         if args.output_file:
@@ -175,31 +184,256 @@ def main():
     print(f"  Boundary P2P Latency (per call): {comm_stats['boundary_p2p_latency_us']:.2f} µs")
     print(f"  Measured PCIe Bandwidth: {comm_stats['pcie_bandwidth_gb_s']:.2f} GB/s")
 
-    # Calculate cumulative communication tax per decode token across 28 layers:
-    tp_comm_tax_ms = (tp_comms_per_token * comm_stats["all_reduce_latency_us"]) / 1000.0
-    pp_comm_tax_ms = comm_stats["boundary_p2p_latency_us"] / 1000.0
+    # --------------------------------------------------------------------------
+    # 2. Live Tensor Parallelism (TP=2) Execution
+    # --------------------------------------------------------------------------
+    print("\n[Instantiating Live TP=2 Modules (TPParallelAttention + TPParallelMLP)]")
+    torch.cuda.reset_peak_memory_stats(devices[0])
+    torch.cuda.reset_peak_memory_stats(devices[1])
 
-    print("\n[Per-Token Communication Overhead on 28 Layers]")
-    print(f"  TP (56 All-Reduces / token): {tp_comm_tax_ms:.3f} ms/token ({tp_comm_tax_ms * 1000:.1f} µs)")
-    print(f"  PP (1 P2P Transfer / token): {pp_comm_tax_ms:.3f} ms/token ({pp_comm_tax_ms * 1000:.1f} µs)")
-    if pp_comm_tax_ms > 0:
-        print(f"  Communication Efficiency Delta: PP eliminates {(tp_comm_tax_ms - pp_comm_tax_ms):.3f} ms of PCIe stall per token ({tp_comm_tax_ms / pp_comm_tax_ms:.1f}x less comm)")
+    head_dim = args.hidden_size // 28
+    tp_attn_0 = TPParallelAttention(
+        hidden_size=args.hidden_size,
+        num_heads=28,
+        num_kv_heads=4,
+        head_dim=head_dim,
+        rank=0,
+        world_size=2,
+        dtype=torch.float16,
+        device=devices[0],
+        all_reduce=False,
+    )
+    tp_mlp_0 = TPParallelMLP(
+        hidden_size=args.hidden_size,
+        intermediate_size=args.intermediate_size,
+        rank=0,
+        world_size=2,
+        quant_type="int4",
+        group_size=128,
+        dtype=torch.float16,
+        device=devices[0],
+        all_reduce=False,
+    )
 
-    # 2. Simulated / Measured Decode Step
+    tp_attn_1 = TPParallelAttention(
+        hidden_size=args.hidden_size,
+        num_heads=28,
+        num_kv_heads=4,
+        head_dim=head_dim,
+        rank=1,
+        world_size=2,
+        dtype=torch.float16,
+        device=devices[1],
+        all_reduce=False,
+    )
+    tp_mlp_1 = TPParallelMLP(
+        hidden_size=args.hidden_size,
+        intermediate_size=args.intermediate_size,
+        rank=1,
+        world_size=2,
+        quant_type="int4",
+        group_size=128,
+        dtype=torch.float16,
+        device=devices[1],
+        all_reduce=False,
+    )
+
+    x_tp_0 = torch.randn(1, args.hidden_size, dtype=torch.float16, device=devices[0])
+    x_tp_1 = torch.randn(1, args.hidden_size, dtype=torch.float16, device=devices[1])
+
+    # Warmup
+    for _ in range(args.warmup_steps):
+        attn_out_0 = tp_attn_0(x_tp_0)
+        attn_out_1 = tp_attn_1(x_tp_1)
+        all_reduce_dual_inplace(attn_out_0, attn_out_1)
+        x_tp_0 = x_tp_0 + attn_out_0
+        x_tp_1 = x_tp_1 + attn_out_1
+
+        mlp_out_0 = tp_mlp_0(x_tp_0)
+        mlp_out_1 = tp_mlp_1(x_tp_1)
+        all_reduce_dual_inplace(mlp_out_0, mlp_out_1)
+        x_tp_0 = x_tp_0 + mlp_out_0
+        x_tp_1 = x_tp_1 + mlp_out_1
+
     torch.cuda.synchronize(devices[0])
     torch.cuda.synchronize(devices[1])
-    tp_vram_gb = round(torch.cuda.max_memory_allocated(devices[0]) / (1024**3), 2)
-    pp_vram_gb = round(torch.cuda.max_memory_allocated(devices[1]) / (1024**3), 2)
 
-    compute_per_layer_ms = 0.45
-    tp_compute_ms = compute_per_layer_ms * args.num_layers * 0.65
-    pp_compute_ms = compute_per_layer_ms * args.num_layers
+    tp_compute_latencies_ms = []
+    tp_comm_latencies_ms = []
+    tp_step_latencies_ms = []
 
-    tp_total_step_ms = tp_compute_ms + tp_comm_tax_ms
-    pp_total_step_ms = pp_compute_ms + pp_comm_tax_ms
+    start_total = torch.cuda.Event(enable_timing=True)
+    end_total = torch.cuda.Event(enable_timing=True)
+    start_attn = torch.cuda.Event(enable_timing=True)
+    end_attn = torch.cuda.Event(enable_timing=True)
+    start_ar1 = torch.cuda.Event(enable_timing=True)
+    end_ar1 = torch.cuda.Event(enable_timing=True)
+    start_mlp = torch.cuda.Event(enable_timing=True)
+    end_mlp = torch.cuda.Event(enable_timing=True)
+    start_ar2 = torch.cuda.Event(enable_timing=True)
+    end_ar2 = torch.cuda.Event(enable_timing=True)
 
-    tp_tok_s = 1000.0 / tp_total_step_ms
-    pp_tok_s = 1000.0 / pp_total_step_ms
+    stream_0 = torch.cuda.current_stream(devices[0])
+
+    for _ in range(args.measure_steps):
+        start_total.record(stream_0)
+
+        # 1. Attention forward
+        start_attn.record(stream_0)
+        attn_out_0 = tp_attn_0(x_tp_0)
+        attn_out_1 = tp_attn_1(x_tp_1)
+        end_attn.record(stream_0)
+
+        # 2. Attention All-Reduce
+        start_ar1.record(stream_0)
+        all_reduce_dual_inplace(attn_out_0, attn_out_1)
+        end_ar1.record(stream_0)
+
+        x_tp_0 = x_tp_0 + attn_out_0
+        x_tp_1 = x_tp_1 + attn_out_1
+
+        # 3. MLP forward
+        start_mlp.record(stream_0)
+        mlp_out_0 = tp_mlp_0(x_tp_0)
+        mlp_out_1 = tp_mlp_1(x_tp_1)
+        end_mlp.record(stream_0)
+
+        # 4. MLP All-Reduce
+        start_ar2.record(stream_0)
+        all_reduce_dual_inplace(mlp_out_0, mlp_out_1)
+        end_ar2.record(stream_0)
+
+        x_tp_0 = x_tp_0 + mlp_out_0
+        x_tp_1 = x_tp_1 + mlp_out_1
+
+        end_total.record(stream_0)
+        torch.cuda.synchronize(devices[0])
+        torch.cuda.synchronize(devices[1])
+
+        c_ms = start_attn.elapsed_time(end_attn) + start_mlp.elapsed_time(end_mlp)
+        comm_ms = start_ar1.elapsed_time(end_ar1) + start_ar2.elapsed_time(end_ar2)
+        total_ms = start_total.elapsed_time(end_total)
+
+        tp_compute_latencies_ms.append(c_ms)
+        tp_comm_latencies_ms.append(comm_ms)
+        tp_step_latencies_ms.append(total_ms)
+
+    tp_compute_latencies_ms.sort()
+    tp_comm_latencies_ms.sort()
+    tp_step_latencies_ms.sort()
+
+    tp_layer_compute_ms = float(tp_compute_latencies_ms[len(tp_compute_latencies_ms) // 2])
+    tp_layer_comm_ms = float(tp_comm_latencies_ms[len(tp_comm_latencies_ms) // 2])
+    tp_layer_total_ms = float(tp_step_latencies_ms[len(tp_step_latencies_ms) // 2])
+
+    tp_live_compute_ms = tp_layer_compute_ms * args.num_layers
+    tp_comm_tax_ms = tp_layer_comm_ms * args.num_layers
+    tp_total_step_ms = tp_layer_total_ms * args.num_layers
+    tp_tok_s = (1000.0 / tp_total_step_ms) if tp_total_step_ms > 0 else 0.0
+    tp_vram_gb = round(max(torch.cuda.max_memory_allocated(devices[0]), torch.cuda.max_memory_allocated(devices[1])) / (1024**3), 2)
+
+    # Clean up TP modules before PP to measure PP VRAM honestly
+    del tp_attn_0, tp_attn_1, tp_mlp_0, tp_mlp_1, x_tp_0, x_tp_1, attn_out_0, attn_out_1, mlp_out_0, mlp_out_1
+    torch.cuda.empty_cache()
+
+    # --------------------------------------------------------------------------
+    # 3. Live Pipeline Parallelism (PP=2) Execution
+    # --------------------------------------------------------------------------
+    print("\n[Instantiating Live PP=2 Modules (PipelineParallelQwen2)]")
+    torch.cuda.reset_peak_memory_stats(devices[0])
+    torch.cuda.reset_peak_memory_stats(devices[1])
+
+    pp_model = PipelineParallelQwen2(
+        num_layers=args.num_layers,
+        hidden_size=args.hidden_size,
+        vocab_size=args.vocab_size,
+        split_layer=args.num_layers // 2,
+        devices=devices,
+        dtype=torch.float16,
+    )
+
+    input_ids = torch.randint(0, 1000, (1, 1), device=devices[0])
+
+    # Warmup
+    for _ in range(args.warmup_steps):
+        _ = pp_model(input_ids)
+    torch.cuda.synchronize(devices[0])
+    torch.cuda.synchronize(devices[1])
+
+    pp_stage0_latencies_ms = []
+    pp_comm_latencies_ms = []
+    pp_stage1_latencies_ms = []
+    pp_step_latencies_ms = []
+
+    start_pp_total = torch.cuda.Event(enable_timing=True)
+    end_pp_total = torch.cuda.Event(enable_timing=True)
+    start_s0 = torch.cuda.Event(enable_timing=True)
+    end_s0 = torch.cuda.Event(enable_timing=True)
+    start_p2p = torch.cuda.Event(enable_timing=True)
+    end_p2p = torch.cuda.Event(enable_timing=True)
+    start_s1 = torch.cuda.Event(enable_timing=True)
+    end_s1 = torch.cuda.Event(enable_timing=True)
+
+    stream_s0 = torch.cuda.current_stream(devices[0])
+    stream_s1 = torch.cuda.current_stream(devices[1])
+
+    for _ in range(args.measure_steps):
+        torch.cuda.synchronize(devices[0])
+        torch.cuda.synchronize(devices[1])
+
+        start_pp_total.record(stream_s0)
+
+        # Stage 0 forward on devices[0]
+        start_s0.record(stream_s0)
+        h_stage0, _ = pp_model.stage0(input_ids)
+        end_s0.record(stream_s0)
+
+        # P2P Boundary transfer across PCIe
+        start_p2p.record(stream_s0)
+        h_boundary = p2p_transfer(h_stage0, dst_device=devices[1])
+        end_p2p.record(stream_s1)
+
+        # Stage 1 forward on devices[1]
+        start_s1.record(stream_s1)
+        logits, _ = pp_model.stage1(h_boundary)
+        end_s1.record(stream_s1)
+
+        end_pp_total.record(stream_s1)
+        torch.cuda.synchronize(devices[0])
+        torch.cuda.synchronize(devices[1])
+
+        s0_ms = start_s0.elapsed_time(end_s0)
+        p2p_ms = start_p2p.elapsed_time(end_p2p)
+        s1_ms = start_s1.elapsed_time(end_s1)
+        total_pp_ms = start_pp_total.elapsed_time(end_pp_total)
+
+        pp_stage0_latencies_ms.append(s0_ms)
+        pp_comm_latencies_ms.append(p2p_ms)
+        pp_stage1_latencies_ms.append(s1_ms)
+        pp_step_latencies_ms.append(total_pp_ms)
+
+    pp_stage0_latencies_ms.sort()
+    pp_comm_latencies_ms.sort()
+    pp_stage1_latencies_ms.sort()
+    pp_step_latencies_ms.sort()
+
+    s0_median_ms = float(pp_stage0_latencies_ms[len(pp_stage0_latencies_ms) // 2])
+    p2p_median_ms = float(pp_comm_latencies_ms[len(pp_comm_latencies_ms) // 2])
+    s1_median_ms = float(pp_stage1_latencies_ms[len(pp_stage1_latencies_ms) // 2])
+    pp_total_step_ms = float(pp_step_latencies_ms[len(pp_step_latencies_ms) // 2])
+
+    pp_live_compute_ms = s0_median_ms + s1_median_ms
+    pp_comm_tax_ms = p2p_median_ms
+    pp_tok_s = (1000.0 / pp_total_step_ms) if pp_total_step_ms > 0 else 0.0
+    pp_vram_gb = round(max(torch.cuda.max_memory_allocated(devices[0]), torch.cuda.max_memory_allocated(devices[1])) / (1024**3), 2)
+
+    decode_winner = "pp" if pp_tok_s > tp_tok_s else "tp"
+    hybrid_strategy_text = (
+        f"Pipeline Parallelism (PP=2) achieved {pp_tok_s:.1f} tok/s vs TP=2 {tp_tok_s:.1f} tok/s; "
+        f"PP bypasses {tp_comms_per_token} All-Reduce PCIe synchronization stalls for single-token decode."
+        if decode_winner == "pp" else
+        f"Tensor Parallelism (TP=2) achieved {tp_tok_s:.1f} tok/s vs PP=2 {pp_tok_s:.1f} tok/s."
+    )
 
     results = {
         "status": "COMPLETED",
@@ -210,7 +444,7 @@ def main():
         "tensor_parallelism": {
             "all_reduces_per_token": tp_comms_per_token,
             "comm_latency_ms": round(tp_comm_tax_ms, 3),
-            "compute_latency_ms": round(tp_compute_ms, 3),
+            "compute_latency_ms": round(tp_live_compute_ms, 3),
             "total_step_latency_ms": round(tp_total_step_ms, 3),
             "throughput_tok_s": round(tp_tok_s, 1),
             "peak_vram_per_gpu_gb": tp_vram_gb,
@@ -218,15 +452,15 @@ def main():
         "pipeline_parallelism": {
             "p2p_transfers_per_token": pp_comms_per_token,
             "comm_latency_ms": round(pp_comm_tax_ms, 3),
-            "compute_latency_ms": round(pp_compute_ms, 3),
+            "compute_latency_ms": round(pp_live_compute_ms, 3),
             "total_step_latency_ms": round(pp_total_step_ms, 3),
             "throughput_tok_s": round(pp_tok_s, 1),
             "peak_vram_per_gpu_gb": pp_vram_gb,
         },
         "recommendation": {
-            "single_token_decode_winner": "pp" if pp_tok_s > tp_tok_s else "tp",
+            "single_token_decode_winner": decode_winner,
             "batched_prefill_winner": "tp",
-            "hybrid_strategy": "Pipeline Parallelism (PP=2) for autoregressive single-token decode to bypass 56 PCIe All-Reduce synchronization stalls; Tensor Parallelism (TP=2) for high-batch training and prefill phases.",
+            "hybrid_strategy": hybrid_strategy_text,
         }
     }
 
@@ -235,13 +469,14 @@ def main():
     print(f"  TP Throughput: {results['tensor_parallelism']['throughput_tok_s']} tok/s (Latency: {results['tensor_parallelism']['total_step_latency_ms']} ms/tok)")
     print(f"  PP Throughput: {results['pipeline_parallelism']['throughput_tok_s']} tok/s (Latency: {results['pipeline_parallelism']['total_step_latency_ms']} ms/tok)")
     print(f"  Peak VRAM per GPU: TP ~{tp_vram_gb} GB | PP ~{pp_vram_gb} GB")
-    print(f"  Verdict: {results['recommendation']['hybrid_strategy']}")
+    print(f"  Verdict: {hybrid_strategy_text}")
     print("=" * 75 + "\n")
 
-    os.makedirs(os.path.dirname(os.path.abspath(args.output_file)), exist_ok=True)
-    with open(args.output_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
-    print(f"Results saved to: {args.output_file}")
+    if args.output_file:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output_file)), exist_ok=True)
+        with open(args.output_file, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        print(f"Results saved to: {args.output_file}")
 
 
 if __name__ == "__main__":

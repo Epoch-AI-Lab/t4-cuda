@@ -29,12 +29,20 @@ def test_pp_boundary_activation_shape():
 
 
 def test_pp_forward_execution_parity():
-    """Verify output logits are non-zero, finite, and match expected shape."""
+    """Verify output logits are non-zero, finite, match expected shape, and match sequential composition."""
     pp = PipelineParallelQwen2(num_layers=2, hidden_size=64, vocab_size=50, dtype=torch.float32)
     inp = torch.randint(0, 50, (1, 16))
     out = pp(inp)
     assert torch.isfinite(out).all()
     assert not torch.isnan(out).any()
+    assert out.shape == (1, 16, 50)
+    assert out.abs().sum() > 0
+
+    # Verify numerical parity against sequential stage composition
+    h0, _ = pp.stage0(inp)
+    h1, _ = pp.stage1(h0)
+    rel_err = (torch.linalg.norm(out - h1) / (torch.linalg.norm(h1) + 1e-7)).item()
+    assert rel_err <= 1e-4, f"Pipeline output mismatch vs stage composition: {rel_err}"
 
 
 def test_scope_invalid_mode_raises():
@@ -98,7 +106,7 @@ def test_scope_pp_lifecycle():
     assert not scope.is_active
 
 
-@pytest.mark.skipif(not (is_cuda_available() and check_dual_gpu()), reason="Requires dual CUDA GPUs")
+@pytest.mark.skipif(not (is_cuda_available() and check_dual_gpu()[0]), reason="Requires dual CUDA GPUs")
 def test_dual_gpu_pp_execution():
     """Execute PP pipeline across physical dual GPUs."""
     pp = PipelineParallelQwen2(

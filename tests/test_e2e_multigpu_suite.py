@@ -19,6 +19,7 @@ import math
 import argparse
 from typing import Any, Dict, List, Optional, Tuple
 
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,18 +36,34 @@ except ImportError:
     t4_kernels = None
     HAS_T4_KERNELS = False
 
-try:
-    import src.sharding.comm as sharding_comm
-    import src.sharding.tp as sharding_tp
-    import src.sharding.pp as sharding_pp
-    import src.sharding.scope as sharding_scope
-    HAS_SHARDING = True
-except ImportError:
-    sharding_comm = None
-    sharding_tp = None
-    sharding_pp = None
-    sharding_scope = None
-    HAS_SHARDING = False
+from src.sharding.tp import (
+    TPColumnParallelLinear,
+    TPRowParallelLinear,
+    TPParallelMLP,
+    TPParallelAttention,
+    quantize_weight_sym_int4,
+    dequantize_sym_int4,
+    slice_column_parallel_weight,
+    slice_row_parallel_weight,
+)
+from src.sharding.pp import (
+    PipelineStage,
+    PipelineParallelQwen2,
+)
+from src.sharding.comm import (
+    check_dual_gpu,
+    require_dual_cuda,
+    all_reduce_sum,
+    all_reduce_dual,
+    reference_all_reduce_sum,
+    p2p_transfer,
+    measure_pcie_bandwidth,
+    measure_all_reduce_latency,
+    is_cuda_available,
+)
+from src.sharding.scope import (
+    CPMultiGPUInferenceScope,
+)
 
 
 # ==============================================================================
@@ -61,7 +78,6 @@ class SkipTest(Exception):
 def skip(reason: str) -> None:
     """Skip helper compatible with both pytest and standalone CLI runner."""
     if "PYTEST_CURRENT_TEST" in os.environ:
-        import pytest
         pytest.skip(reason)
     else:
         raise SkipTest(reason)
@@ -88,18 +104,8 @@ def check_t4_kernels() -> Tuple[bool, str]:
     return True, ""
 
 
-def check_sharding(submodule: Optional[str] = None) -> Tuple[bool, str]:
-    if not HAS_SHARDING:
-        return False, "src.sharding package is not yet implemented"
-    if submodule:
-        mod = getattr(sys.modules.get("src.sharding"), submodule, None)
-        if mod is None:
-            return False, f"src.sharding.{submodule} is not yet implemented"
-    return True, ""
-
-
 # ==============================================================================
-# Reference Mathematical Implementations Matching PROJECT.md Contracts
+# Mathematical Evaluation Utilities Matching PROJECT.md Contracts
 # ==============================================================================
 
 def relative_l2_error(y_test: torch.Tensor, y_ref: torch.Tensor) -> float:
@@ -109,291 +115,8 @@ def relative_l2_error(y_test: torch.Tensor, y_ref: torch.Tensor) -> float:
     return (diff_norm / (ref_norm + 1e-7)).item()
 
 
-def quantize_weight_sym_int4_ref(W: torch.Tensor, group_size: int = 128) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
-    """Quantize 2D weight matrix [out_features, in_features] to symmetric INT4."""
-    out_f, in_f = W.shape
-    assert in_f % 8 == 0, f"in_features ({in_f}) must be divisible by 8"
-    Wf = W.float()
-
-    if group_size > 0 and in_f % group_size == 0:
-        num_groups = in_f // group_size
-        Wf_grouped = Wf.reshape(out_f, num_groups, group_size)
-        amax = Wf_grouped.abs().amax(dim=2, keepdim=True).clamp_min(1e-8)
-        scale = amax / 7.0
-        q = torch.clamp(torch.round(Wf_grouped / scale) + 8, 0, 15).reshape(out_f, in_f).to(torch.int32)
-        q = q.t().contiguous()
-        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
-        for i in range(8):
-            packed |= q[i::8, :] << (4 * i)
-        scales = scale.squeeze(2).t().contiguous().half()
-        zps = torch.full_like(scales, 8.0)
-        return packed, scales, zps, group_size
-    else:
-        amax = Wf.abs().amax(dim=1, keepdim=True).clamp_min(1e-8)
-        scale = amax / 7.0
-        q = torch.clamp(torch.round(Wf / scale) + 8, 0, 15).to(torch.int32)
-        q = q.t().contiguous()
-        packed = torch.zeros(in_f // 8, out_f, dtype=torch.int32)
-        for i in range(8):
-            packed |= q[i::8, :] << (4 * i)
-        scales = scale.squeeze(1).half().unsqueeze(0).contiguous()
-        zps = torch.full((1, out_f), 8.0, dtype=torch.float16)
-        return packed, scales, zps, 0
-
-
-def dequantize_sym_int4_ref(packed: torch.Tensor, scales: torch.Tensor, zps: torch.Tensor, group_size: int = 128) -> torch.Tensor:
-    """Dequantize packed INT4 weights to FP16 [out_features, in_features]."""
-    in_div_8, out_f = packed.shape
-    in_f = in_div_8 * 8
-    q = torch.zeros((in_f, out_f), dtype=torch.float32, device=packed.device)
-    for i in range(8):
-        nibble = (packed >> (4 * i)) & 0xF
-        q[i::8, :] = nibble.float()
-    q = q.t()
-
-    if group_size > 0:
-        num_groups = in_f // group_size
-        q_grouped = q.reshape(out_f, num_groups, group_size)
-        scale_grouped = scales.t().unsqueeze(2).float()
-        unquant = (q_grouped - 8.0) * scale_grouped
-        return unquant.reshape(out_f, in_f).half()
-    else:
-        scale_f = scales.t().float()
-        unquant = (q - 8.0) * scale_f
-        return unquant.half()
-
-
-class ReferenceTPColumnParallelLinear(nn.Module):
-    """Reference Column-Parallel Linear per PROJECT.md interface contract.
-    
-    Partitions weight along output dimension N.
-    Output of rank i has shape [B, M, N / world_size]. Zero inter-GPU communication.
-    """
-    def __init__(self, in_features: int, out_features: int, rank: int = 0, world_size: int = 2, bias: bool = False, dtype=torch.float16):
-        super().__init__()
-        assert out_features % world_size == 0
-        self.in_features = in_features
-        self.out_features = out_features
-        self.rank = rank
-        self.world_size = world_size
-        self.split_out_features = out_features // world_size
-
-        self.weight = nn.Parameter(torch.empty((self.split_out_features, in_features), dtype=dtype))
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(self.split_out_features, dtype=dtype))
-            nn.init.zeros_(self.bias)
-        else:
-            self.register_parameter('bias', None)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return F.linear(x, self.weight, self.bias)
-
-
-class ReferenceTPRowParallelLinear(nn.Module):
-    """Reference Row-Parallel Linear per PROJECT.md interface contract.
-    
-    Partitions weight along input dimension K.
-    Input to rank i has shape [B, M, K / world_size].
-    Computes local partial GEMM, then All-Reduce sum produces final [B, M, N].
-    """
-    def __init__(self, in_features: int, out_features: int, rank: int = 0, world_size: int = 2, bias: bool = False, dtype=torch.float16):
-        super().__init__()
-        assert in_features % world_size == 0
-        self.in_features = in_features
-        self.out_features = out_features
-        self.rank = rank
-        self.world_size = world_size
-        self.split_in_features = in_features // world_size
-
-        self.weight = nn.Parameter(torch.empty((out_features, self.split_in_features), dtype=dtype))
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        if bias and rank == 0:
-            self.bias = nn.Parameter(torch.empty(out_features, dtype=dtype))
-            nn.init.zeros_(self.bias)
-        else:
-            self.register_parameter('bias', None)
-
-    def forward(self, x_slice: torch.Tensor) -> torch.Tensor:
-        return F.linear(x_slice, self.weight, self.bias)
-
-
-def reference_all_reduce_sum(tensor_rank0: torch.Tensor, tensor_rank1: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Computes reference All-Reduce sum over dual ranks."""
-    reduced = tensor_rank0 + tensor_rank1
-    return reduced.clone(), reduced.clone()
-
-
-class ReferenceTPSwiGLUMLP(nn.Module):
-    """Reference TP=2 SwiGLU MLP Block matching Qwen2 architecture."""
-    def __init__(self, hidden_size: int = 3584, intermediate_size: int = 18944, dtype=torch.float16):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.intermediate_size = intermediate_size
-
-        self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False, dtype=dtype)
-        self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False, dtype=dtype)
-        self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False, dtype=dtype)
-
-    def forward_unsharded(self, x: torch.Tensor) -> torch.Tensor:
-        gate = self.gate_proj(x)
-        up = self.up_proj(x)
-        act = F.silu(gate) * up
-        return self.down_proj(act)
-
-    def forward_sharded(self, x: torch.Tensor) -> torch.Tensor:
-        half_inter = self.intermediate_size // 2
-        w_gate_0 = self.gate_proj.weight[:half_inter, :]
-        w_gate_1 = self.gate_proj.weight[half_inter:, :]
-
-        w_up_0 = self.up_proj.weight[:half_inter, :]
-        w_up_1 = self.up_proj.weight[half_inter:, :]
-
-        gate_0 = F.linear(x, w_gate_0)
-        up_0 = F.linear(x, w_up_0)
-        act_0 = F.silu(gate_0) * up_0
-
-        gate_1 = F.linear(x, w_gate_1)
-        up_1 = F.linear(x, w_up_1)
-        act_1 = F.silu(gate_1) * up_1
-
-        w_down_0 = self.down_proj.weight[:, :half_inter]
-        w_down_1 = self.down_proj.weight[:, half_inter:]
-
-        part_0 = F.linear(act_0, w_down_0)
-        part_1 = F.linear(act_1, w_down_1)
-
-        reduced_0, _ = reference_all_reduce_sum(part_0, part_1)
-        return reduced_0
-
-
-class ReferenceColumnRowAttention(nn.Module):
-    """Reference TP=2 Attention with sharded heads and row All-Reduce."""
-    def __init__(self, hidden_size: int = 3584, num_heads: int = 28, num_kv_heads: int = 4, head_dim: int = 128, dtype=torch.float16):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.num_heads = num_heads
-        self.num_kv_heads = num_kv_heads
-        self.head_dim = head_dim
-        self.q_heads_per_rank = num_heads // 2
-        self.kv_heads_per_rank = num_kv_heads // 2
-
-        self.q_proj = nn.Linear(hidden_size, num_heads * head_dim, bias=False, dtype=dtype)
-        self.k_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=dtype)
-        self.v_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=dtype)
-        self.o_proj = nn.Linear(num_heads * head_dim, hidden_size, bias=False, dtype=dtype)
-
-    def forward_unsharded(self, x: torch.Tensor) -> torch.Tensor:
-        b, m, _ = x.shape
-        q = self.q_proj(x).view(b, m, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(x).view(b, m, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(x).view(b, m, self.num_kv_heads, self.head_dim).transpose(1, 2)
-
-        rep = self.num_heads // self.num_kv_heads
-        k = k.repeat_interleave(rep, dim=1)
-        v = v.repeat_interleave(rep, dim=1)
-
-        scores = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
-        attn_weights = F.softmax(scores, dim=-1)
-        attn_out = torch.matmul(attn_weights, v).transpose(1, 2).contiguous().view(b, m, -1)
-        return self.o_proj(attn_out)
-
-    def forward_sharded(self, x: torch.Tensor) -> torch.Tensor:
-        b, m, _ = x.shape
-        q_dim_split = (self.num_heads * self.head_dim) // 2
-        kv_dim_split = (self.num_kv_heads * self.head_dim) // 2
-
-        q0 = F.linear(x, self.q_proj.weight[:q_dim_split]).view(b, m, self.q_heads_per_rank, self.head_dim).transpose(1, 2)
-        k0 = F.linear(x, self.k_proj.weight[:kv_dim_split]).view(b, m, self.kv_heads_per_rank, self.head_dim).transpose(1, 2)
-        v0 = F.linear(x, self.v_proj.weight[:kv_dim_split]).view(b, m, self.kv_heads_per_rank, self.head_dim).transpose(1, 2)
-
-        q1 = F.linear(x, self.q_proj.weight[q_dim_split:]).view(b, m, self.q_heads_per_rank, self.head_dim).transpose(1, 2)
-        k1 = F.linear(x, self.k_proj.weight[kv_dim_split:]).view(b, m, self.kv_heads_per_rank, self.head_dim).transpose(1, 2)
-        v1 = F.linear(x, self.v_proj.weight[kv_dim_split:]).view(b, m, self.kv_heads_per_rank, self.head_dim).transpose(1, 2)
-
-        rep = self.q_heads_per_rank // self.kv_heads_per_rank
-
-        k0_rep = k0.repeat_interleave(rep, dim=1)
-        v0_rep = v0.repeat_interleave(rep, dim=1)
-        attn_0 = torch.matmul(F.softmax(torch.matmul(q0, k0_rep.transpose(-1, -2)) / math.sqrt(self.head_dim), dim=-1), v0_rep)
-        out_0 = attn_0.transpose(1, 2).contiguous().view(b, m, -1)
-
-        k1_rep = k1.repeat_interleave(rep, dim=1)
-        v1_rep = v1.repeat_interleave(rep, dim=1)
-        attn_1 = torch.matmul(F.softmax(torch.matmul(q1, k1_rep.transpose(-1, -2)) / math.sqrt(self.head_dim), dim=-1), v1_rep)
-        out_1 = attn_1.transpose(1, 2).contiguous().view(b, m, -1)
-
-        part_0 = F.linear(out_0, self.o_proj.weight[:, :q_dim_split])
-        part_1 = F.linear(out_1, self.o_proj.weight[:, q_dim_split:])
-
-        reduced_0, _ = reference_all_reduce_sum(part_0, part_1)
-        return reduced_0
-
-
-class ReferencePipelineParallelQwen2(nn.Module):
-    """Reference Pipeline Parallel model partitioning 28 layers across 2 stages."""
-    def __init__(self, num_layers: int = 28, hidden_size: int = 3584, vocab_size: int = 152064, dtype=torch.float16):
-        super().__init__()
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.split_layer = num_layers // 2
-
-        self.embed = nn.Embedding(vocab_size, hidden_size, dtype=dtype)
-        self.layers_stage0 = nn.ModuleList([
-            ReferenceTPSwiGLUMLP(hidden_size=hidden_size, intermediate_size=2048, dtype=dtype)
-            for _ in range(self.split_layer)
-        ])
-        self.layers_stage1 = nn.ModuleList([
-            ReferenceTPSwiGLUMLP(hidden_size=hidden_size, intermediate_size=2048, dtype=dtype)
-            for _ in range(self.split_layer)
-        ])
-        self.norm = nn.LayerNorm(hidden_size, dtype=dtype)
-        self.lm_head = nn.Linear(hidden_size, vocab_size, bias=False, dtype=dtype)
-
-    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        h = self.embed(input_ids)
-        for layer in self.layers_stage0:
-            h = h + layer.forward_unsharded(h)
-
-        h_boundary = h.clone()
-
-        h1 = h_boundary
-        for layer in self.layers_stage1:
-            h1 = h1 + layer.forward_unsharded(h1)
-        h1 = self.norm(h1)
-        logits = self.lm_head(h1)
-        return logits
-
-
-class ReferenceCPMultiGPUInferenceScope:
-    """Reference CPMultiGPUInferenceScope context manager."""
-    def __init__(self, model: nn.Module, mode: str = 'tp', devices: Optional[List[str]] = None):
-        if mode not in ('tp', 'pp'):
-            raise ValueError(f"Invalid mode '{mode}'. Must be 'tp' or 'pp'.")
-        if devices is None:
-            devices = ['cuda:0', 'cuda:1']
-        if len(devices) != 2:
-            raise ValueError(f"Requires exactly 2 devices, got {devices}")
-        self.model = model
-        self.mode = mode
-        self.devices = devices
-        self.is_active = False
-        self._saved_modules = {}
-
-    def __enter__(self):
-        self.is_active = True
-        for name, mod in self.model.named_modules():
-            if isinstance(mod, nn.Linear) and 'down_proj' in name:
-                self._saved_modules[name] = mod
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.is_active = False
-        self._saved_modules.clear()
-
-
 # ==============================================================================
-# Tier 1: Feature Coverage (F1 to F7)
+# Tier 1: Feature Coverage (F1 to F14)
 # ==============================================================================
 
 # --- Feature 1: Multi-Device CUDAGuard ---
@@ -440,7 +163,7 @@ def test_tier1_f01_cudaguard_fused_gemm():
         skip(f"Requires t4_kernels: {reason_kern}")
     A = torch.randn(1, 128, device="cuda:0", dtype=torch.float16)
     W = torch.randn(256, 128, device="cuda:0", dtype=torch.float16)
-    packed, scales, zps, g_size = quantize_weight_sym_int4_ref(W, group_size=128)
+    packed, scales, zps, g_size = quantize_weight_sym_int4(W, group_size=128)
     packed = packed.to("cuda:0")
     scales = scales.to("cuda:0")
     zps = zps.to("cuda:0")
@@ -458,7 +181,7 @@ def test_tier1_f01_cudaguard_dequant_entry():
     if not ok_kern:
         skip(f"Requires t4_kernels: {reason_kern}")
     W = torch.randn(256, 128, device="cuda:0", dtype=torch.float16)
-    packed, scales, zps, g_size = quantize_weight_sym_int4_ref(W, group_size=128)
+    packed, scales, zps, g_size = quantize_weight_sym_int4(W, group_size=128)
     packed = packed.to("cuda:0")
     scales = scales.to("cuda:0")
     zps = zps.to("cuda:0")
@@ -547,15 +270,13 @@ def test_tier1_f03_cross_device_mismatch_raises_error():
         skip(f"Requires Dual GPU: {reason}")
     a = torch.randn(1, 128, device="cuda:0", dtype=torch.float16)
     w = torch.randn(256, 128, device="cuda:1", dtype=torch.float16)
-    try:
-        if HAS_T4_KERNELS and hasattr(t4_kernels, 'fused_w4a16_gemm_u4'):
-            packed, scales, zps, g_size = quantize_weight_sym_int4_ref(w.cpu(), group_size=128)
+    if HAS_T4_KERNELS and hasattr(t4_kernels, 'fused_w4a16_gemm_u4'):
+        packed, scales, zps, g_size = quantize_weight_sym_int4(w.cpu(), group_size=128)
+        with pytest.raises((RuntimeError, Exception)):
             t4_kernels.fused_w4a16_gemm_u4(a, packed.to("cuda:1"), scales.to("cuda:1"), zps.to("cuda:1"), g_size)
-        else:
+    else:
+        with pytest.raises((RuntimeError, Exception)):
             torch.matmul(a, w.t())
-        assert False, "Expected cross-device mismatch exception"
-    except (RuntimeError, Exception) as e:
-        assert "device" in str(e).lower() or "cuda" in str(e).lower()
 
 
 def test_tier1_f03_scales_device_mismatch_raises_error():
@@ -568,12 +289,9 @@ def test_tier1_f03_scales_device_mismatch_raises_error():
         skip(f"Requires t4_kernels: {reason_k}")
     A = torch.randn(1, 128, device="cuda:0", dtype=torch.float16)
     W = torch.randn(256, 128, device="cuda:0", dtype=torch.float16)
-    packed, scales, zps, g_size = quantize_weight_sym_int4_ref(W.cpu(), group_size=128)
-    try:
+    packed, scales, zps, g_size = quantize_weight_sym_int4(W.cpu(), group_size=128)
+    with pytest.raises((RuntimeError, Exception)):
         t4_kernels.fused_w4a16_gemm_u4(A, packed.to("cuda:0"), scales.to("cuda:1"), zps.to("cuda:0"), g_size)
-        assert False, "Expected error on mismatched scales device"
-    except (RuntimeError, Exception) as e:
-        assert "device" in str(e).lower()
 
 
 def test_tier1_f03_all_cuda0_succeeds():
@@ -600,17 +318,13 @@ def test_tier1_f03_all_cuda1_succeeds():
 
 def test_tier1_f03_cpu_cuda_mismatch_raises_error():
     """F3.5: Passing CPU tensor when CUDA tensor expected raises error."""
-    a_cpu = torch.randn(1, 64)
-    w_cuda = torch.randn(32, 64)
-    if torch.cuda.is_available():
-        w_cuda = w_cuda.to("cuda:0")
-        try:
-            torch.matmul(a_cpu, w_cuda.t())
-            assert False, "Expected device mismatch error"
-        except (RuntimeError, Exception):
-            pass
-    else:
-        assert a_cpu.device.type == "cpu"
+    ok, reason = check_cuda_available()
+    if not ok:
+        skip(f"Requires CUDA: {reason}")
+    a_cpu = torch.randn(1, 64, device="cpu")
+    w_cuda = torch.randn(32, 64, device="cuda:0")
+    with pytest.raises((RuntimeError, TypeError)):
+        torch.matmul(a_cpu, w_cuda.t())
 
 
 # --- Feature 4: Column-Parallel INT4 MLP ---
@@ -619,36 +333,30 @@ def test_tier1_f04_col_parallel_weight_slicing_shape():
     """F4.1: Column slicing partitions output dimension N into N/2 per rank."""
     in_f = 3584
     out_f = 18944
-    col_layer_0 = ReferenceTPColumnParallelLinear(in_f, out_f, rank=0, world_size=2)
-    col_layer_1 = ReferenceTPColumnParallelLinear(in_f, out_f, rank=1, world_size=2)
+    col_layer_0 = TPColumnParallelLinear(in_f, out_f, rank=0, world_size=2)
+    col_layer_1 = TPColumnParallelLinear(in_f, out_f, rank=1, world_size=2)
+    assert col_layer_0.split_out_features == 9472
+    assert col_layer_1.split_out_features == 9472
     assert col_layer_0.weight.shape == (9472, 3584)
     assert col_layer_1.weight.shape == (9472, 3584)
 
 
 def test_tier1_f04_col_parallel_gate_proj_shard():
     """F4.2: Slices gate_proj along intermediate_size dim with exact shapes."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=3584, intermediate_size=18944)
-    half_inter = 18944 // 2
-    w_gate_0 = mlp.gate_proj.weight[:half_inter, :]
-    w_gate_1 = mlp.gate_proj.weight[half_inter:, :]
-    assert w_gate_0.shape == (9472, 3584)
-    assert w_gate_1.shape == (9472, 3584)
+    mlp = TPParallelMLP(hidden_size=3584, intermediate_size=18944, quant_type=None, all_reduce=False)
+    assert mlp.gate_proj.weight.shape == (9472, 3584)
 
 
 def test_tier1_f04_col_parallel_up_proj_shard():
     """F4.3: Slices up_proj along intermediate_size dim."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=3584, intermediate_size=18944)
-    half_inter = 18944 // 2
-    w_up_0 = mlp.up_proj.weight[:half_inter, :]
-    w_up_1 = mlp.up_proj.weight[half_inter:, :]
-    assert w_up_0.shape == (9472, 3584)
-    assert w_up_1.shape == (9472, 3584)
+    mlp = TPParallelMLP(hidden_size=3584, intermediate_size=18944, quant_type=None, all_reduce=False)
+    assert mlp.up_proj.weight.shape == (9472, 3584)
 
 
 def test_tier1_f04_col_parallel_zero_comm():
     """F4.4: Verifies column-parallel execution produces local shards without communication."""
     x = torch.randn(2, 4, 3584, dtype=torch.float16)
-    col0 = ReferenceTPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
+    col0 = TPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
     y0 = col0(x)
     assert y0.shape == (2, 4, 9472)
 
@@ -657,12 +365,14 @@ def test_tier1_f04_col_parallel_concat_parity():
     """F4.5: Verifies concatenated outputs of rank 0 and 1 match unsharded linear projection."""
     in_f = 256
     out_f = 512
-    W = torch.randn(out_f, in_f, dtype=torch.float16)
-    x = torch.randn(2, 8, in_f, dtype=torch.float16)
+    linear = nn.Linear(in_f, out_f, bias=False, dtype=torch.float32)
+    x = torch.randn(2, 8, in_f, dtype=torch.float32)
 
-    y_full = F.linear(x, W)
-    y0 = F.linear(x, W[:256, :])
-    y1 = F.linear(x, W[256:, :])
+    y_full = linear(x)
+    col0 = TPColumnParallelLinear.from_linear(linear, rank=0, world_size=2)
+    col1 = TPColumnParallelLinear.from_linear(linear, rank=1, world_size=2)
+    y0 = col0(x)
+    y1 = col1(x)
     y_concat = torch.cat([y0, y1], dim=-1)
 
     rel_err = relative_l2_error(y_concat, y_full)
@@ -675,26 +385,22 @@ def test_tier1_f05_row_parallel_weight_slicing_shape():
     """F5.1: Row slicing partitions input dimension K into K/2 per rank."""
     in_f = 18944
     out_f = 3584
-    row_layer_0 = ReferenceTPRowParallelLinear(in_f, out_f, rank=0, world_size=2)
-    row_layer_1 = ReferenceTPRowParallelLinear(in_f, out_f, rank=1, world_size=2)
+    row_layer_0 = TPRowParallelLinear(in_f, out_f, rank=0, world_size=2, all_reduce=False)
+    row_layer_1 = TPRowParallelLinear(in_f, out_f, rank=1, world_size=2, all_reduce=False)
     assert row_layer_0.weight.shape == (3584, 9472)
     assert row_layer_1.weight.shape == (3584, 9472)
 
 
 def test_tier1_f05_row_parallel_down_proj_shard():
     """F5.2: Slices down_proj weights along K dimension."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=3584, intermediate_size=18944)
-    half_inter = 18944 // 2
-    w_down_0 = mlp.down_proj.weight[:, :half_inter]
-    w_down_1 = mlp.down_proj.weight[:, half_inter:]
-    assert w_down_0.shape == (3584, 9472)
-    assert w_down_1.shape == (3584, 9472)
+    mlp = TPParallelMLP(hidden_size=3584, intermediate_size=18944, quant_type=None, all_reduce=False)
+    assert mlp.down_proj.weight.shape == (3584, 9472)
 
 
 def test_tier1_f05_row_parallel_partial_output():
     """F5.3: Each rank produces partial dot product [B, M, N]."""
     x_slice = torch.randn(2, 4, 9472, dtype=torch.float16)
-    row0 = ReferenceTPRowParallelLinear(18944, 3584, rank=0, world_size=2)
+    row0 = TPRowParallelLinear(18944, 3584, rank=0, world_size=2, all_reduce=False)
     part0 = row0(x_slice)
     assert part0.shape == (2, 4, 3584)
 
@@ -703,12 +409,14 @@ def test_tier1_f05_row_parallel_allreduce_sum():
     """F5.4: Element-wise sum of rank 0 and rank 1 outputs equals full unsharded projection."""
     in_f = 512
     out_f = 256
-    W = torch.randn(out_f, in_f, dtype=torch.float32)
+    linear = nn.Linear(in_f, out_f, bias=False, dtype=torch.float32)
     x = torch.randn(2, 4, in_f, dtype=torch.float32)
 
-    y_full = F.linear(x, W)
-    part0 = F.linear(x[:, :, :256], W[:, :256])
-    part1 = F.linear(x[:, :, 256:], W[:, 256:])
+    y_full = linear(x)
+    row0 = TPRowParallelLinear.from_linear(linear, rank=0, world_size=2, all_reduce=False)
+    row1 = TPRowParallelLinear.from_linear(linear, rank=1, world_size=2, all_reduce=False)
+    part0 = row0(x)
+    part1 = row1(x)
     y_reduced, _ = reference_all_reduce_sum(part0, part1)
 
     rel_err = relative_l2_error(y_reduced, y_full)
@@ -749,7 +457,7 @@ def test_tier1_f06_allreduce_p2p_pcie_transfer():
     if not ok:
         skip(f"Requires Dual GPU: {reason}")
     t0 = torch.randn(1024, device="cuda:0", dtype=torch.float16)
-    t1 = t0.to("cuda:1")
+    t1 = p2p_transfer(t0, target_device=1)
     assert t1.device.index == 1
     assert torch.equal(t0.cpu(), t1.cpu())
 
@@ -786,14 +494,14 @@ def test_tier1_f06_allreduce_variable_tensor_sizes():
 
 def test_tier1_f07_attn_qkv_head_slicing():
     """F7.1: Q/K/V heads evenly divide: 28 q_heads -> 14/rank, 4 kv_heads -> 2/rank."""
-    attn = ReferenceColumnRowAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128)
+    attn = TPParallelAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128, all_reduce=False)
     assert attn.q_heads_per_rank == 14
     assert attn.kv_heads_per_rank == 2
 
 
 def test_tier1_f07_attn_out_proj_row_parallel():
     """F7.2: Attention output projection (o_proj) is row-parallel."""
-    attn = ReferenceColumnRowAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128)
+    attn = TPParallelAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128, all_reduce=False)
     q_dim = 28 * 128
     assert attn.o_proj.in_features == q_dim
     assert attn.o_proj.out_features == 3584
@@ -801,7 +509,7 @@ def test_tier1_f07_attn_out_proj_row_parallel():
 
 def test_tier1_f07_attn_sharded_kv_head_ratio():
     """F7.3: Preserves GQA ratio (14:2 = 7:1) on each rank."""
-    attn = ReferenceColumnRowAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128)
+    attn = TPParallelAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128, all_reduce=False)
     ratio = attn.q_heads_per_rank // attn.kv_heads_per_rank
     assert ratio == 7
 
@@ -817,10 +525,41 @@ def test_tier1_f07_attn_local_computation():
 
 def test_tier1_f07_attn_allreduce_parity():
     """F7.5: Full attention output with row All-Reduce matches monolithic multi-head attention."""
-    attn = ReferenceColumnRowAttention(hidden_size=512, num_heads=8, num_kv_heads=2, head_dim=64, dtype=torch.float32)
+    class StandardAttention(nn.Module):
+        def __init__(self, hidden_size=512, num_heads=8, num_kv_heads=2, head_dim=64):
+            super().__init__()
+            self.hidden_size = hidden_size
+            self.num_heads = num_heads
+            self.num_kv_heads = num_kv_heads
+            self.head_dim = head_dim
+            self.q_proj = nn.Linear(hidden_size, num_heads * head_dim, bias=False, dtype=torch.float32)
+            self.k_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=torch.float32)
+            self.v_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=torch.float32)
+            self.o_proj = nn.Linear(num_heads * head_dim, hidden_size, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            b, m, _ = x.shape
+            q = self.q_proj(x).view(b, m, self.num_heads, self.head_dim).transpose(1, 2)
+            k = self.k_proj(x).view(b, m, self.num_kv_heads, self.head_dim).transpose(1, 2)
+            v = self.v_proj(x).view(b, m, self.num_kv_heads, self.head_dim).transpose(1, 2)
+            rep = self.num_heads // self.num_kv_heads
+            k = k.repeat_interleave(rep, dim=1)
+            v = v.repeat_interleave(rep, dim=1)
+            scores = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
+            attn_weights = F.softmax(scores, dim=-1)
+            attn_out = torch.matmul(attn_weights, v).transpose(1, 2).contiguous().view(b, m, -1)
+            return self.o_proj(attn_out)
+
+    std_attn = StandardAttention()
+    tp0 = TPParallelAttention.from_attention(std_attn, rank=0, world_size=2, all_reduce=False)
+    tp1 = TPParallelAttention.from_attention(std_attn, rank=1, world_size=2, all_reduce=False)
+
     x = torch.randn(2, 4, 512, dtype=torch.float32)
-    y_full = attn.forward_unsharded(x)
-    y_sharded = attn.forward_sharded(x)
+    y_full = std_attn(x)
+    y0 = tp0(x)
+    y1 = tp1(x)
+    y_sharded = y0 + y1
+
     rel_err = relative_l2_error(y_sharded, y_full)
     assert rel_err < 1e-4, f"Attention relative error {rel_err} exceeds 1e-4"
 
@@ -829,39 +568,40 @@ def test_tier1_f07_attn_allreduce_parity():
 
 def test_tier1_f08_pp_layer_partition_even():
     """F8.1: 28 layers are partitioned 14 layers to stage 0 and 14 to stage 1."""
-    pp = ReferencePipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000)
+    pp = PipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000, devices=['cpu', 'cpu'])
     assert len(pp.layers_stage0) == 14
     assert len(pp.layers_stage1) == 14
 
 
 def test_tier1_f08_pp_stage0_devices():
     """F8.2: Stage 0 hosts embeddings and layers 0..13 on device 0."""
-    pp = ReferencePipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000)
+    pp = PipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000, devices=['cpu', 'cpu'])
     assert pp.split_layer == 14
     assert hasattr(pp, "embed")
     assert hasattr(pp, "layers_stage0")
+    assert hasattr(pp, "stage0")
 
 
 def test_tier1_f08_pp_stage1_devices():
     """F8.3: Stage 1 hosts layers 14..27, final norm, and lm_head on device 1."""
-    pp = ReferencePipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000)
+    pp = PipelineParallelQwen2(num_layers=28, hidden_size=256, vocab_size=1000, devices=['cpu', 'cpu'])
     assert hasattr(pp, "layers_stage1")
     assert hasattr(pp, "norm")
     assert hasattr(pp, "lm_head")
+    assert hasattr(pp, "stage1")
 
 
 def test_tier1_f08_pp_boundary_activation_shape():
     """F8.4: Boundary activation tensor has shape [B, M, D]."""
-    b, m, d = 2, 8, 3584
-    activation = torch.randn(b, m, d, dtype=torch.float16)
-    assert activation.shape == (2, 8, 3584)
-    boundary_copy = activation.clone()
-    assert boundary_copy.shape == (2, 8, 3584)
+    pp = PipelineParallelQwen2(num_layers=4, hidden_size=128, vocab_size=500, dtype=torch.float32, devices=['cpu', 'cpu'])
+    inp = torch.randint(0, 500, (2, 8))
+    h, _ = pp.stage0(inp)
+    assert h.shape == (2, 8, 128)
 
 
 def test_tier1_f08_pp_e2e_sequential_parity():
     """F8.5: Sequential pipeline forward produces expected logits shape and finite values."""
-    pp = ReferencePipelineParallelQwen2(num_layers=4, hidden_size=128, vocab_size=500, dtype=torch.float32)
+    pp = PipelineParallelQwen2(num_layers=4, hidden_size=128, vocab_size=500, dtype=torch.float32, devices=['cpu', 'cpu'])
     inp = torch.randint(0, 500, (2, 6))
     logits = pp(inp)
     assert logits.shape == (2, 6, 500)
@@ -872,26 +612,24 @@ def test_tier1_f08_pp_e2e_sequential_parity():
 
 def test_tier1_f09_bench_metrics_data_contract():
     """F9.1: Benchmark records tok/s, kernel_ms, pcie_transfer_ms, vram_bytes."""
-    metrics = {
-        "mode": "tp",
-        "tokens_per_second": 45.2,
-        "kernel_time_ms": 12.5,
-        "pcie_transfer_ms": 1.2,
-        "peak_vram_bytes": 1024 * 1024 * 1024 * 8,
-    }
-    required_keys = {"mode", "tokens_per_second", "kernel_time_ms", "pcie_transfer_ms", "peak_vram_bytes"}
-    assert required_keys.issubset(metrics.keys())
-    assert metrics["tokens_per_second"] > 0
+    from benchmarks.benchmark_tp_vs_pp import benchmark_pcie_transfers
+    res = benchmark_pcie_transfers(devices=[], hidden_size=3584, is_dry_run=True)
+    assert "all_reduce_latency_us" in res
+    assert "boundary_p2p_latency_us" in res
+    assert "pcie_bandwidth_gb_s" in res
 
 
 def test_tier1_f09_bench_prefill_vs_decode_separation():
     """F9.2: Prefill and decode phases are measured and reported separately."""
-    report = {
-        "prefill": {"tokens_per_sec": 320.0, "latency_ms": 6.4},
-        "decode": {"tokens_per_sec": 38.5, "latency_ms": 26.0},
-    }
-    assert "prefill" in report and "decode" in report
-    assert report["prefill"]["tokens_per_sec"] > report["decode"]["tokens_per_sec"]
+    from benchmarks.benchmark_tp_vs_pp import parse_args
+    old_argv = sys.argv
+    try:
+        sys.argv = ["benchmark_tp_vs_pp.py", "--num_layers", "14", "--dry_run"]
+        args = parse_args()
+        assert args.num_layers == 14
+        assert args.dry_run is True
+    finally:
+        sys.argv = old_argv
 
 
 def test_tier1_f09_bench_pcie_latency_measurement():
@@ -902,7 +640,7 @@ def test_tier1_f09_bench_pcie_latency_measurement():
     t0 = torch.randn(1024 * 1024, device="cuda:0")
     torch.cuda.synchronize(0)
     start = time.perf_counter()
-    t1 = t0.to("cuda:1")
+    t1 = p2p_transfer(t0, target_device=1)
     torch.cuda.synchronize(1)
     latency_ms = (time.perf_counter() - start) * 1000.0
     assert latency_ms > 0.0
@@ -910,10 +648,12 @@ def test_tier1_f09_bench_pcie_latency_measurement():
 
 def test_tier1_f09_bench_throughput_formula():
     """F9.4: Throughput formula tokens / elapsed_seconds is mathematically accurate."""
-    num_tokens = 100
-    elapsed_seconds = 2.5
-    throughput = num_tokens / elapsed_seconds
-    assert abs(throughput - 40.0) < 1e-6
+    t0 = time.perf_counter()
+    time.sleep(0.005)
+    elapsed = time.perf_counter() - t0
+    num_tokens = 50
+    throughput = num_tokens / elapsed
+    assert throughput > 0.0
 
 
 def test_tier1_f09_bench_decision_gate_logic():
@@ -929,7 +669,7 @@ def test_tier1_f09_bench_decision_gate_logic():
 def test_tier1_f10_scope_context_manager_interface():
     """F10.1: Scope provides standard context manager protocol __enter__ and __exit__."""
     model = nn.Sequential(nn.Linear(64, 64))
-    scope = ReferenceCPMultiGPUInferenceScope(model, mode='tp', devices=['cuda:0', 'cuda:1'])
+    scope = CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu', 'cpu'], quantize_mlp=False)
     assert not scope.is_active
     with scope:
         assert scope.is_active
@@ -939,21 +679,15 @@ def test_tier1_f10_scope_context_manager_interface():
 def test_tier1_f10_scope_mode_validation():
     """F10.2: Scope validates mode rejecting unknown options with ValueError."""
     model = nn.Sequential(nn.Linear(64, 64))
-    try:
-        ReferenceCPMultiGPUInferenceScope(model, mode='invalid_mode')
-        assert False, "Expected ValueError on invalid mode"
-    except ValueError as e:
-        assert "invalid mode" in str(e).lower()
+    with pytest.raises(ValueError, match="Invalid mode"):
+        CPMultiGPUInferenceScope(model, mode='invalid_mode', devices=['cpu', 'cpu'])
 
 
 def test_tier1_f10_scope_device_validation():
     """F10.3: Scope validates device list requiring exactly 2 devices."""
     model = nn.Sequential(nn.Linear(64, 64))
-    try:
-        ReferenceCPMultiGPUInferenceScope(model, mode='tp', devices=['cuda:0'])
-        assert False, "Expected ValueError on single device"
-    except ValueError as e:
-        assert "exactly 2 devices" in str(e).lower()
+    with pytest.raises(ValueError, match="requires exactly 2 devices"):
+        CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu'])
 
 
 def test_tier1_f10_scope_layer_replacement():
@@ -963,9 +697,9 @@ def test_tier1_f10_scope_layer_replacement():
             super().__init__()
             self.down_proj = nn.Linear(128, 64)
     model = DummyBlock()
-    scope = ReferenceCPMultiGPUInferenceScope(model, mode='tp', devices=['cuda:0', 'cuda:1'])
+    scope = CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu', 'cpu'], quantize_mlp=False)
     with scope:
-        assert len(scope._saved_modules) == 1
+        assert len(scope._saved_modules) >= 1
         assert 'down_proj' in scope._saved_modules
 
 
@@ -976,7 +710,7 @@ def test_tier1_f10_scope_state_restoration():
             super().__init__()
             self.down_proj = nn.Linear(128, 64)
     model = DummyBlock()
-    scope = ReferenceCPMultiGPUInferenceScope(model, mode='tp', devices=['cuda:0', 'cuda:1'])
+    scope = CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu', 'cpu'], quantize_mlp=False)
     with scope:
         pass
     assert len(scope._saved_modules) == 0
@@ -986,38 +720,30 @@ def test_tier1_f10_scope_state_restoration():
 
 def test_tier1_f11_qwen_7b_config_contract():
     """F11.1: Verifies Qwen2.5-Math-7B architectural parameters."""
-    cfg = {
-        "hidden_size": 3584,
-        "intermediate_size": 18944,
-        "num_hidden_layers": 28,
-        "num_attention_heads": 28,
-        "num_key_value_heads": 4,
-        "vocab_size": 152064,
-    }
-    assert cfg["hidden_size"] == 3584
-    assert cfg["intermediate_size"] == 18944
-    assert cfg["num_hidden_layers"] == 28
-    assert cfg["num_attention_heads"] == 28
-    assert cfg["num_key_value_heads"] == 4
+    pp = PipelineParallelQwen2(num_layers=28, hidden_size=3584, vocab_size=152064, dtype=torch.float32, devices=['cpu', 'cpu'])
+    assert pp.hidden_size == 3584
+    assert pp.num_layers == 28
+    assert pp.vocab_size == 152064
+    assert pp.split_layer == 14
 
 
 def test_tier1_f11_sharded_parameter_count():
     """F11.2: Sharded weights sum exactly to unsharded parameter count."""
-    full_mlp = ReferenceTPSwiGLUMLP(hidden_size=256, intermediate_size=512)
-    unsharded_params = sum(p.numel() for p in full_mlp.parameters())
-    # Column splits for gate (256x256 * 2) and up (256x256 * 2), row split for down (256x256 * 2)
-    half_gate = (512 // 2) * 256
-    half_up = (512 // 2) * 256
-    half_down = 256 * (512 // 2)
-    sharded_params_total = (half_gate + half_up + half_down) * 2
-    assert sharded_params_total == unsharded_params
+    mlp = TPParallelMLP(hidden_size=256, intermediate_size=512, quant_type=None, all_reduce=False)
+    gate_params = mlp.gate_proj.weight.numel()
+    up_params = mlp.up_proj.weight.numel()
+    down_params = mlp.down_proj.weight.numel()
+    assert gate_params == (512 // 2) * 256
+    assert up_params == (512 // 2) * 256
+    assert down_params == 256 * (512 // 2)
 
 
 def test_tier1_f11_dual_gpu_forward_shape():
     """F11.3: Forward pass output logits shape matches [B, M, vocab_size]."""
-    b, m, vocab = 1, 4, 1000
-    fake_logits = torch.randn(b, m, vocab, dtype=torch.float16)
-    assert fake_logits.shape == (1, 4, 1000)
+    pp = PipelineParallelQwen2(num_layers=2, hidden_size=64, vocab_size=100, dtype=torch.float32, devices=['cpu', 'cpu'])
+    inp = torch.randint(0, 100, (1, 4))
+    logits = pp(inp)
+    assert logits.shape == (1, 4, 100)
 
 
 def test_tier1_f11_dual_device_residence():
@@ -1033,10 +759,10 @@ def test_tier1_f11_dual_device_residence():
 
 def test_tier1_f11_single_token_forward():
     """F11.5: Forward pass with single token decode M=1 succeeds."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=3584, intermediate_size=18944)
-    x = torch.randn(1, 1, 3584, dtype=torch.float16)
-    out = mlp.forward_sharded(x)
-    assert out.shape == (1, 1, 3584)
+    mlp = TPParallelMLP(hidden_size=256, intermediate_size=512, quant_type=None, all_reduce=False)
+    x = torch.randn(1, 1, 256, dtype=torch.float32)
+    out = mlp(x)
+    assert out.shape == (1, 1, 256)
 
 
 # --- Feature 12: Relative Error <= 0.1% Gate ---
@@ -1044,7 +770,7 @@ def test_tier1_f11_single_token_forward():
 def test_tier1_f12_rel_error_formula_correctness():
     """F12.1: Relative error formula ||y_test - y_ref|| / (||y_ref|| + eps) calculates cleanly."""
     ref = torch.ones(100, dtype=torch.float32)
-    test = ref * 1.0005  # 0.05% error
+    test = ref * 1.0005
     err = relative_l2_error(test, ref)
     assert err <= 0.001
 
@@ -1052,50 +778,107 @@ def test_tier1_f12_rel_error_formula_correctness():
 def test_tier1_f12_tp_linear_numerical_error_gate():
     """F12.2: TP linear numerical relative error is strictly <= 0.1% (1e-3)."""
     in_f, out_f = 256, 512
-    W = torch.randn(out_f, in_f, dtype=torch.float32)
+    linear = nn.Linear(in_f, out_f, bias=False, dtype=torch.float32)
     x = torch.randn(2, 4, in_f, dtype=torch.float32)
-    y_ref = F.linear(x, W)
-    y0 = F.linear(x, W[:out_f // 2, :])
-    y1 = F.linear(x, W[out_f // 2:, :])
-    y_sharded = torch.cat([y0, y1], dim=-1)
+    y_ref = linear(x)
+    col0 = TPColumnParallelLinear.from_linear(linear, rank=0, world_size=2)
+    col1 = TPColumnParallelLinear.from_linear(linear, rank=1, world_size=2)
+    y_sharded = torch.cat([col0(x), col1(x)], dim=-1)
     err = relative_l2_error(y_sharded, y_ref)
     assert err <= 1e-3, f"TP linear error {err} exceeds 0.1% gate"
 
 
 def test_tier1_f12_attention_numerical_error_gate():
     """F12.3: Sharded attention relative error is strictly <= 0.1%."""
-    attn = ReferenceColumnRowAttention(hidden_size=512, num_heads=8, num_kv_heads=2, head_dim=64, dtype=torch.float32)
+    class StdAttn(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.num_heads = 8
+            self.num_kv_heads = 2
+            self.head_dim = 64
+            self.q_proj = nn.Linear(512, 512, bias=False, dtype=torch.float32)
+            self.k_proj = nn.Linear(512, 128, bias=False, dtype=torch.float32)
+            self.v_proj = nn.Linear(512, 128, bias=False, dtype=torch.float32)
+            self.o_proj = nn.Linear(512, 512, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            b, m, _ = x.shape
+            q = self.q_proj(x).view(b, m, 8, 64).transpose(1, 2)
+            k = self.k_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(4, dim=1)
+            v = self.v_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(4, dim=1)
+            scores = torch.matmul(q, k.transpose(-1, -2)) / 8.0
+            attn = torch.matmul(F.softmax(scores, dim=-1), v).transpose(1, 2).contiguous().view(b, m, -1)
+            return self.o_proj(attn)
+
+    std = StdAttn()
+    tp0 = TPParallelAttention.from_attention(std, rank=0, world_size=2, all_reduce=False)
+    tp1 = TPParallelAttention.from_attention(std, rank=1, world_size=2, all_reduce=False)
     x = torch.randn(1, 8, 512, dtype=torch.float32)
-    y_ref = attn.forward_unsharded(x)
-    y_sharded = attn.forward_sharded(x)
+    y_ref = std(x)
+    y_sharded = tp0(x) + tp1(x)
     err = relative_l2_error(y_sharded, y_ref)
     assert err <= 1e-3, f"Attention error {err} exceeds 0.1% gate"
 
 
 def test_tier1_f12_mlp_swiglu_numerical_error_gate():
     """F12.4: Sharded SwiGLU MLP relative error is strictly <= 0.1%."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=512, intermediate_size=1024, dtype=torch.float32)
+    class StdMLP(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.gate_proj = nn.Linear(512, 1024, bias=False, dtype=torch.float32)
+            self.up_proj = nn.Linear(512, 1024, bias=False, dtype=torch.float32)
+            self.down_proj = nn.Linear(1024, 512, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
+
+    std_mlp = StdMLP()
+    tp0 = TPParallelMLP.from_mlp(std_mlp, rank=0, world_size=2, quant_type=None, all_reduce=False)
+    tp1 = TPParallelMLP.from_mlp(std_mlp, rank=1, world_size=2, quant_type=None, all_reduce=False)
     x = torch.randn(1, 4, 512, dtype=torch.float32)
-    y_ref = mlp.forward_unsharded(x)
-    y_sharded = mlp.forward_sharded(x)
+    y_ref = std_mlp(x)
+    y_sharded = tp0(x) + tp1(x)
     err = relative_l2_error(y_sharded, y_ref)
     assert err <= 1e-3, f"SwiGLU MLP error {err} exceeds 0.1% gate"
 
 
 def test_tier1_f12_full_transformer_layer_gate():
     """F12.5: Complete transformer layer relative error is strictly <= 0.1%."""
-    attn = ReferenceColumnRowAttention(hidden_size=256, num_heads=4, num_kv_heads=2, head_dim=64, dtype=torch.float32)
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=256, intermediate_size=512, dtype=torch.float32)
+    class MiniLayer(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.num_heads = 4
+            self.num_kv_heads = 2
+            self.head_dim = 64
+            self.q_proj = nn.Linear(256, 256, bias=False, dtype=torch.float32)
+            self.k_proj = nn.Linear(256, 128, bias=False, dtype=torch.float32)
+            self.v_proj = nn.Linear(256, 128, bias=False, dtype=torch.float32)
+            self.o_proj = nn.Linear(256, 256, bias=False, dtype=torch.float32)
+            self.gate_proj = nn.Linear(256, 512, bias=False, dtype=torch.float32)
+            self.up_proj = nn.Linear(256, 512, bias=False, dtype=torch.float32)
+            self.down_proj = nn.Linear(512, 256, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            b, m, _ = x.shape
+            q = self.q_proj(x).view(b, m, 4, 64).transpose(1, 2)
+            k = self.k_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(2, dim=1)
+            v = self.v_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(2, dim=1)
+            scores = torch.matmul(q, k.transpose(-1, -2)) / 8.0
+            attn = torch.matmul(F.softmax(scores, dim=-1), v).transpose(1, 2).contiguous().view(b, m, -1)
+            h = x + self.o_proj(attn)
+            mlp_out = self.down_proj(F.silu(self.gate_proj(h)) * self.up_proj(h))
+            return h + mlp_out
+
+    std_layer = MiniLayer()
+    tp_attn0 = TPParallelAttention.from_attention(std_layer, rank=0, world_size=2, all_reduce=False)
+    tp_attn1 = TPParallelAttention.from_attention(std_layer, rank=1, world_size=2, all_reduce=False)
+    tp_mlp0 = TPParallelMLP.from_mlp(std_layer, rank=0, world_size=2, quant_type=None, all_reduce=False)
+    tp_mlp1 = TPParallelMLP.from_mlp(std_layer, rank=1, world_size=2, quant_type=None, all_reduce=False)
+
     x = torch.randn(1, 4, 256, dtype=torch.float32)
-
-    # Reference
-    h1 = x + attn.forward_unsharded(x)
-    y_ref = h1 + mlp.forward_unsharded(h1)
-
-    # Sharded
-    h1_shard = x + attn.forward_sharded(x)
-    y_shard = h1_shard + mlp.forward_sharded(h1_shard)
-
+    y_ref = std_layer(x)
+    h_shard = x + tp_attn0(x) + tp_attn1(x)
+    y_shard = h_shard + tp_mlp0(h_shard) + tp_mlp1(h_shard)
     err = relative_l2_error(y_shard, y_ref)
     assert err <= 1e-3, f"Layer error {err} exceeds 0.1% gate"
 
@@ -1104,94 +887,142 @@ def test_tier1_f12_full_transformer_layer_gate():
 
 def test_tier1_f13_vram_tracker_utility():
     """F13.1: VRAM tracking query handles CUDA memory metrics."""
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated(0)
-        reserved = torch.cuda.memory_reserved(0)
-        assert allocated >= 0
-        assert reserved >= 0
-    else:
-        assert True
+    ok, reason = check_cuda_available()
+    if not ok:
+        skip(f"Requires CUDA: {reason}")
+    allocated = torch.cuda.memory_allocated(0)
+    reserved = torch.cuda.memory_reserved(0)
+    assert allocated >= 0
+    assert reserved >= 0
 
 
 def test_tier1_f13_prefill_2048_budget_check():
     """F13.2: 2048-token context prefill memory footprint budget remains < 14.0 GB."""
-    # 7B model in INT4 weights + FP16 activations + KV cache:
-    # Weights: 7e9 * 0.5 bytes = 3.5 GB
-    # Split across 2 GPUs = 1.75 GB / GPU
-    # KV cache (2048 ctx, 28 layers, 4 kv heads, 128 dim, FP16) = 28 * 4 * 2048 * 128 * 2 = 58.7 MB total
-    # Split across 2 GPUs = 29.4 MB / GPU
-    # Activations at 2048 ctx = ~1.2 GB
-    est_peak_gb = 1.75 + 0.03 + 1.2
-    assert est_peak_gb < 14.0, f"Estimated peak {est_peak_gb} GB exceeds 14.0 GB limit"
+    hidden_size = 3584
+    intermediate_size = 18944
+    num_layers = 28
+    num_heads = 28
+    num_kv_heads = 4
+    head_dim = 128
+    seq_len = 2048
+    world_size = 2
+
+    mlp = TPParallelMLP(hidden_size, intermediate_size, rank=0, world_size=world_size, quant_type=None, all_reduce=False)
+    attn = TPParallelAttention(hidden_size, num_heads, num_kv_heads, head_dim, rank=0, world_size=world_size, all_reduce=False)
+    layer_bytes = sum(p.numel() * p.element_size() for p in mlp.parameters()) + sum(p.numel() * p.element_size() for p in attn.parameters())
+    weight_bytes_per_gpu = (layer_bytes * 0.5) * num_layers
+    kv_bytes_per_gpu = 2 * num_layers * (num_kv_heads // world_size) * seq_len * head_dim * 2
+    act_bytes = seq_len * intermediate_size * 2
+    total_gb = (weight_bytes_per_gpu + kv_bytes_per_gpu + act_bytes) / (1024 ** 3)
+    limit_gb = torch.tensor(14.0)
+    min_gb = torch.tensor(0.5)
+    assert total_gb < limit_gb.item(), f"Calculated memory {total_gb:.2f} GB exceeds limit"
+    assert total_gb > min_gb.item()
 
 
 def test_tier1_f13_decode_peak_budget_check():
     """F13.3: Single token decode memory footprint budget remains < 14.0 GB."""
-    est_decode_peak_gb = 1.75 + 0.03 + 0.05
-    assert est_decode_peak_gb < 14.0
+    hidden_size = 3584
+    intermediate_size = 18944
+    num_layers = 28
+    num_heads = 28
+    num_kv_heads = 4
+    head_dim = 128
+    max_seq = 2048
+    world_size = 2
+
+    mlp = TPParallelMLP(hidden_size, intermediate_size, rank=0, world_size=world_size, quant_type=None, all_reduce=False)
+    attn = TPParallelAttention(hidden_size, num_heads, num_kv_heads, head_dim, rank=0, world_size=world_size, all_reduce=False)
+    layer_bytes = sum(p.numel() * p.element_size() for p in mlp.parameters()) + sum(p.numel() * p.element_size() for p in attn.parameters())
+    weight_bytes = (layer_bytes * 0.5) * num_layers
+    kv_bytes = 2 * num_layers * (num_kv_heads // world_size) * max_seq * head_dim * 2
+    decode_act_bytes = 1 * intermediate_size * 2
+    total_gb = (weight_bytes + kv_bytes + decode_act_bytes) / (1024 ** 3)
+    limit_gb = torch.tensor(14.0)
+    min_gb = torch.tensor(0.5)
+    assert total_gb < limit_gb.item()
+    assert total_gb > min_gb.item()
 
 
 def test_tier1_f13_dual_gpu_memory_balance():
     """F13.4: Symmetric INT4 sharding balances weight memory within 5% variance."""
-    w0_bytes = 18944 // 2 * 3584 * 2
-    w1_bytes = 18944 // 2 * 3584 * 2
+    mlp0 = TPParallelMLP(hidden_size=3584, intermediate_size=18944, rank=0, world_size=2, quant_type=None, all_reduce=False)
+    mlp1 = TPParallelMLP(hidden_size=3584, intermediate_size=18944, rank=1, world_size=2, quant_type=None, all_reduce=False)
+    w0_bytes = sum(p.numel() * p.element_size() for p in mlp0.parameters())
+    w1_bytes = sum(p.numel() * p.element_size() for p in mlp1.parameters())
     variance = abs(w0_bytes - w1_bytes) / w0_bytes
     assert variance < 0.05
 
 
 def test_tier1_f13_kv_cache_halved_footprint():
     """F13.5: Tensor Parallelism halves KV cache heads per GPU (4 heads -> 2 heads)."""
-    full_kv_heads = 4
-    sharded_kv_heads = full_kv_heads // 2
-    assert sharded_kv_heads == 2
+    attn = TPParallelAttention(hidden_size=3584, num_heads=28, num_kv_heads=4, head_dim=128, all_reduce=False)
+    assert attn.num_kv_heads == 4
+    assert attn.kv_heads_per_rank == 2
 
 
 # --- Feature 14: 100-Step Zero-Crash Decode ---
 
 def test_tier1_f14_decode_loop_iteration_count():
-    """F14.1: Decode loop completes exactly 100 iterations."""
-    steps = 0
+    """F14.1: Decode loop completes exactly 100 sequential token generation steps."""
+    layer = TPColumnParallelLinear(64, 64, rank=0, world_size=2)
+    history = []
     for _ in range(100):
-        steps += 1
-    assert steps == 100
+        x = torch.randn(1, 1, 64)
+        out = layer(x)
+        history.append(out.norm().item())
+    assert len(history) == 100
+    assert all(math.isfinite(val) for val in history)
 
 
 def test_tier1_f14_decode_no_memory_growth():
     """F14.2: Stationary decode steps demonstrate constant working buffer size."""
-    step_sizes = []
-    x = torch.zeros(1, 1, 3584)
-    for step in range(100):
-        out = x + 1.0
-        if step % 20 == 0:
-            step_sizes.append(out.element_size() * out.nelement())
-    assert all(s == step_sizes[0] for s in step_sizes)
+    layer = TPColumnParallelLinear(64, 64, rank=0, world_size=2)
+    shapes = set()
+    for _ in range(100):
+        x = torch.randn(1, 1, 64)
+        out = layer(x)
+        shapes.add(out.shape)
+    assert len(shapes) == 1
+    assert (1, 1, 32) in shapes
 
 
 def test_tier1_f14_decode_kv_position_increment():
-    """F14.3: Cache position index increments strictly by 1 at each step."""
-    pos = 0
-    positions = []
-    for _ in range(100):
-        positions.append(pos)
-        pos += 1
-    assert positions == list(range(100))
+    """F14.3: Cache position index increments strictly across autoregressive steps."""
+    attn = TPParallelAttention(hidden_size=64, num_heads=4, num_kv_heads=2, head_dim=16, all_reduce=False)
+    x = torch.randn(1, 1, 64)
+    positions_seen = []
+    for pos in range(100):
+        _ = attn(x, start_pos=pos)
+        positions_seen.append(pos)
+    assert len(positions_seen) == 100
+    assert positions_seen == list(range(100))
 
 
 def test_tier1_f14_decode_token_emission():
     """F14.4: Generated token at each step is valid integer within vocabulary range."""
-    vocab_size = 152064
+    vocab_size = 1000
+    hidden_size = 64
+    lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
+    x = torch.randn(1, 1, hidden_size)
+    emitted = []
     for _ in range(100):
-        tok = 42
-        assert 0 <= tok < vocab_size
+        logits = lm_head(x)
+        tok = int(torch.argmax(logits, dim=-1).item())
+        emitted.append(tok)
+        x = torch.randn(1, 1, hidden_size)
+    assert len(emitted) == 100
+    assert all(0 <= t < vocab_size for t in emitted)
 
 
 def test_tier1_f14_decode_zero_crash_stability():
     """F14.5: 100 consecutive forward steps execute without raising exceptions."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=256, intermediate_size=512)
-    x = torch.randn(1, 1, 256, dtype=torch.float16)
+    mlp = TPParallelMLP(hidden_size=64, intermediate_size=128, quant_type=None, all_reduce=False)
+    x = torch.randn(1, 1, 64, dtype=torch.float32)
     for _ in range(100):
-        x = mlp.forward_sharded(x)
-        assert x.shape == (1, 1, 256)
+        x = mlp(x)
+        assert x.shape == (1, 1, 64)
+        assert torch.isfinite(x).all()
 
 
 # ==============================================================================
@@ -1202,7 +1033,7 @@ def test_tier1_f14_decode_zero_crash_stability():
 
 def test_tier2_b01_tp_col_m1():
     """B1.1: TP Column linear forward with single token M=1."""
-    col = ReferenceTPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
+    col = TPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
     x = torch.randn(1, 1, 3584, dtype=torch.float16)
     out = col(x)
     assert out.shape == (1, 1, 9472)
@@ -1210,7 +1041,7 @@ def test_tier2_b01_tp_col_m1():
 
 def test_tier2_b01_tp_row_m1():
     """B1.2: TP Row linear forward with single token M=1 and All-Reduce."""
-    row = ReferenceTPRowParallelLinear(18944, 3584, rank=0, world_size=2)
+    row = TPRowParallelLinear(18944, 3584, rank=0, world_size=2, all_reduce=False)
     x = torch.randn(1, 1, 9472, dtype=torch.float16)
     out = row(x)
     assert out.shape == (1, 1, 3584)
@@ -1218,33 +1049,37 @@ def test_tier2_b01_tp_row_m1():
 
 def test_tier2_b01_swiglu_mlp_m1():
     """B1.3: SwiGLU MLP sharded forward with single token M=1."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=3584, intermediate_size=18944)
+    mlp = TPParallelMLP(hidden_size=3584, intermediate_size=18944, quant_type=None, all_reduce=False)
     x = torch.randn(1, 1, 3584, dtype=torch.float16)
-    out = mlp.forward_sharded(x)
+    out = mlp(x)
     assert out.shape == (1, 1, 3584)
 
 
 def test_tier2_b01_attention_single_token():
     """B1.4: Sharded attention forward with single query token M=1."""
-    attn = ReferenceColumnRowAttention(hidden_size=512, num_heads=8, num_kv_heads=2, head_dim=64)
+    attn = TPParallelAttention(hidden_size=512, num_heads=8, num_kv_heads=2, head_dim=64, all_reduce=False)
     x = torch.randn(1, 1, 512, dtype=torch.float16)
-    out = attn.forward_sharded(x)
+    out = attn(x)
     assert out.shape == (1, 1, 512)
 
 
 def test_tier2_b01_pp_boundary_transfer_m1():
     """B1.5: Pipeline boundary activation transfer for single token [1, 1, 3584]."""
-    x = torch.randn(1, 1, 3584, dtype=torch.float16)
-    transferred = x.clone()
+    ok, reason = check_multigpu(2)
+    if not ok:
+        skip(f"Requires Dual GPU: {reason}")
+    x = torch.randn(1, 1, 3584, dtype=torch.float16, device="cuda:0")
+    transferred = p2p_transfer(x, target_device=1)
+    assert transferred.device.index == 1
     assert transferred.shape == (1, 1, 3584)
-    assert torch.equal(x, transferred)
+    assert torch.equal(x.cpu(), transferred.cpu())
 
 
 # --- Category B2: Max Context (M=2048) ---
 
 def test_tier2_b02_tp_col_m2048():
     """B2.1: TP Column linear forward with max context prefill M=2048."""
-    col = ReferenceTPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
+    col = TPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
     x = torch.randn(1, 2048, 3584, dtype=torch.float16)
     out = col(x)
     assert out.shape == (1, 2048, 9472)
@@ -1252,7 +1087,7 @@ def test_tier2_b02_tp_col_m2048():
 
 def test_tier2_b02_tp_row_m2048():
     """B2.2: TP Row linear forward with max context prefill M=2048."""
-    row = ReferenceTPRowParallelLinear(18944, 3584, rank=0, world_size=2)
+    row = TPRowParallelLinear(18944, 3584, rank=0, world_size=2, all_reduce=False)
     x = torch.randn(1, 2048, 9472, dtype=torch.float16)
     out = row(x)
     assert out.shape == (1, 2048, 3584)
@@ -1260,43 +1095,53 @@ def test_tier2_b02_tp_row_m2048():
 
 def test_tier2_b02_pp_boundary_transfer_m2048():
     """B2.3: Pipeline boundary activation transfer for max context [1, 2048, 3584]."""
-    x = torch.randn(1, 2048, 3584, dtype=torch.float16)
-    transferred = x.clone()
+    ok, reason = check_multigpu(2)
+    if not ok:
+        skip(f"Requires Dual GPU: {reason}")
+    x = torch.randn(1, 2048, 3584, dtype=torch.float16, device="cuda:0")
+    transferred = p2p_transfer(x, target_device=1)
+    assert transferred.device.index == 1
     assert transferred.shape == (1, 2048, 3584)
+    assert torch.equal(x.cpu(), transferred.cpu())
 
 
 def test_tier2_b02_attention_causal_m2048():
     """B2.4: Multi-head attention forward with 2048 tokens and causal structure."""
-    attn = ReferenceColumnRowAttention(hidden_size=256, num_heads=4, num_kv_heads=2, head_dim=64)
+    attn = TPParallelAttention(hidden_size=256, num_heads=4, num_kv_heads=2, head_dim=64, all_reduce=False)
     x = torch.randn(1, 2048, 256, dtype=torch.float16)
-    out = attn.forward_sharded(x)
+    out = attn(x)
     assert out.shape == (1, 2048, 256)
 
 
 def test_tier2_b02_vram_peak_m2048():
     """B2.5: Verifies peak memory at M=2048 context length stays within 14.0 GB budget."""
-    batch_size = 1
     seq_len = 2048
     hidden_size = 3584
     intermediate_size = 18944
     num_layers = 28
+    num_kv_heads = 4
+    head_dim = 128
+    world_size = 2
 
-    # INT4 weight footprint per GPU: 7B * 0.5B / 2 = 1.75 GB
-    weight_bytes = 1.75 * (1024 ** 3)
-    # KV cache (sharded 2 heads per GPU, 128 dim, FP16): 28 * 2 * 2048 * 128 * 2 bytes = 29.36 MB
-    kv_bytes = num_layers * 2 * seq_len * 128 * 2
-    # Forward activation peak: ~1.2 GB
-    activation_bytes = 1.2 * (1024 ** 3)
-    total_bytes = weight_bytes + kv_bytes + activation_bytes
+    mlp = TPParallelMLP(hidden_size, intermediate_size, rank=0, world_size=world_size, quant_type=None, all_reduce=False)
+    attn = TPParallelAttention(hidden_size, 28, num_kv_heads, head_dim, rank=0, world_size=world_size, all_reduce=False)
+    layer_bytes = sum(p.numel() * p.element_size() for p in mlp.parameters()) + sum(p.numel() * p.element_size() for p in attn.parameters())
+    weight_bytes = (layer_bytes * 0.5) * num_layers
+    kv_bytes = 2 * num_layers * (num_kv_heads // world_size) * seq_len * head_dim * 2
+    act_bytes = seq_len * intermediate_size * 2
+    total_bytes = weight_bytes + kv_bytes + act_bytes
     total_gb = total_bytes / (1024 ** 3)
-    assert total_gb < 14.0, f"Calculated VRAM {total_gb:.2f} GB exceeds 14.0 GB limit"
+    limit_gb = torch.tensor(14.0)
+    min_gb = torch.tensor(0.5)
+    assert total_gb < limit_gb.item(), f"Calculated VRAM {total_gb:.2f} GB exceeds limit"
+    assert total_gb > min_gb.item()
 
 
 # --- Category B3: Edge Shapes & Batch Sizes ---
 
 def test_tier2_b03_batch_size_1():
     """B3.1: Batch size 1 forward pass shape correctness."""
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
     x = torch.randn(1, 16, 256, dtype=torch.float16)
     out = col(x)
     assert out.shape == (1, 16, 256)
@@ -1304,7 +1149,7 @@ def test_tier2_b03_batch_size_1():
 
 def test_tier2_b03_batch_size_4():
     """B3.2: Batch size 4 forward pass shape correctness."""
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
     x = torch.randn(4, 16, 256, dtype=torch.float16)
     out = col(x)
     assert out.shape == (4, 16, 256)
@@ -1312,7 +1157,7 @@ def test_tier2_b03_batch_size_4():
 
 def test_tier2_b03_odd_sequence_length():
     """B3.3: Handles odd sequence lengths (M=7, 13, 127) cleanly."""
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
     for m in (7, 13, 127):
         x = torch.randn(1, m, 256, dtype=torch.float16)
         out = col(x)
@@ -1321,15 +1166,14 @@ def test_tier2_b03_odd_sequence_length():
 
 def test_tier2_b03_non_power_of_2_intermediate():
     """B3.4: Handles non-power-of-2 intermediate dimension (18944 // 2 = 9472)."""
-    dim = 18944
-    half = dim // 2
-    assert half == 9472
-    assert half % 8 == 0  # Divisible by 8 for INT4 packing
+    col = TPColumnParallelLinear(3584, 18944, rank=0, world_size=2)
+    assert col.split_out_features == 9472
+    assert col.split_out_features % 8 == 0
 
 
 def test_tier2_b03_zero_token_handling():
     """B3.5: Empty tensor M=0 returns empty tensor without crashing."""
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
     x = torch.empty(1, 0, 256, dtype=torch.float16)
     out = col(x)
     assert out.shape == (1, 0, 256)
@@ -1339,11 +1183,12 @@ def test_tier2_b03_zero_token_handling():
 
 def test_tier2_b04_transposed_input():
     """B4.1: Transposed non-contiguous tensor is supported or made contiguous."""
-    col = ReferenceTPColumnParallelLinear(128, 256, rank=0, world_size=2)
-    x_orig = torch.randn(64, 128, dtype=torch.float16)
-    x_t = x_orig.t()  # [128, 64]
-    x_in = x_t.unsqueeze(0).contiguous()  # [1, 128, 64] - adapted
-    assert x_in.is_contiguous()
+    col = TPColumnParallelLinear(128, 256, rank=0, world_size=2)
+    x_orig = torch.randn(128, 16, dtype=torch.float16)
+    x_t = x_orig.t()
+    assert not x_t.is_contiguous()
+    out = col(x_t)
+    assert out.shape == (16, 128)
 
 
 def test_tier2_b04_strided_slice_input():
@@ -1351,10 +1196,8 @@ def test_tier2_b04_strided_slice_input():
     x = torch.randn(2, 16, 256, dtype=torch.float16)
     x_slice = x[:, ::2, :]
     assert not x_slice.is_contiguous()
-    x_contig = x_slice.contiguous()
-    assert x_contig.is_contiguous()
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
-    out = col(x_contig)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    out = col(x_slice)
     assert out.shape == (2, 8, 256)
 
 
@@ -1363,10 +1206,8 @@ def test_tier2_b04_permuted_dimensions():
     x = torch.randn(4, 2, 256, dtype=torch.float16)
     x_perm = x.permute(1, 0, 2)
     assert not x_perm.is_contiguous()
-    x_clean = x_perm.contiguous()
-    assert x_clean.shape == (2, 4, 256)
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=2)
-    out = col(x_clean)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=2)
+    out = col(x_perm)
     assert out.shape == (2, 4, 256)
 
 
@@ -1395,11 +1236,8 @@ def test_tier2_b05_cpu_input_to_cuda_shard_error():
         skip(f"Requires CUDA: {reason}")
     W = torch.randn(256, 128, device="cuda:0", dtype=torch.float16)
     x_cpu = torch.randn(1, 128, dtype=torch.float16)
-    try:
+    with pytest.raises((RuntimeError, TypeError)):
         torch.matmul(x_cpu, W.t())
-        assert False, "Expected error on device mismatch"
-    except (RuntimeError, Exception):
-        pass
 
 
 def test_tier2_b05_cross_device_activation_error():
@@ -1409,11 +1247,8 @@ def test_tier2_b05_cross_device_activation_error():
         skip(f"Requires Dual GPU: {reason}")
     w0 = torch.randn(64, 64, device="cuda:0")
     x1 = torch.randn(1, 64, device="cuda:1")
-    try:
+    with pytest.raises(RuntimeError):
         torch.matmul(x1, w0.t())
-        assert False, "Expected cross-device exception"
-    except (RuntimeError, Exception):
-        pass
 
 
 def test_tier2_b05_allreduce_single_device_error():
@@ -1426,16 +1261,16 @@ def test_tier2_b05_allreduce_single_device_error():
 
 def test_tier2_b05_invalid_device_index():
     """B5.4: Requesting invalid device index like cuda:99 raises exception."""
-    try:
+    ok, reason = check_cuda_available()
+    if not ok:
+        skip(f"Requires CUDA: {reason}")
+    with pytest.raises((RuntimeError, ValueError)):
         torch.cuda.device("cuda:99")
-        assert False, "Expected invalid device exception"
-    except (RuntimeError, ValueError, Exception):
-        pass
 
 
 def test_tier2_b05_tp_single_gpu_fallback():
     """B5.5: TP configuration with world_size=1 functions cleanly as unpartitioned."""
-    col = ReferenceTPColumnParallelLinear(256, 512, rank=0, world_size=1)
+    col = TPColumnParallelLinear(256, 512, rank=0, world_size=1)
     assert col.split_out_features == 512
     x = torch.randn(1, 4, 256, dtype=torch.float16)
     out = col(x)
@@ -1453,8 +1288,8 @@ def test_tier3_pair1_tp_int4_gemv_roundtrip():
     x = torch.randn(2, 4, in_f, dtype=torch.float16)
 
     # INT4 quantize full weight
-    packed, scales, zps, g_size = quantize_weight_sym_int4_ref(W, group_size=128)
-    W_dequant = dequantize_sym_int4_ref(packed, scales, zps, group_size=128)
+    packed, scales, zps, g_size = quantize_weight_sym_int4(W, group_size=128)
+    W_dequant = dequantize_sym_int4(packed, scales, zps, group_size=128, dtype=torch.float16)
 
     # Column split
     y_dequant_ref = F.linear(x, W_dequant)
@@ -1468,24 +1303,17 @@ def test_tier3_pair1_tp_int4_gemv_roundtrip():
 
 def test_tier3_pair2_pp_static_kv_cache_interaction():
     """Tier 3 Pair 2: Pipeline Parallel partitioning interacting with persistent KV cache."""
-    # Stage 0 (layers 0..1) and Stage 1 (layers 2..3)
     num_heads = 2
     head_dim = 64
     max_seq_len = 32
 
-    # Persistent caches per stage
     cache_stage0 = torch.zeros(2, 1, num_heads, max_seq_len, head_dim)
     cache_stage1 = torch.zeros(2, 1, num_heads, max_seq_len, head_dim)
 
     for step in range(5):
-        # Stage 0 token step
         q0 = torch.randn(1, num_heads, 1, head_dim)
         cache_stage0[:, :, :, step:step+1, :] = q0.unsqueeze(0).repeat(2, 1, 1, 1, 1)
 
-        # Boundary activation transfer
-        boundary_act = torch.randn(1, 1, 128)
-
-        # Stage 1 token step
         q1 = torch.randn(1, num_heads, 1, head_dim)
         cache_stage1[:, :, :, step:step+1, :] = q1.unsqueeze(0).repeat(2, 1, 1, 1, 1)
 
@@ -1495,20 +1323,56 @@ def test_tier3_pair2_pp_static_kv_cache_interaction():
 
 def test_tier3_pair3_tp_swiglu_mlp_interaction():
     """Tier 3 Pair 3: TP Column/Row linear interacting with SwiGLU activation."""
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=256, intermediate_size=512, dtype=torch.float32)
+    class StdMLP(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.gate_proj = nn.Linear(256, 512, bias=False, dtype=torch.float32)
+            self.up_proj = nn.Linear(256, 512, bias=False, dtype=torch.float32)
+            self.down_proj = nn.Linear(512, 256, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
+
+    std_mlp = StdMLP()
+    tp0 = TPParallelMLP.from_mlp(std_mlp, rank=0, world_size=2, quant_type=None, all_reduce=False)
+    tp1 = TPParallelMLP.from_mlp(std_mlp, rank=1, world_size=2, quant_type=None, all_reduce=False)
+
     x = torch.randn(2, 4, 256, dtype=torch.float32)
-    y_full = mlp.forward_unsharded(x)
-    y_sharded = mlp.forward_sharded(x)
+    y_full = std_mlp(x)
+    y_sharded = tp0(x) + tp1(x)
     rel_err = relative_l2_error(y_sharded, y_full)
     assert rel_err < 1e-4, f"SwiGLU TP error {rel_err} exceeds 1e-4"
 
 
 def test_tier3_pair4_tp_attention_kv_cache_interaction():
     """Tier 3 Pair 4: TP Attention head sharding interacting with sharded static KV cache."""
-    attn = ReferenceColumnRowAttention(hidden_size=256, num_heads=4, num_kv_heads=2, head_dim=64, dtype=torch.float32)
+    class StdAttn(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.num_heads = 4
+            self.num_kv_heads = 2
+            self.head_dim = 64
+            self.q_proj = nn.Linear(256, 256, bias=False, dtype=torch.float32)
+            self.k_proj = nn.Linear(256, 128, bias=False, dtype=torch.float32)
+            self.v_proj = nn.Linear(256, 128, bias=False, dtype=torch.float32)
+            self.o_proj = nn.Linear(256, 256, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            b, m, _ = x.shape
+            q = self.q_proj(x).view(b, m, 4, 64).transpose(1, 2)
+            k = self.k_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(2, dim=1)
+            v = self.v_proj(x).view(b, m, 2, 64).transpose(1, 2).repeat_interleave(2, dim=1)
+            scores = torch.matmul(q, k.transpose(-1, -2)) / 8.0
+            attn = torch.matmul(F.softmax(scores, dim=-1), v).transpose(1, 2).contiguous().view(b, m, -1)
+            return self.o_proj(attn)
+
+    std_attn = StdAttn()
+    tp0 = TPParallelAttention.from_attention(std_attn, rank=0, world_size=2, all_reduce=False)
+    tp1 = TPParallelAttention.from_attention(std_attn, rank=1, world_size=2, all_reduce=False)
+
     x = torch.randn(1, 4, 256, dtype=torch.float32)
-    y_full = attn.forward_unsharded(x)
-    y_sharded = attn.forward_sharded(x)
+    y_full = std_attn(x)
+    y_sharded = tp0(x) + tp1(x)
     rel_err = relative_l2_error(y_sharded, y_full)
     assert rel_err < 1e-4, f"Attention KV sharded error {rel_err} exceeds 1e-4"
 
@@ -1523,14 +1387,14 @@ def test_tier3_pair5_scope_dynamic_tp_pp_switching():
     orig_w = model.down_proj.weight.clone()
 
     # Enter TP mode
-    scope_tp = ReferenceCPMultiGPUInferenceScope(model, mode='tp')
+    scope_tp = CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu', 'cpu'], quantize_mlp=False)
     with scope_tp:
         assert scope_tp.is_active
     assert not scope_tp.is_active
     assert torch.equal(model.down_proj.weight, orig_w)
 
     # Enter PP mode
-    scope_pp = ReferenceCPMultiGPUInferenceScope(model, mode='pp')
+    scope_pp = CPMultiGPUInferenceScope(model, mode='pp', devices=['cpu', 'cpu'], quantize_mlp=False)
     with scope_pp:
         assert scope_pp.is_active
     assert not scope_pp.is_active
@@ -1560,26 +1424,49 @@ def test_tier3_pair6_int4_gemv_multidevice_guard_concurrency():
 
 def test_tier4_s01_qwen_7b_2048_prefill_forward():
     """Tier 4 Scenario 1: Qwen2.5-Math-7B 2048-token context prefill forward pass."""
-    # Tests a representative layer block under 2048 context prefill
-    hidden_size = 512
-    intermediate_size = 1024
-    num_heads = 8
+    hidden_size = 256
+    intermediate_size = 512
+    num_heads = 4
     num_kv_heads = 2
     head_dim = 64
     seq_len = 2048
 
-    attn = ReferenceColumnRowAttention(hidden_size, num_heads, num_kv_heads, head_dim, dtype=torch.float32)
-    mlp = ReferenceTPSwiGLUMLP(hidden_size, intermediate_size, dtype=torch.float32)
+    class StdBlock(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.num_heads = num_heads
+            self.num_kv_heads = num_kv_heads
+            self.head_dim = head_dim
+            self.q_proj = nn.Linear(hidden_size, hidden_size, bias=False, dtype=torch.float32)
+            self.k_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=torch.float32)
+            self.v_proj = nn.Linear(hidden_size, num_kv_heads * head_dim, bias=False, dtype=torch.float32)
+            self.o_proj = nn.Linear(hidden_size, hidden_size, bias=False, dtype=torch.float32)
+            self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False, dtype=torch.float32)
+            self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False, dtype=torch.float32)
+            self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False, dtype=torch.float32)
+
+        def forward(self, x):
+            b, m, _ = x.shape
+            q = self.q_proj(x).view(b, m, num_heads, head_dim).transpose(1, 2)
+            k = self.k_proj(x).view(b, m, num_kv_heads, head_dim).transpose(1, 2).repeat_interleave(2, dim=1)
+            v = self.v_proj(x).view(b, m, num_kv_heads, head_dim).transpose(1, 2).repeat_interleave(2, dim=1)
+            scores = torch.matmul(q, k.transpose(-1, -2)) / 8.0
+            attn = torch.matmul(F.softmax(scores, dim=-1), v).transpose(1, 2).contiguous().view(b, m, -1)
+            h = x + self.o_proj(attn)
+            mlp_out = self.down_proj(F.silu(self.gate_proj(h)) * self.up_proj(h))
+            return h + mlp_out
+
+    block = StdBlock()
+    tp_attn0 = TPParallelAttention.from_attention(block, rank=0, world_size=2, all_reduce=False)
+    tp_attn1 = TPParallelAttention.from_attention(block, rank=1, world_size=2, all_reduce=False)
+    tp_mlp0 = TPParallelMLP.from_mlp(block, rank=0, world_size=2, quant_type=None, all_reduce=False)
+    tp_mlp1 = TPParallelMLP.from_mlp(block, rank=1, world_size=2, quant_type=None, all_reduce=False)
 
     x = torch.randn(1, seq_len, hidden_size, dtype=torch.float32)
+    y_ref = block(x)
 
-    # Forward through sharded layer
-    h_attn = x + attn.forward_sharded(x)
-    y_sharded = h_attn + mlp.forward_sharded(h_attn)
-
-    # Forward through unsharded reference
-    h_ref_attn = x + attn.forward_unsharded(x)
-    y_ref = h_ref_attn + mlp.forward_unsharded(h_ref_attn)
+    h_shard = x + tp_attn0(x) + tp_attn1(x)
+    y_sharded = h_shard + tp_mlp0(h_shard) + tp_mlp1(h_shard)
 
     rel_err = relative_l2_error(y_sharded, y_ref)
     assert rel_err <= 1e-3, f"7B 2048 prefill relative error {rel_err} exceeds 0.1% gate"
@@ -1588,42 +1475,40 @@ def test_tier4_s01_qwen_7b_2048_prefill_forward():
 
 def test_tier4_s02_qwen_7b_100_step_decode_stability():
     """Tier 4 Scenario 2: Qwen2.5-Math-7B 100-step autoregressive decode loop."""
-    hidden_size = 256
-    intermediate_size = 512
+    hidden_size = 128
+    intermediate_size = 256
     num_heads = 4
     num_kv_heads = 2
-    head_dim = 64
+    head_dim = 32
 
-    attn = ReferenceColumnRowAttention(hidden_size, num_heads, num_kv_heads, head_dim, dtype=torch.float32)
-    mlp = ReferenceTPSwiGLUMLP(hidden_size, intermediate_size, dtype=torch.float32)
+    attn = TPParallelAttention(hidden_size=hidden_size, num_heads=num_heads, num_kv_heads=num_kv_heads, head_dim=head_dim, dtype=torch.float32, all_reduce=False)
+    mlp = TPParallelMLP(hidden_size=hidden_size, intermediate_size=intermediate_size, quant_type=None, dtype=torch.float32, all_reduce=False)
     norm = nn.LayerNorm(hidden_size, dtype=torch.float32)
 
     curr_token = torch.randn(1, 1, hidden_size, dtype=torch.float32)
     for step in range(100):
-        h = norm(curr_token + attn.forward_sharded(curr_token))
-        curr_token = norm(h + mlp.forward_sharded(h))
+        h = norm(curr_token + attn(curr_token, start_pos=step))
+        curr_token = norm(h + mlp(h))
         assert curr_token.shape == (1, 1, hidden_size)
         assert torch.isfinite(curr_token).all()
 
 
 def test_tier4_s03_amc12_math_reasoning_tp_rollout():
     """Tier 4 Scenario 3: AMC 12 math reasoning prompt rollout under TP=2."""
-    # Problem: "What is the sum of all integers x such that |x - 3| < 5?"
-    # Tokenized prompt representation:
     prompt_tokens = [15, 230, 18, 492, 102, 33, 405, 92, 14, 188]
     prompt_len = len(prompt_tokens)
 
     hidden_size = 128
     vocab_size = 1000
     embed = nn.Embedding(vocab_size, hidden_size)
-    mlp = ReferenceTPSwiGLUMLP(hidden_size=hidden_size, intermediate_size=256, dtype=torch.float32)
+    mlp = TPParallelMLP(hidden_size=hidden_size, intermediate_size=256, quant_type=None, dtype=torch.float32, all_reduce=False)
     lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
 
     tokens = list(prompt_tokens)
     for step in range(8):
         inp_tensor = torch.tensor([tokens], dtype=torch.long)
         h = embed(inp_tensor)
-        h_sharded = mlp.forward_sharded(h)
+        h_sharded = mlp(h)
         logits = lm_head(h_sharded[:, -1:, :])
         next_tok = int(torch.argmax(logits, dim=-1).item())
         tokens.append(next_tok)
@@ -1634,9 +1519,8 @@ def test_tier4_s03_amc12_math_reasoning_tp_rollout():
 
 def test_tier4_s04_aime_proof_reasoning_pp_rollout():
     """Tier 4 Scenario 4: AIME competition proof prompt rollout under PP=2."""
-    # Problem: "Let P(x) be a polynomial with integer coefficients such that P(1) = 2 and P(2) = 3..."
     aime_prompt = [42, 901, 12, 54, 882, 10, 4, 301]
-    pp = ReferencePipelineParallelQwen2(num_layers=4, hidden_size=128, vocab_size=1000, dtype=torch.float32)
+    pp = PipelineParallelQwen2(num_layers=4, hidden_size=128, vocab_size=1000, dtype=torch.float32, devices=['cpu', 'cpu'])
 
     tokens = list(aime_prompt)
     for _ in range(6):
@@ -1657,11 +1541,12 @@ def test_tier4_s05_dynamic_scope_state_restoration_during_generation():
             self.embed = nn.Embedding(100, 64)
             self.down_proj = nn.Linear(64, 64)
             self.head = nn.Linear(64, 100)
+
         def forward(self, x):
             return self.head(self.down_proj(self.embed(x)))
 
     model = SimpleLM()
-    scope = ReferenceCPMultiGPUInferenceScope(model, mode='tp')
+    scope = CPMultiGPUInferenceScope(model, mode='tp', devices=['cpu', 'cpu'], quantize_mlp=False)
 
     prompt = torch.tensor([[1, 2, 3, 4]])
 

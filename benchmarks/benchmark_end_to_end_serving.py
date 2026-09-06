@@ -222,19 +222,18 @@ class T4FusedDecoderLayer(nn.Module):
         self.register_buffer("down_zp", down_zp)
 
     def forward(self, x, k_cache, v_cache, seq_pos):
+        if not (HAS_T4_KERNELS and x.is_cuda):
+            raise RuntimeError("T4FusedDecoderLayer requires CUDA and t4_kernels.")
+
         B, M, D = x.shape
         x_2d = x.view(B * M, D)
 
         # 1. Attn Norm (Fused RMSNorm)
-        if HAS_T4_KERNELS and x.is_cuda:
-            norm_attn = t4_kernels.fused_ellie_rmsnorm(x_2d, self.attn_norm_weight, 1e-6)
-            # 2. QKV Proj via Fused W4A16 GEMV
-            qkv = t4_kernels.fused_w4a16_gemm_s4(
-                norm_attn, self.qkv_packed, self.qkv_scale, self.qkv_zp
-            ).view(B, 1, 3 * self.dim)
-        else:
-            norm_attn = x_2d * torch.rsqrt(x_2d.pow(2).mean(-1, keepdim=True) + 1e-6) * self.attn_norm_weight
-            qkv = norm_attn.view(B, 1, -1) # CPU fallback mock
+        norm_attn = t4_kernels.fused_ellie_rmsnorm(x_2d, self.attn_norm_weight, 1e-6)
+        # 2. QKV Proj via Fused W4A16 GEMV
+        qkv = t4_kernels.fused_w4a16_gemm_s4(
+            norm_attn, self.qkv_packed, self.qkv_scale, self.qkv_zp
+        ).view(B, 1, 3 * self.dim)
 
         q, k, v = torch.chunk(qkv, 3, dim=-1)
         q = q.view(B, self.num_heads, 1, self.head_dim)
@@ -250,30 +249,24 @@ class T4FusedDecoderLayer(nn.Module):
         attn = F.softmax(scores, dim=-1, dtype=torch.float32).half()
         ctx = torch.matmul(attn, v_hist).view(B, 1, D)
 
-        if HAS_T4_KERNELS and x.is_cuda:
-            attn_out = t4_kernels.fused_w4a16_gemm_s4(
-                ctx.view(B*M, D), self.out_packed, self.out_scale, self.out_zp
-            ).view(B, 1, D)
-        else:
-            attn_out = ctx
+        attn_out = t4_kernels.fused_w4a16_gemm_s4(
+            ctx.view(B*M, D), self.out_packed, self.out_scale, self.out_zp
+        ).view(B, 1, D)
 
         h = x + attn_out
         h_2d = h.view(B * M, D)
 
         # 3. Fused Mega-Kernel: RMSNorm + Dual W4A16 (Gate+Up) + Inline SwiGLU
-        if HAS_T4_KERNELS and x.is_cuda:
-            swiglu_act = t4_kernels.fused_ellie_rmsnorm_w4a16_gemv_swiglu(
-                h_2d, self.mlp_norm_weight,
-                self.gate_packed, self.gate_scale, self.gate_zp,
-                self.up_packed, self.up_scale, self.up_zp,
-                self.group_size, 1e-6
-            )
-            # 4. Down Projection (W4A16 GEMV)
-            mlp_out = t4_kernels.fused_w4a16_gemm_s4(
-                swiglu_act, self.down_packed, self.down_scale, self.down_zp
-            ).view(B, 1, D)
-        else:
-            mlp_out = h
+        swiglu_act = t4_kernels.fused_ellie_rmsnorm_w4a16_gemv_swiglu(
+            h_2d, self.mlp_norm_weight,
+            self.gate_packed, self.gate_scale, self.gate_zp,
+            self.up_packed, self.up_scale, self.up_zp,
+            self.group_size, 1e-6
+        )
+        # 4. Down Projection (W4A16 GEMV)
+        mlp_out = t4_kernels.fused_w4a16_gemm_s4(
+            swiglu_act, self.down_packed, self.down_scale, self.down_zp
+        ).view(B, 1, D)
 
         return h + mlp_out
 
@@ -306,14 +299,14 @@ def run_serving_benchmark():
     print("  TESLA T4 END-TO-END AUTOREGRESSIVE SERVING ENGINE BENCHMARK (MILESTONE A)")
     print("=" * 80)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device == "cuda":
-        gpu_name = torch.cuda.get_device_name(0)
-        capability = torch.cuda.get_device_capability(0)
-        print(f"[*] Compute Target : {gpu_name} (Compute Capability {capability[0]}.{capability[1]})")
-        print(f"[*] Driver / CUDA  : PyTorch {torch.version.__version__}, CUDA {torch.version.cuda}")
-    else:
-        print("[!] No CUDA GPU detected. Running in host simulation mode.")
+    if not torch.cuda.is_available():
+        print("[SKIP] CUDA GPU absent. No synthetic serving numbers emitted.")
+        return
+
+    gpu_name = torch.cuda.get_device_name(0)
+    capability = torch.cuda.get_device_capability(0)
+    print(f"[*] Compute Target : {gpu_name} (Compute Capability {capability[0]}.{capability[1]})")
+    print(f"[*] Driver / CUDA  : PyTorch {torch.version.__version__}, CUDA {torch.version.cuda}")
 
     # Architecture Profile: 24 Layers, D=2048, H=5504, 16 Heads (0.5B-1B LLM Decode Profile)
     NUM_LAYERS = 24
@@ -342,6 +335,7 @@ def run_serving_benchmark():
     # Benchmark 1: PyTorch FP16 Eager Baseline
     # --------------------------------------------------------------------------
     print("\n[Engine 1/3] Benchmarking PyTorch FP16 Eager Baseline...")
+    torch.cuda.reset_peak_memory_stats()
     eager_model = FullDecoderStack(NUM_LAYERS, DIM, HIDDEN_DIM, NUM_HEADS, PyTorchDecoderLayer).to(device).half().eval()
     k_caches, v_caches = make_kv_caches()
     cur_token = torch.randn((1, 1, DIM), dtype=torch.float16, device=device)
@@ -389,6 +383,7 @@ def run_serving_benchmark():
     if device == "cuda":
         print("\n[Engine 2/3] Benchmarking PyTorch Inductor (torch.compile mode='reduce-overhead')...")
         try:
+            torch.cuda.reset_peak_memory_stats()
             k_caches, v_caches = make_kv_caches()
             cur_token = torch.randn((1, 1, DIM), dtype=torch.float16, device=device)
             compiled_model = torch.compile(eager_model, mode="reduce-overhead")
@@ -471,7 +466,7 @@ def run_serving_benchmark():
         print(f"  -> Speedup vs Eager     : {speedup_vs_eager:.2f}x")
         print(f"  -> Speedup vs Inductor  : {speedup_vs_compile:.2f}x")
     else:
-        print("  [!] Running in mathematical estimation mode (T4 kernels not linked locally).")
+        print("  [SKIP] T4 custom kernels not available or not linked locally. Skipping T4 Custom Fused INT4 Engine.")
 
     # --------------------------------------------------------------------------
     # Final Comparison Table & Gate Report

@@ -103,7 +103,7 @@ class PipelineParallelQwen2(nn.Module):
         self.dtype = dtype
 
         if devices is None:
-            if is_cuda_available() and check_dual_gpu():
+            if is_cuda_available() and check_dual_gpu()[0]:
                 self.devices = [torch.device("cuda:0"), torch.device("cuda:1")]
             elif is_cuda_available():
                 self.devices = [torch.device("cuda:0"), torch.device("cuda:0")]
@@ -242,7 +242,7 @@ class PipelineParallelQwen2(nn.Module):
         )
 
         if self.devices[0] != self.devices[1]:
-            h_boundary = p2p_transfer(h_stage0, src_device=self.devices[0], dst_device=self.devices[1])
+            h_boundary = p2p_transfer(h_stage0, dst_device=self.devices[1])
         else:
             h_boundary = h_stage0
 
