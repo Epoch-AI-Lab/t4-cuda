@@ -383,9 +383,19 @@ def run_3way_benchmark(
                     bias=False,
                     compute_dtype=torch.float16,
                     quant_type="nf4",
-                ).to(device)
-                with torch.no_grad():
-                    bnb_layer.weight.copy_(lin_fp16.weight.data)
+                )
+                if hasattr(bnb.nn, "Params4bit"):
+                    bnb_layer.weight = bnb.nn.Params4bit(
+                        lin_fp16.weight.data.clone().cpu(),
+                        requires_grad=False,
+                        quant_type="nf4",
+                    )
+                    bnb_layer = bnb_layer.to(device)
+                else:
+                    bnb_layer = bnb_layer.to(device)
+                    with torch.no_grad():
+                        bnb_layer.weight.copy_(lin_fp16.weight.data)
+                bnb_init_status = "READY"
             except Exception as e:
                 bnb_layer = None
                 bnb_init_status = f"FAILED: BNB init error ({e})"
@@ -481,7 +491,14 @@ def run_3way_benchmark(
             # Formatting table outputs
             cublas_str = f"{t_cublas_us:7.1f} us"
             t4_str = f"{t_t4_us:7.1f} us" if t_t4_us is not None else ("N/A (dry)" if dry_run else "Not compiled")
-            bnb_str = f"{t_bnb_us:7.1f} us" if t_bnb_us is not None else ("N/A (dry)" if dry_run else "Not installed")
+            if t_bnb_us is not None:
+                bnb_str = f"{t_bnb_us:7.1f} us"
+            elif not HAS_BNB:
+                bnb_str = "Not installed"
+            elif dry_run:
+                bnb_str = "N/A (dry)"
+            else:
+                bnb_str = "Init error"
             marlin_str = f"{t_marlin_us:7.1f} us" if t_marlin_us is not None else ("N/A (dry)" if dry_run else "Not installed")
 
             if t_t4_us is not None and t_cublas_us > 0:
