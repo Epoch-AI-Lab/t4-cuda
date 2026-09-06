@@ -298,7 +298,7 @@ class TPColumnParallelLinear(nn.Module):
         self.group_size = group_size
         self.dtype = dtype
 
-        if quant_type == "int4":
+        if quant_type in ("int4", "sym", "asym", "gptq"):
             if in_features % 8 != 0:
                 raise ValueError(f"in_features ({in_features}) must be divisible by 8")
             self.register_buffer(
@@ -360,10 +360,15 @@ class TPColumnParallelLinear(nn.Module):
         end = (rank + 1) * split_n
 
         with torch.no_grad():
-            if quant_type == "int4":
-                packed_full, scales_full, zps_full, g_size = quantize_weight_sym_int4(
-                    linear.weight, group_size=group_size
-                )
+            if quant_type in ("int4", "sym", "asym", "gptq"):
+                if quant_type == "asym":
+                    packed_full, scales_full, zps_full, g_size = quantize_weight_asym_int4(
+                        linear.weight, group_size=group_size
+                    )
+                else:
+                    packed_full, scales_full, zps_full, g_size = quantize_weight_sym_int4(
+                        linear.weight, group_size=group_size
+                    )
                 p_shard, s_shard, z_shard = slice_column_parallel_int4(
                     packed_full, scales_full, zps_full, rank, world_size
                 )
@@ -458,7 +463,7 @@ class TPRowParallelLinear(nn.Module):
         self.dtype = dtype
         self.all_reduce = all_reduce
 
-        if quant_type == "int4":
+        if quant_type in ("int4", "sym", "asym", "gptq"):
             if self.split_in_features % 8 != 0:
                 raise ValueError(f"split_in_features ({self.split_in_features}) must be divisible by 8")
             if group_size > 0 and self.split_in_features % group_size != 0:
@@ -523,10 +528,15 @@ class TPRowParallelLinear(nn.Module):
         )
 
         with torch.no_grad():
-            if quant_type == "int4":
-                packed_full, scales_full, zps_full, g_size = quantize_weight_sym_int4(
-                    linear.weight, group_size=group_size
-                )
+            if quant_type in ("int4", "sym", "asym", "gptq"):
+                if quant_type == "asym":
+                    packed_full, scales_full, zps_full, g_size = quantize_weight_asym_int4(
+                        linear.weight, group_size=group_size
+                    )
+                else:
+                    packed_full, scales_full, zps_full, g_size = quantize_weight_sym_int4(
+                        linear.weight, group_size=group_size
+                    )
                 p_shard, s_shard, z_shard = slice_row_parallel_int4(
                     packed_full, scales_full, zps_full, rank, world_size, group_size=g_size
                 )
