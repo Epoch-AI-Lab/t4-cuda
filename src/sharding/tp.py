@@ -349,7 +349,7 @@ class TPColumnParallelLinear(nn.Module):
             return torch.empty(out_shape, dtype=self.dtype, device=x.device)
 
         if self.quant_type == "int4":
-            if M <= 4 and HAS_T4_KERNELS and x.is_cuda:
+            if HAS_T4_KERNELS and x.is_cuda:
                 out = t4_kernels.fused_w4a16_gemm_u4(
                     x_2d, self.packed, self.scales, self.zps, self.group_size
                 )
@@ -524,7 +524,7 @@ class TPRowParallelLinear(nn.Module):
             return torch.empty(out_shape, dtype=self.dtype, device=x.device)
 
         if self.quant_type == "int4":
-            if M <= 4 and HAS_T4_KERNELS and x.is_cuda:
+            if HAS_T4_KERNELS and x.is_cuda:
                 part = t4_kernels.fused_w4a16_gemm_u4(
                     x_2d, self.packed, self.scales, self.zps, self.group_size
                 )
