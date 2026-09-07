@@ -138,4 +138,58 @@ Execute the full test and benchmark suite locally and verify:
 - [ ] Automated AST scanner script passes with 0 violations found across all `.py` files in `src/`, `tests/`, and `benchmarks/`.
 - [ ] Pytest suite (`pytest tests/`) runs with 0 failures, with all tests either authentically passing or explicitly skipping.
 
+## Follow-up — 2026-09-07T05:20:21Z
+
+Implement Chalk's 16,384-token context expansion and RL post-training pipeline with behavioral verifiers and controls (Cursor-style modified GRPO, calibrated abstention, loop breaking, 5-tag XML verification, and general replay guardrails).
+
+Working directory: /home/kriday/epoch_website/t4-cuda
+Integrity mode: development
+
+## Requirements
+
+### R1. Context Window Expansion to 16,384 Tokens
+- Extend the model's sequence length to 16,384 tokens using RoPE base frequency adjustment / scaling.
+- Ensure KV cache and rollout generation fit within T4 / Colab 16GB VRAM budgets using memory-efficient attention (FlashAttention-2 / SDPA) and INT4 W4A16 weight kernels.
+
+### R2. Modified GRPO Optimization Loop
+- Implement GRPO policy gradient loss with Cursor-style stability fixes:
+  - Unscaled mean-centered advantages: $A_i = r_i - \bar{r}$ (bypassing division by near-zero group standard deviation $\sigma$ when rollouts tie).
+  - Removal of per-token length normalization to allow elastic reasoning depth without penalizing long proofs.
+  - Detached importance ratio / CISPO-style upper-bound clipping to prevent gradient zeroing on critical reasoning tags.
+
+### R3. Calibrated Abstention Reward Engine
+- Implement asymmetric reward calculations for out-of-distribution / open problems vs standard competition math:
+  - Correct symbolic answer: +1.0
+  - Explicit refusal / `<abstain>`: 0.0
+  - Incorrect or hallucinated answer: -1.5
+- Calibrate the reward function so that guessing with $< 60\%$ confidence has a negative expected value.
+
+### R4. Anti-Looping and Attractor Prevention
+- Enforce strict 4-gram repetition penalty during rollout generation ($r_{\text{rep}} = -0.5$ or forced truncation if loops exceed 2 occurrences).
+- Implement mandatory XML tag progression to stop the policy from stalling inside exploratory blocks.
+- Maintain an entropy regularization floor during RL training to avoid collapse into safe-phrase loops.
+
+### R5. Rottweiler Verification & Format Discrimination
+- Enforce the 5-stage XML scaffold: `<explore>`, `<conjecture>`, `<test_edge_cases>`, `<lemma_isolate>`, `<formal_proof>`.
+- Implement a SymPy execution verifier that tests:
+  - Exact symbolic equivalence of `\boxed{answer}`.
+  - Reverse substitution sanity checks (substituting the boxed answer back into the original equations).
+- Add a 15-20% general conversational and coding replay buffer with format discrimination: penalize XML tags on casual conversational prompts like "Hi", and penalize missing XML tags on contest math.
+
+## Acceptance Criteria
+
+### Context & Memory Scalability
+- [ ] Rollout generation executes up to 16,384 tokens without CUDA out-of-memory errors on 16GB VRAM.
+- [ ] RoPE scaling configuration correctly applies to both forward pass and training backward pass.
+
+### Policy Training & Numerics
+- [ ] GRPO training runs on tied rollout groups (all passing or all failing) without division-by-zero, NaNs, or gradient explosion.
+- [ ] Policy loss does not normalize by token length per sequence.
+
+### Behavioral Verification
+- [ ] Rollouts with repeating n-grams are detected and penalized.
+- [ ] SymPy test harness checks both answer equivalence and substitution consistency.
+- [ ] Conversational prompts ("Hi", general code) generate clean, direct responses without XML tags.
+- [ ] Mathematical prompts adhere to all 5 XML tags in strict sequence.
+
 
