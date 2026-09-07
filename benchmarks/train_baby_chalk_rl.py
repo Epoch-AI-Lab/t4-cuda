@@ -288,11 +288,16 @@ def evaluate_rollout_rewards(
 
                 # Granular scaffold compliance: reward partial tag progress to break rollout ties
                 tags = ["explore", "conjecture", "test_edge_cases", "lemma_isolate", "formal_proof"]
-                tags_found = sum(1 for t in tags if f"<{t}>" in comp and f"</{t}>" in comp)
+                open_tags = sum(1 for t in tags if f"<{t}>" in comp)
+                closed_tags = sum(1 for t in tags if f"</{t}>" in comp)
                 # Formatted tags yield -1.0 for 0 tags up to 0.0 for all 5 tags
-                r_format = (tags_found / 5.0) - 1.0
+                r_format = 0.1 * open_tags + 0.1 * closed_tags - 1.0
                 if eval_res.get("boxed_answer"):
-                    r_format += 0.2
+                    r_format += 0.3
+
+                # Reward math reasoning density (LaTeX delimiters and equality) to break flat rollout ties
+                math_density = comp.count("$") + comp.count("=") + comp.count("\\")
+                r_format += min(0.2, math_density * 0.01)
 
                 # Check abstention
                 r_abstain, _ = abstention.compute_reward(comp, gold)
