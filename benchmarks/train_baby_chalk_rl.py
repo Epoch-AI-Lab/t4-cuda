@@ -157,7 +157,7 @@ def evaluate_rollout_rewards(
 
             if p_type == PromptType.CONTEST_MATH:
                 # Math item: verify 5-tag scaffold and symbolic correctness
-                eval_res = rottweiler.verify_completion(
+                eval_res = rottweiler.verify(
                     completion=comp,
                     ground_truth=gold,
                 )

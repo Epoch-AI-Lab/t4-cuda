@@ -576,3 +576,12 @@ class RottweilerVerifier:
             "boxed_answer": boxed_ans,
             "error": sym_err if not sym_valid else None
         }
+
+    def verify_completion(
+        self,
+        completion: str,
+        ground_truth: str,
+        equation_str: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Alias for verify pipeline."""
+        return self.verify(completion, ground_truth, equation_str=equation_str)
