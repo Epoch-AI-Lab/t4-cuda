@@ -84,7 +84,8 @@ class FormatDiscriminationReplayBuffer(Dataset):
         general_data: Optional[List[Dict[str, Any]]] = None,
         math_ratio: float = 0.85,
         general_ratio: float = 0.15,
-        seed: int = 42
+        seed: int = 42,
+        math_data: Optional[List[Dict[str, Any]]] = None,
     ):
         if math_ratio <= 0 or general_ratio <= 0:
             raise ValueError("Ratios must be strictly positive")
@@ -94,8 +95,9 @@ class FormatDiscriminationReplayBuffer(Dataset):
         self.general_ratio = general_ratio / total_ratio
         self.rng = random.Random(seed)
 
+        effective_math = contest_math_data if contest_math_data is not None else math_data
         self.contest_math_data: List[Dict[str, Any]] = (
-            list(contest_math_data) if contest_math_data is not None else list(DEFAULT_MATH_PROMPTS)
+            list(effective_math) if effective_math is not None else list(DEFAULT_MATH_PROMPTS)
         )
         self.general_data: List[Dict[str, Any]] = (
             list(general_data) if general_data is not None else list(DEFAULT_GENERAL_PROMPTS)

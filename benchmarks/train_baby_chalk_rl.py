@@ -120,7 +120,7 @@ def build_prompts_and_evaluators(data_path: str):
                     })
 
     buffer = FormatDiscriminationReplayBuffer(
-        math_data=math_items,
+        contest_math_data=math_items,
         math_ratio=0.80,
         general_ratio=0.20,
         seed=42,
