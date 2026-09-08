@@ -35,13 +35,22 @@ except ImportError:
     print("[ERROR] `datasets` not installed. Run: pip install datasets")
     sys.exit(1)
 
-REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SFT_FILE = os.path.join(REPO_DIR, "data", "chalk_seeds_500.jsonl")
+# __file__ is not defined when run inside a Colab kernel (via colab exec).
+# Fall back to /content (Colab default working dir) in that case.
+_here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "/content"
+REPO_DIR = os.path.abspath(os.path.join(_here, "..")) if "__file__" in dir() else "/content"
+# Check both repo-relative path and /content/ directly (Colab upload destination)
+_sft_candidates = [
+    os.path.join(REPO_DIR, "data", "chalk_seeds_500.jsonl"),
+    "/content/chalk_seeds_500.jsonl",
+]
+SFT_FILE = next((p for p in _sft_candidates if os.path.exists(p)), _sft_candidates[0])
 OUT_FILE = os.path.join(REPO_DIR, "data", "rl_pool.jsonl")
 
-# NuminaMath sources to keep. "olympiads" is a broad catch-all so we also
-# apply a post-hoc answer-quality filter (see _is_valid_answer).
-NUMINA_COMPETITION_SOURCES = {"amc_aime", "olympiads"}
+# NuminaMath sources to keep. Verified field values from the actual dataset:
+# amc_aime, olympiads, aops_forum are real competition math.
+# synthetic_amc / cn_k12 / orca_math are excluded (synthetic or drill problems).
+NUMINA_COMPETITION_SOURCES = {"amc_aime", "olympiads", "aops_forum"}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -76,7 +85,9 @@ def _extract_boxed(text: str) -> Optional[str]:
     Handles nested braces correctly, e.g. \\boxed{\\frac{3}{4}}.
     Returns None if no valid \\boxed is found.
     """
-    matches = list(re.finditer(r"\\\\boxed\s*\{", text))
+    # r"\\boxed\s*\{" matches a single literal backslash followed by 'boxed' — which is
+    # how LaTeX appears in Python strings loaded from JSON (single \, not double \\).
+    matches = list(re.finditer(r"\\boxed\s*\{", text))
     if not matches:
         return None
 
@@ -189,7 +200,6 @@ def pull_numina(max_per_source: int, seen: set) -> list:
         ds = load_dataset(
             "AI-MO/NuminaMath-CoT",
             split="train",
-            trust_remote_code=True,
             token=hf_token,
         )
     except Exception as e:
@@ -261,7 +271,6 @@ def pull_aime(max_per_source: int, seen: set) -> list:
         ds = load_dataset(
             "qq8933/AIME_1983_2024",
             split="train",
-            trust_remote_code=True,
             token=hf_token,
         )
     except Exception as e:
@@ -277,8 +286,8 @@ def pull_aime(max_per_source: int, seen: set) -> list:
         if len(records) >= max_per_source:
             break
 
-        # Field names vary by dataset version — handle both casings
-        problem = (row.get("Problem") or row.get("problem") or "").strip()
+        # Confirmed field names from dataset inspection: Question, Answer, Year, Part
+        problem = (row.get("Question") or row.get("Problem") or row.get("problem") or "").strip()
 
         # AIME answers are integers 000-999 stored as int or str.
         # Do NOT use `row.get("Answer") or row.get("answer")` — 0 is falsy and would be dropped.
