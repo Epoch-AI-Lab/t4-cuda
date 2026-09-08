@@ -28,9 +28,13 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    GenerationConfig
+    GenerationConfig,
+    StoppingCriteria,
+    StoppingCriteriaList,
 )
 from peft import PeftModel
+
+from src.rope_scaling import configure_rope_scaling
 
 try:
     import t4_kernels
@@ -342,6 +346,18 @@ class CPHybridInferenceScope:
             torch.cuda.empty_cache()
 
 
+class StopOnFormalProof(StoppingCriteria):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        if input_ids.shape[1] < 16:
+            return False
+        tail = input_ids[0, -20:]
+        text = self.tokenizer.decode(tail, skip_special_tokens=False)
+        return "</formal_proof>" in text or "<|im_end|>" in text
+
+
 def evaluate_model_on_dataset(
     model,
     tokenizer,
@@ -357,6 +373,12 @@ def evaluate_model_on_dataset(
     total_generation_time = 0.0
 
     scope = CPHybridInferenceScope(model) if use_kernels else contextlib.nullcontext()
+
+    # Build comprehensive EOS tokens
+    eos_token_ids = [tokenizer.eos_token_id]
+    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+    if isinstance(im_end_id, int) and im_end_id not in eos_token_ids:
+        eos_token_ids.append(im_end_id)
 
     with scope:
         for idx, item in enumerate(dataset):
@@ -376,13 +398,16 @@ def evaluate_model_on_dataset(
                     torch.cuda.synchronize()
                 t0 = time.perf_counter()
 
+                stopping_criteria = StoppingCriteriaList([StopOnFormalProof(tokenizer)])
+
                 outputs = model.generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
                     do_sample=(num_samples_per_problem > 1),
                     temperature=0.7 if num_samples_per_problem > 1 else 1.0,
                     pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-                    eos_token_id=tokenizer.encode("<|im_end|>")[0]
+                    eos_token_id=eos_token_ids,
+                    stopping_criteria=stopping_criteria,
                 )
 
                 if device == "cuda":
@@ -424,7 +449,11 @@ def evaluate_model_on_dataset(
             status_icon = "PASS" if any_correct else "FAIL"
             tok_s = problem_rollouts[0]["tok_s"]
             num_tokens = problem_rollouts[0]["num_tokens"]
-            print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:20]:20s} | {status_icon} | {num_tokens:4d} toks | {tok_s:5.1f} tok/s", flush=True)
+            last_rollout = problem_rollouts[0]
+            pred_val = str(last_rollout['pred_boxed'] or 'None')
+            gold_val = str(item['ground_truth'])
+            tag_cnt = sum(1 for t in TAG_NAMES if f"<{t}>" in last_rollout['completion_text'] and f"</{t}>" in last_rollout['completion_text'])
+            print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:18]:18s} | {status_icon:4s} | Pred: {pred_val[:10]:10s} (Gold: {gold_val[:10]:10s}) | Tags: {tag_cnt}/5 | {num_tokens:4d} toks | {tok_s:4.1f} t/s", flush=True)
 
     adherence_rate = sum(r["rollouts"][0]["adherence"]["adherent"] for r in results) / max(len(results), 1)
     pass_1_rate = sum(r["pass_at_1"] for r in results) / max(len(results), 1)
