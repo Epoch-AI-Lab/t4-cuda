@@ -303,6 +303,8 @@ def run_serving_benchmark():
         print("[SKIP] CUDA GPU absent. No synthetic serving numbers emitted.")
         return
 
+    device = torch.device("cuda")
+
     gpu_name = torch.cuda.get_device_name(0)
     capability = torch.cuda.get_device_capability(0)
     print(f"[*] Compute Target : {gpu_name} (Compute Capability {capability[0]}.{capability[1]})")
