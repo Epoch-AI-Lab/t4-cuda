@@ -49,6 +49,11 @@ rc = run("pip install -q transformers peft accelerate sympy datasets")
 if rc != 0:
     die("pip install failed")
 
+# Colab ships torchao 0.10.0 which new peft versions refuse to work with
+# (dispatch_torchao raises ImportError inside get_peft_model). Nothing in
+# our stack uses torchao, so remove it and let peft use the default LoRA path.
+run("pip uninstall -y torchao 2>/dev/null || true")
+
 # ── 3. Hardware check ─────────────────────────────────────────────────────────
 run("nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo 'no nvidia-smi'")
 
