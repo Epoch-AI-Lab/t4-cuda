@@ -66,7 +66,7 @@ print("  PHASE 1: Cold-start SFT (1 epoch, ~2 min on T4)")
 print("=" * 60)
 
 rc = run(
-    f"python3 benchmarks/train_math_sft.py "
+    f"python3 -u benchmarks/train_math_sft.py "
     f"--model_name_or_path Qwen/Qwen2.5-Math-1.5B "
     f"--data_path data/chalk_seeds_500.jsonl "
     f"--output_dir {SFT_OUT} "
@@ -93,7 +93,7 @@ print("  PHASE 2: RL Post-training (200 steps on competition pool)")
 print("=" * 60)
 
 rc = run(
-    f"python3 benchmarks/train_baby_chalk_rl.py "
+    f"python3 -u benchmarks/train_baby_chalk_rl.py "
     f"--model_name_or_path Qwen/Qwen2.5-Math-1.5B "
     f"{SFT_ADAPTER} "
     f"--data_path data/rl_pool.jsonl "
@@ -104,7 +104,7 @@ rc = run(
     f"--learning_rate 2e-5 "
     f"--max_prompt_len 512 "
     f"--max_completion_len 1024 "
-    f"--save_steps 25"
+    f"--save_steps 10"
 )
 
 if rc != 0:
