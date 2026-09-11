@@ -347,13 +347,15 @@ class CPHybridInferenceScope:
 
 
 class StopOnFormalProof(StoppingCriteria):
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, prompt_len: int = 0):
         self.tokenizer = tokenizer
+        self.prompt_len = prompt_len
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        if input_ids.shape[1] < 16:
+        new_tokens = input_ids[0, self.prompt_len:]
+        if new_tokens.shape[0] < 8:
             return False
-        tail = input_ids[0, -20:]
+        tail = new_tokens[-20:]
         text = self.tokenizer.decode(tail, skip_special_tokens=False)
         return "</formal_proof>" in text or "<|im_end|>" in text
 
@@ -398,7 +400,7 @@ def evaluate_model_on_dataset(
                     torch.cuda.synchronize()
                 t0 = time.perf_counter()
 
-                stopping_criteria = StoppingCriteriaList([StopOnFormalProof(tokenizer)])
+                stopping_criteria = StoppingCriteriaList([StopOnFormalProof(tokenizer, prompt_len=input_len)])
 
                 outputs = model.generate(
                     **inputs,
