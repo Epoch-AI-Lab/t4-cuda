@@ -1,0 +1,45 @@
+================================================================================
+  TESLA T4 END-TO-END AUTOREGRESSIVE SERVING ENGINE BENCHMARK (MILESTONE A)
+================================================================================
+Hardware Target     : NVIDIA Tesla T4 (TU104, Compute Capability 7.5, 70W TDP)
+Environment         : PyTorch 2.11.0+cu128, CUDA 12.8, Driver 580.82.07
+Model Architecture  : 24 Layers | Hidden D=2048 | FFN Intermediate H=5504 | Heads=16
+Serving Mode        : Batch Size = 1, Autoregressive Single-Token Step Decode (B=1, M=1)
+Sampling Budget     : 30 Warmup Tokens | 120 Timed Generation Tokens
+Date of Execution   : 2026-08-16
+--------------------------------------------------------------------------------
+
+[Engine 1/3] PyTorch FP16 Eager Baseline:
+  - Mean Latency : 16.38 ms
+  - p50 Latency  : 15.86 ms
+  - p90 Latency  : 17.10 ms
+  - p99 Latency  : 26.22 ms
+  - Throughput   : 61.04 tokens/sec
+  - Speedup      : 1.00x (Baseline)
+
+[Engine 2/3] PyTorch Inductor (torch.compile mode="reduce-overhead"):
+  - Mean Latency : 20.32 ms
+  - p50 Latency  : 20.05 ms
+  - p90 Latency  : 21.45 ms
+  - p99 Latency  : 24.28 ms
+  - Throughput   : 49.21 tokens/sec
+  - Speedup      : 0.81x vs Eager (Slowdown due to CUDAGraph KV-cache slice mutations)
+
+[Engine 3/3] T4 Custom Fused INT4 Engine (LOP3 W4A16 GEMV + RMSNorm + SwiGLU Mega-Kernel):
+  - Mean Latency : 11.24 ms
+  - p50 Latency  : 10.71 ms
+  - p90 Latency  : 12.15 ms
+  - p99 Latency  : 14.62 ms
+  - Throughput   : 88.96 tokens/sec
+  - Speedup      : 1.46x vs PyTorch FP16 Eager
+  - Speedup      : 1.81x vs torch.compile
+
+================================================================================
+KEY HARDWARE TAKEAWAYS:
+1. End-to-end token generation on a 24-layer LLM on physical Tesla T4 increases
+   from 61.04 tokens/sec (PyTorch Eager) to 88.96 tokens/sec (Custom Fused W4A16),
+   yielding a measured 1.46x end-to-end speedup on real silicon.
+2. Tail latency (p99) is reduced from 26.22 ms down to 14.62 ms (44.2% tighter).
+3. torch.compile on Turing fails to outperform Eager for autoregressive decode because
+   in-place KV cache mutations invalidate CUDAGraph static captures.
+================================================================================
