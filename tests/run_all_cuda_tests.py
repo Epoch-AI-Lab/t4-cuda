@@ -106,11 +106,28 @@ def build_kernels():
         return False
 
 
-def run_test_script(script_path: str, label: str) -> tuple[bool, float]:
+def check_dependencies() -> dict[str, bool]:
+    """Check availability of optional/required python packages."""
+    deps = {}
+    for mod in ["torch", "pytest", "numpy", "transformers", "sympy", "peft"]:
+        try:
+            __import__(mod)
+            deps[mod] = True
+        except ImportError:
+            deps[mod] = False
+    return deps
+
+
+def run_test_script(script_path: str, label: str, is_pytest: bool = False, has_pytest: bool = False) -> tuple[bool, float]:
     """Run a test script and return (passed, duration_seconds)."""
     start = time.time()
+    if is_pytest and has_pytest:
+        cmd = [sys.executable, "-m", "pytest", "-v", str(script_path)]
+    else:
+        cmd = [sys.executable, str(script_path)]
+
     result = subprocess.run(
-        [sys.executable, str(script_path)],
+        cmd,
         capture_output=True, text=True, timeout=600,
         cwd=str(TESTS_DIR)
     )
@@ -148,6 +165,10 @@ def main():
     print(f"  Date: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Mode: {'Correctness + Benchmarks' if run_correctness and run_benchmarks else 'Correctness Only' if run_correctness else 'Benchmarks Only'}")
 
+    # Check dependencies
+    deps = check_dependencies()
+    has_pytest = deps.get("pytest", False)
+
     # Step 1: GPU check
     has_gpu = check_gpu()
     if not has_gpu:
@@ -169,89 +190,62 @@ def main():
     total_start = time.time()
     correctness_failed = False
 
+    def execute_stage_tests(tests_list: list) -> None:
+        nonlocal correctness_failed
+        for script, label, requires_gpu, req_mods, is_pytest in tests_list:
+            if requires_gpu and not has_gpu:
+                print(f"  {YELLOW}SKIP (Requires GPU): {label}{RESET}")
+                continue
+            missing_mods = [m for m in req_mods if not deps.get(m, False)]
+            if missing_mods:
+                print(f"  {YELLOW}SKIP (Requires {', '.join(missing_mods)}): {label}{RESET}")
+                continue
+            if script.exists():
+                print(f"\n  Running: {label}")
+                passed, duration = run_test_script(str(script), label, is_pytest=is_pytest, has_pytest=has_pytest)
+                results.append((label, passed, duration))
+                print_result(label, passed, duration)
+                if not passed:
+                    correctness_failed = True
+            else:
+                print(f"  {YELLOW}SKIP: {script.name} not found{RESET}")
+
     # Step 3: Correctness tests
     if run_correctness:
         # Stage 1: Microarchitectural Correctness
         print_header("STAGE 1: MICROARCHITECTURAL KERNEL CORRECTNESS")
         stage1_tests = [
-            (TESTS_DIR / "test_dequant_correctness.py", "LOP3 Dequantization (U4, S4, S3, FP8)", True),
-            (TESTS_DIR / "test_fused_gemm_correctness.py", "Fused W4A16 GEMM (U4 + S4)", True),
-            (TESTS_DIR / "test_h17_fused_int3_gemv.py", "H17 Fused INT3 Mega-Kernel", True),
+            (TESTS_DIR / "test_dequant_correctness.py", "LOP3 Dequantization (U4, S4, S3, FP8)", True, ["torch", "numpy"], False),
+            (TESTS_DIR / "test_fused_gemm_correctness.py", "Fused W4A16 GEMM (U4 + S4)", True, ["torch", "numpy"], False),
+            (TESTS_DIR / "test_h17_fused_int3_gemv.py", "H17 Fused INT3 Mega-Kernel", True, ["torch", "numpy"], False),
         ]
-        for script, label, requires_gpu in stage1_tests:
-            if requires_gpu and not has_gpu:
-                print(f"  {YELLOW}SKIP (Requires GPU): {label}{RESET}")
-                continue
-            if script.exists():
-                print(f"\n  Running: {label}")
-                passed, duration = run_test_script(script, label)
-                results.append((label, passed, duration))
-                print_result(label, passed, duration)
-                if not passed:
-                    correctness_failed = True
-            else:
-                print(f"  {YELLOW}SKIP: {script.name} not found{RESET}")
+        execute_stage_tests(stage1_tests)
 
         # Stage 2: Optimizer & Training Kernels
         print_header("STAGE 2: OPTIMIZER & TRAINING KERNEL CORRECTNESS")
         stage2_tests = [
-            (TESTS_DIR / "test_h6_fused_backward_adamw.py", "H6 Fused Backward GEMM + AdamW", True),
-            (TESTS_DIR / "test_training_kernels_pretrain_and_sft.py", "Fused Training & SFT LoRA Kernels", True),
+            (TESTS_DIR / "test_h6_fused_backward_adamw.py", "H6 Fused Backward GEMM + AdamW", True, ["torch", "numpy"], False),
+            (TESTS_DIR / "test_training_kernels_pretrain_and_sft.py", "Fused Training & SFT LoRA Kernels", True, ["torch", "numpy"], False),
         ]
-        for script, label, requires_gpu in stage2_tests:
-            if requires_gpu and not has_gpu:
-                print(f"  {YELLOW}SKIP (Requires GPU): {label}{RESET}")
-                continue
-            if script.exists():
-                print(f"\n  Running: {label}")
-                passed, duration = run_test_script(script, label)
-                results.append((label, passed, duration))
-                print_result(label, passed, duration)
-                if not passed:
-                    correctness_failed = True
-            else:
-                print(f"  {YELLOW}SKIP: {script.name} not found{RESET}")
+        execute_stage_tests(stage2_tests)
 
         # Stage 3: Serving & Speculative Engine
         print_header("STAGE 3: SERVING & SPECULATIVE ENGINE")
         stage3_tests = [
-            (TESTS_DIR / "test_m1_static_kv_cache.py", "M1 StaticKVCache & DynamicCache Parity", False),
-            (TESTS_DIR / "test_m2_unified_draft.py", "M2 Unified Draft Engine", False),
-            (TESTS_DIR / "test_m3_serving_engine.py", "M3 Speculative Serving Engine", False),
-            (TESTS_DIR / "test_h20_speculative_decoding.py", "H20 Speculative Decoding", True),
+            (TESTS_DIR / "test_m1_static_kv_cache.py", "M1 StaticKVCache & DynamicCache Parity", False, ["torch", "transformers", "pytest"], True),
+            (TESTS_DIR / "test_m2_unified_draft.py", "M2 Unified Draft Engine", False, ["torch", "numpy", "pytest"], True),
+            (TESTS_DIR / "test_m3_serving_engine.py", "M3 Speculative Serving Engine", False, ["torch", "numpy", "pytest"], True),
+            (TESTS_DIR / "test_h20_speculative_decoding.py", "H20 Speculative Decoding", True, ["torch", "transformers"], False),
         ]
-        for script, label, requires_gpu in stage3_tests:
-            if requires_gpu and not has_gpu:
-                print(f"  {YELLOW}SKIP (Requires GPU): {label}{RESET}")
-                continue
-            if script.exists():
-                print(f"\n  Running: {label}")
-                passed, duration = run_test_script(script, label)
-                results.append((label, passed, duration))
-                print_result(label, passed, duration)
-                if not passed:
-                    correctness_failed = True
-            else:
-                print(f"  {YELLOW}SKIP: {script.name} not found{RESET}")
+        execute_stage_tests(stage3_tests)
 
-        # Stage 4: SFT Pipeline & Format Verification
-        print_header("STAGE 4: SFT REASONING PIPELINE & 5-TAG SCHEMA")
+        # Stage 4: SFT Pipeline, Schema & Paper Integrity
+        print_header("STAGE 4: SFT REASONING PIPELINE, SCHEMA & PAPER PROVENANCE")
         stage4_tests = [
-            (TESTS_DIR / "test_math_sft_pipeline.py", "Chalk Math SFT Pipeline & Schema Verification", False),
+            (TESTS_DIR / "test_paper_and_data_integrity.py", "Paper Provenance & Dataset Schema Verification", False, [], False),
+            (TESTS_DIR / "test_math_sft_pipeline.py", "Chalk Math SFT Pipeline & Schema Verification", False, ["torch", "transformers", "pytest"], True),
         ]
-        for script, label, requires_gpu in stage4_tests:
-            if requires_gpu and not has_gpu:
-                print(f"  {YELLOW}SKIP (Requires GPU): {label}{RESET}")
-                continue
-            if script.exists():
-                print(f"\n  Running: {label}")
-                passed, duration = run_test_script(script, label)
-                results.append((label, passed, duration))
-                print_result(label, passed, duration)
-                if not passed:
-                    correctness_failed = True
-            else:
-                print(f"  {YELLOW}SKIP: {script.name} not found{RESET}")
+        execute_stage_tests(stage4_tests)
 
     # CLAIMS HYGIENE RULE 3: Correctness gates benchmarks!
     if correctness_failed:

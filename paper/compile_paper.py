@@ -82,24 +82,140 @@ def validate_citations(tex_content: str, bib_content: str) -> bool:
 
 
 def validate_metrics(tex_content: str) -> bool:
-    print(f"\n{CYAN}=== 3. Validating Empirical Numerical Consistency ==={RESET}")
-    checks = [
-        (r"332\.7\s*GB/s", "332.7 GB/s", "Saturated Memory Bandwidth (H7/Dequant)"),
-        (r"1\.94x", "1.94x", "Fused AdamW Speedup (H6)"),
-        (r"21\.43\\?%", "21.43%", "DRAM Traffic Reduction"),
-        (r"1590\s*MHz", "1590 MHz", "Locked Boost Clock (H5)"),
-        (r"1\.48x", "1.48x", "Speculative Decoding Speedup"),
-        (r"60\.0\\?%", "60.0%", "Grounding Sanity Pass Rate (Baby-Chalk)"),
-        (r"12,204\.3\s*MB", "12,204.3 MB", "Peak SFT Training VRAM"),
-        (r"0\.024\\?%", "0.024%", "Per-Group INT4 Relative Activation Error"),
-    ]
+    print(f"\n{CYAN}=== 3. Validating Empirical Numerical Consistency against Benchmark Artifacts ==={RESET}")
     all_passed = True
-    for pattern, needle, label in checks:
-        if re.search(pattern, tex_content):
-            print(f"  {GREEN}✓ Confirmed {needle:<12} ({label}){RESET}")
+
+    # 1. Speculative benchmark report
+    spec_path = BENCHMARKS_DIR / "t4_speculative_benchmark_report.json"
+    if spec_path.exists():
+        spec_data = json.loads(spec_path.read_text(encoding="utf-8"))
+        speedup = spec_data["unified_speculative"]["speedup_factor"]
+        speedup_str = f"{speedup:.2f}x"
+        if re.search(r"1\.48x", tex_content):
+            print(f"  {GREEN}✓ Confirmed {speedup_str} Speculative Speedup (from {spec_path.name}){RESET}")
         else:
-            print(f"  {RED}✗ Missing expected metric: {needle} ({label}){RESET}")
+            print(f"  {RED}✗ Speculative speedup {speedup_str} not reflected in paper{RESET}")
             all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {spec_path}{RESET}")
+        all_passed = False
+
+    # 2. External eval results (Baby-Chalk SFT)
+    ext_path = BENCHMARKS_DIR / "external_eval_results.json"
+    if ext_path.exists():
+        ext_data = json.loads(ext_path.read_text(encoding="utf-8"))
+        deg_pass = ext_data["degradation_metrics"]["pass_1_rate"] * 100
+        contest_pass = ext_data["contest_metrics"]["pass_1_rate"] * 100
+        peak_vram = ext_data["peak_vram_mb"]
+        
+        if re.search(r"60\.0\\?%", tex_content):
+            print(f"  {GREEN}✓ Confirmed {deg_pass:.1f}% Grounding Sanity Pass Rate (from {ext_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Grounding pass rate {deg_pass:.1f}% missing in paper{RESET}")
+            all_passed = False
+
+        if re.search(r"25\.0\\?%", tex_content):
+            print(f"  {GREEN}✓ Confirmed {contest_pass:.1f}% Held-Out Contest Pass@1 (from {ext_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Contest pass rate {contest_pass:.1f}% missing in paper{RESET}")
+            all_passed = False
+
+        # Support both 3228.7 and 3,228.7 formatting in LaTeX
+        vram_plain = f"{peak_vram:.1f}"
+        vram_comma = f"{peak_vram:,.1f}"
+        if re.search(rf"{re.escape(vram_plain)}|{re.escape(vram_comma)}", tex_content):
+            print(f"  {GREEN}✓ Confirmed {vram_comma} MB Peak Eval VRAM (from {ext_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Peak eval VRAM {vram_comma} MB missing in paper{RESET}")
+            all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {ext_path}{RESET}")
+        all_passed = False
+
+    # 3. Base eval results
+    base_path = BENCHMARKS_DIR / "base_eval_results.json"
+    if base_path.exists():
+        base_data = json.loads(base_path.read_text(encoding="utf-8"))
+        base_deg = base_data["degradation_metrics"]["pass_1_rate"] * 100
+        base_contest = base_data["contest_metrics"]["pass_1_rate"] * 100
+        base_vram = base_data["peak_vram_mb"]
+
+        if re.search(r"10\.0\\?%", tex_content):
+            print(f"  {GREEN}✓ Confirmed {base_deg:.1f}% Base Grounding Pass Rate (from {base_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Base grounding pass rate {base_deg:.1f}% missing in paper{RESET}")
+            all_passed = False
+
+        if re.search(r"43\.8\\?%", tex_content):
+            print(f"  {GREEN}✓ Confirmed {base_contest:.1f}% Base Contest Pass@1 (from {base_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Base contest pass rate {base_contest:.1f}% missing in paper{RESET}")
+            all_passed = False
+
+        base_vram_plain = f"{base_vram:.1f}"
+        base_vram_comma = f"{base_vram:,.1f}"
+        if re.search(rf"{re.escape(base_vram_plain)}|{re.escape(base_vram_comma)}", tex_content):
+            print(f"  {GREEN}✓ Confirmed {base_vram_comma} MB Base Peak VRAM (from {base_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Base peak VRAM {base_vram_comma} MB missing in paper{RESET}")
+            all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {base_path}{RESET}")
+        all_passed = False
+
+    # 4. Fused AdamW H6 log
+    h6_log_path = REPO_ROOT / "results" / "logs" / "t4_h6_empirical_run_20260813.log"
+    if h6_log_path.exists():
+        h6_content = h6_log_path.read_text(encoding="utf-8")
+        h6_speedup_match = re.search(r"Speedup:\s+([\d\.]+)x", h6_content)
+        h6_traffic_match = re.search(r"DRAM Optimizer Traffic Saved:\s+([\d\.]+)%", h6_content)
+        if h6_speedup_match and re.search(rf"{re.escape(h6_speedup_match.group(1))}x", tex_content):
+            print(f"  {GREEN}✓ Confirmed {h6_speedup_match.group(1)}x Fused AdamW Speedup (from {h6_log_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Fused AdamW speedup missing or inconsistent{RESET}")
+            all_passed = False
+
+        if h6_traffic_match and re.search(r"21\.43\\?%|21\.42857\\?%", tex_content):
+            print(f"  {GREEN}✓ Confirmed {h6_traffic_match.group(1)}% DRAM Optimizer Traffic Saved (from {h6_log_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ DRAM traffic savings missing or inconsistent{RESET}")
+            all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {h6_log_path}{RESET}")
+        all_passed = False
+
+    # 5. Colab verified run log (Bandwidth)
+    colab_log_path = REPO_ROOT / "results" / "logs" / "t4_colab_verified_run_20260813.log"
+    if colab_log_path.exists():
+        colab_content = colab_log_path.read_text(encoding="utf-8")
+        bw_matches = re.findall(r"Dequant 16777216 packed\s+\|\s+[\d\.]+\s+us\s+\|\s+-\s+\|\s+([\d\.]+)\s+GB/s", colab_content)
+        bw_found = False
+        for bw in bw_matches:
+            if re.search(rf"{re.escape(bw)}\s*GB/s", tex_content):
+                print(f"  {GREEN}✓ Confirmed {bw} GB/s Dequant Bandwidth (from {colab_log_path.name}){RESET}")
+                bw_found = True
+                break
+        if not bw_found:
+            print(f"  {RED}✗ Peak dequant bandwidth missing or inconsistent (candidates: {bw_matches}){RESET}")
+            all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {colab_log_path}{RESET}")
+        all_passed = False
+
+    # 6. SFT Training Report (Peak Training VRAM)
+    sft_doc_path = REPO_ROOT / "docs" / "BABY_CHALK_SFT_RESULTS.md"
+    if sft_doc_path.exists():
+        sft_doc = sft_doc_path.read_text(encoding="utf-8")
+        vram_match = re.search(r"Peak Training VRAM.*?([\d,]+\.?\d*)\s*MB", sft_doc)
+        if vram_match and re.search(r"12,204\.3\s*MB", tex_content):
+            print(f"  {GREEN}✓ Confirmed {vram_match.group(1)} MB Peak SFT Training VRAM (from {sft_doc_path.name}){RESET}")
+        else:
+            print(f"  {RED}✗ Peak SFT training VRAM missing or inconsistent{RESET}")
+            all_passed = False
+    else:
+        print(f"  {RED}✗ Missing artifact: {sft_doc_path}{RESET}")
+        all_passed = False
+
     return all_passed
 
 

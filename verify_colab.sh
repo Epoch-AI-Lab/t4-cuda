@@ -12,26 +12,26 @@ cd "$REPO_DIR"
 export PYTHONPATH="$REPO_DIR:$REPO_DIR/src:$PYTHONPATH"
 
 echo ""
-echo "--> [1/5] Running Bit-Exact IEEE-754 Math Proofs & KAT Harness..."
+echo "--> [1/10] Running Bit-Exact IEEE-754 Math Proofs & KAT Harness..."
 python3 tests/test_dequant_correctness.py
 
 echo ""
-echo "--> [2/5] Running Microarchitectural Roofline Simulation..."
+echo "--> [2/10] Running Microarchitectural Roofline Simulation..."
 python3 src/t4_roofline_and_kernel_benchmarks.py
 
 echo ""
-echo "--> [3/5] Compiling & Running Standalone CUDA Micro-benchmarks (sm_75)..."
+echo "--> [3/10] Compiling & Running Standalone CUDA Micro-benchmarks (sm_75)..."
 nvcc -O3 -arch=sm_75 src/t4_microbenchmarks.cu -o t4_microbenchmark
 ./t4_microbenchmark
 
 echo ""
-echo "--> [4/5] Building & Installing PyTorch CUDA Extension (t4_kernels)..."
+echo "--> [4/10] Building & Installing PyTorch CUDA Extension (t4_kernels)..."
 cd "$REPO_DIR/src"
 pip install -e .
 cd "$REPO_DIR"
 
 echo ""
-echo "--> [5/5] Running On-GPU Differential Verification & Stress Test..."
+echo "--> [5/10] Running On-GPU Differential Verification & Stress Test..."
 python3 -c "
 import sys, os
 sys.path.insert(0, '$REPO_DIR/src')
@@ -73,20 +73,24 @@ print('>> [GPU STRESS TEST] Completed 4096x4096 dequantization without crashes. 
 "
 
 echo ""
-echo "--> [6/6] Running Fused W4A16 GEMM Accuracy & Performance Verification..."
+echo "--> [6/10] Running Fused W4A16 GEMM Accuracy & Performance Verification..."
 python3 tests/test_fused_gemm_correctness.py
 
 echo ""
-echo "--> [7/9] Running Comprehensive Master Test Suite (Correctness + Benchmarks)..."
+echo "--> [7/10] Running Comprehensive Master Test Suite (Correctness + Benchmarks)..."
 python3 tests/run_all_cuda_tests.py || true
 
 echo ""
-echo "--> [8/9] Running Batched W4A16 WMMA vs cuBLAS Benchmark..."
+echo "--> [8/10] Running Batched W4A16 WMMA vs cuBLAS Benchmark..."
 python3 benchmarks/bench_w4a16_wmma_vs_cublas.py || true
 
 echo ""
-echo "--> [9/9] Running Speculative Decoding Smoke Benchmark..."
+echo "--> [9/10] Running Speculative Decoding Smoke Benchmark..."
 python3 benchmarks/benchmark_speculative_decoding.py --max-tokens 32 || true
+
+echo ""
+echo "--> [10/10] Validating Paper Manuscript & Empirical Provenance..."
+python3 paper/compile_paper.py
 
 echo ""
 echo "=========================================================================="

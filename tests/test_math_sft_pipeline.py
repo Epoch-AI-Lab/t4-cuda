@@ -179,3 +179,8 @@ def test_external_benchmark_integrity():
 
     for dp in degrad:
         assert dp["ground_truth"], f"Missing ground truth for {dp['id']}"
+
+
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main(["-v", __file__]))
