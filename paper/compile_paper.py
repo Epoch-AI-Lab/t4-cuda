@@ -225,6 +225,22 @@ def compile_pdf() -> bool:
     bibtex = shutil.which("bibtex")
 
     if not pdflatex:
+        pandoc = shutil.which("pandoc")
+        typst = shutil.which("typst")
+        if pandoc and typst:
+            print(f"  Compiling with pandoc & typst engine...")
+            try:
+                res = subprocess.run(
+                    [pandoc, "t4_cuda_paper.tex", "-o", "t4_cuda_paper.pdf", "--pdf-engine=typst"],
+                    cwd=PAPER_DIR,
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                print(f"  {GREEN}✓ PDF successfully generated at {PAPER_DIR / 't4_cuda_paper.pdf'}{RESET}")
+                return True
+            except subprocess.CalledProcessError as e:
+                print(f"  {YELLOW}pandoc+typst compilation failed: {e.stderr}{RESET}")
         print(f"  {YELLOW}pdflatex not found in PATH. Skipping direct PDF compilation.{RESET}")
         print(f"  To compile manually on a machine with TeX Live:")
         print(f"    cd {PAPER_DIR} && pdflatex t4_cuda_paper.tex && bibtex t4_cuda_paper && pdflatex t4_cuda_paper.tex")
