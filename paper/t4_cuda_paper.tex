@@ -118,6 +118,13 @@ V = 1024.0 \left( 1 + \frac{s + 2^{k-1}}{1024} \right) = 1024.0 + 2^{k-1} + s
 Subtracting constant offset $C_k = 1024.0 + 2^{k-1}$ recovers the exact signed value $s$. For signed INT3 ($k=3$), $C_3 = 1028.0$. For signed INT4 ($k=4$), $C_4 = 1032.0$.
 \end{proof}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig2_lop3_dequant_pipeline}
+\caption{Single-Cycle Signed Sub-Byte LOP3 Dequantization Pipeline. The \texttt{LOP3.B32} instruction applies LUT \texttt{0x6A} and magic constant \texttt{0x64086408}, mapping two's complement signed nibbles directly into biased FP16 mantissas in 1 SASS cycle.}
+\label{fig:lop3_pipeline}
+\end{figure}
+
 \subsection{Theorem 2: Bank-Conflict-Free 128-Bit Shared Memory Swizzling}
 \begin{theorem}
 Consider a warp of 32 threads $t \in \{0, \dots, 31\}$ issuing 128-bit vector loads (\texttt{LDS.U128}) from Shared Memory organized into 32 physical 32-bit banks. Let row index $r = t$ and column index $c \in \{0, \dots, 31\}$. The swizzled column mapping:
@@ -225,21 +232,8 @@ Turing GPUs lack the hardware asynchronous copy engines (\texttt{CP.ASYNC}) pres
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[scale=0.85, every node/.style={transform shape}]
-  \draw[fill=blue!10, draw=blue!60, thick] (0, 3) rectangle (3.2, 4.8);
-  \node[align=center] at (1.6, 3.9) {\textbf{Producer Warps}\\\small Warps 0--1 (64 threads)\\\footnotesize 128-bit LDG.E.128 + LOP3};
-
-  \draw[fill=green!10, draw=green!60, thick] (4.6, 3) rectangle (7.8, 4.8);
-  \node[align=center] at (6.2, 3.9) {\textbf{Consumer Warps}\\\small Warps 2--7 (192 threads)\\\footnotesize WMMA.16.8.8 Tensor Cores};
-
-  \draw[fill=orange!10, draw=orange!60, thick] (1.5, 0.5) rectangle (6.3, 1.8);
-  \node[align=center] at (3.9, 1.15) {\textbf{Circular SMEM Ring Buffer}\\\small 32 KB XOR-Swizzled Stages\\\footnotesize Volatile Head/Tail Flags};
-
-  \draw[->, thick, blue!80] (1.6, 3.0) -- (1.6, 1.8) node[midway, left] {\footnotesize Dequant Write};
-  \draw[->, thick, green!80] (6.2, 1.8) -- (6.2, 3.0) node[midway, right] {\footnotesize WMMA Read};
-  \draw[<->, dashed, red!80] (3.2, 3.9) -- (4.6, 3.9) node[midway, above] {\footnotesize Lock-Free Flags};
-\end{tikzpicture}
-\caption{Software Warp Specialization Architecture on Turing. Producer warps fetch packed weights from DRAM and dequantize into circular SMEM; consumer warps execute WMMA matrix multiplication without block-wide barrier stalls.}
+\includegraphics[width=\columnwidth]{figures/fig1_warp_specialization}
+\caption{Software Warp Specialization Architecture on Turing SM 7.5. Producer warps fetch packed weights from GDDR6 DRAM and dequantize into a circular 32 KB $\mathbb{F}_2^5$ swizzled SMEM ring buffer; consumer warps execute WMMA matrix multiplication without block-wide barrier stalls.}
 \label{fig:warp_spec}
 \end{figure}
 
@@ -303,32 +297,8 @@ Under 100\% occupancy, total dynamic power reaches 93.61W, exceeding the 70W cei
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.95\columnwidth,
-    height=4.8cm,
-    xlabel={Execution Timeline (Normalized Samples)},
-    ylabel={SM Clock (MHz)},
-    xmin=0, xmax=100,
-    ymin=900, ymax=1700,
-    legend pos=south west,
-    legend style={font=\footnotesize},
-    grid=both,
-    grid style={line width=.1pt, draw=gray!20},
-    major grid style={line width=.2pt,draw=gray!50}
-]
-\addplot[thick, red!80, dashed] coordinates {
-    (0, 1590) (10, 1590) (15, 1200) (25, 1150) (40, 1250) (55, 1100) (70, 1220) (85, 1180) (100, 1193)
-};
-\addlegendentry{100\% Occupancy (Throttled)}
-
-\addplot[very thick, blue!80] coordinates {
-    (0, 1590) (10, 1590) (25, 1590) (40, 1590) (55, 1590) (70, 1590) (85, 1590) (100, 1590)
-};
-\addlegendentry{25\% Capped (Locked 1590 MHz)}
-\end{axis}
-\end{tikzpicture}
-\caption{SM Boost Clock Behavior on Physical Tesla T4. Capping occupancy at 25\% maintains flat 50.36W power and locks peak 1590 MHz clocks.}
+\includegraphics[width=\columnwidth]{figures/fig3_thermal_dvfs_pacing}
+\caption{Dynamic Thermal Throttling Feedback Loop vs 25\% Occupancy Pacing. Unconstrained 100\% occupancy triggers hardware \texttt{SW\_POWER\_CAP} throttling to 950 MHz. Restricting launch bounds to 25\% occupancy stabilizes power at 50.36W, locking continuous 1590 MHz boost clock.}
 \label{fig:clock_stability}
 \end{figure}
 
@@ -351,6 +321,13 @@ Fused BWD GEMM + Inline AdamW  & 10.109 ms & 22.0 B/param & 1.94x \\
 \end{table}
 
 The fused kernel reduces runtime from 19.573 ms to 10.109 ms, achieving a 1.94x speedup while matching the theoretical 21.43\% DRAM traffic reduction with bit-exact numerical convergence.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig4_fused_adamw_pipeline}
+\caption{In-Register Fused Backward GEMM + AdamW Pipeline vs Standard PyTorch. By keeping weight gradients in register accumulators, intermediate DRAM round-trips are eliminated, saving 21.43\% of GDDR6 DRAM traffic and delivering a 1.94x speedup.}
+\label{fig:fused_adamw}
+\end{figure}
 
 \subsection{Dual-Path W4A16 GEMM and Batching Regime Boundaries}
 We evaluate our dual-path W4A16 kernel (scalar GEMV for $M \le 4$, 2-stage pipelined WMMA for $M > 4$) across token batch sizes $M \in \{1, 4, 8, 16, 32, 64\}$ on physical Tesla T4 silicon (Table~\ref{tab:w4a16_regimes}).
@@ -409,6 +386,13 @@ The INT4 0.5B draft model achieves 2.07 accepted tokens per target step (68.3\% 
 
 To eliminate this host bottleneck, we implemented the Unified Speculative Serving Engine uniting a pre-allocated \texttt{StaticKVCache} with $O(1)$ pointer rollback and a zero-weight \texttt{PromptLookupDraftEngine} (0.0062 ms proposal latency). Evaluated on physical Tesla T4 silicon, the unified engine generated 39.34 tokens/sec compared to 26.59 tokens/sec for the autoregressive baseline, achieving a verified \textbf{1.48x net wall-clock throughput speedup} (and up to \textbf{2.16x} on structured code/systems tasks) with zero extra parameter overhead.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig6_speculative_engine_architecture}
+\caption{Unified Speculative Serving Engine Architecture. Pre-allocated \texttt{StaticKVCache} with $O(1)$ rollback and zero-weight $n$-gram \texttt{PromptLookupDraftEngine} eliminate secondary model VRAM overhead, delivering a 1.48x net wall-clock speedup on Tesla T4.}
+\label{fig:speculative_engine}
+\end{figure}
+
 \subsection{Cold-Start SFT \& Procedural Reasoning on Tesla T4}
 To evaluate low-precision training for complex mathematical reasoning \cite{yang2024qwen25math, shao2024deepseekmath}, we fine-tuned \texttt{Qwen2.5-Math-1.5B} on 605 certified reasoning traces (\texttt{chalk\_seeds\_500.jsonl}, 445k tokens) on physical Tesla T4 hardware. Training utilized LoRA ($r=32, \alpha=64$) on all linear projections with strict prompt loss masking enforcing a 5-tag scientific discovery schema: $\langle\text{explore}\rangle$, $\langle\text{conjecture}\rangle$, $\langle\text{test\_edge\_cases}\rangle$, $\langle\text{lemma\_isolate}\rangle$, and $\langle\text{formal\_proof}\rangle$.
 
@@ -433,6 +417,13 @@ Decoding Throughput         & 23.0 tok/s            & 23.0 tok/s (Fused) \\
 \end{table}
 
 Training completed 111 steps (3 epochs) with zero OOMs, with loss dropping from 10.31 to 2.44. On held-out American Invitational Mathematics Examination (AIME 2023--2024) and AMC 12 competition problems, our model solved 4 out of 16 problems. Crucially, on unanswerable and impossible premises, our model delivered a \textbf{6x improvement in grounding} (60.0\% vs 10.0\%), completely suppressing degenerate repetition loops. Under memory-bound legacy architectures, procedural scratchpad exploration trades generation length against accuracy, establishing the foundation for Phase 2 RL reward optimization.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig5_sft_reasoning_flowchart}
+\caption{5-Tag Scientific Discovery Reasoning Schema Flowchart. Procedural tag conditioning via prompt loss masking structures model reasoning through exploratory divergence, conjecture, adversarial edge testing, and formal proof, delivering a 6x grounding boost (60.0\% vs 10.0\%).}
+\label{fig:sft_schema}
+\end{figure}
 
 \subsection{Nsight Compute Profiling and Hardware Execution Traces}
 To verify microarchitectural execution on physical silicon, we profiled our fused kernels using NVIDIA Nsight Compute (\texttt{ncu} v2025.1.1) on the Tesla T4 GPU. We captured complete hardware execution traces for the flagship W4A16 GEMV kernel and the H6 Fused Backward GEMM + AdamW optimizer kernel, storing raw trace artifacts (\texttt{w4a16\_gemv\_t4.ncu-rep}, 8.1~MB; \texttt{h6\_fused\_adamw\_t4.ncu-rep}, 7.0~MB).

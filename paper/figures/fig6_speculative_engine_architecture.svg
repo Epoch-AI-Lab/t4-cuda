@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="880" height="340">
+  <defs>
+    <filter id="shadow6" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arr6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="880" height="340" fill="#ffffff"/>
+
+  <text x="440" y="30" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    UNIFIED SPECULATIVE SERVING ENGINE ARCHITECTURE ON TESLA T4
+  </text>
+  <text x="440" y="50" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
+    Pre-allocated StaticKVCache with O(1) Rollback and PromptLookupDraftEngine Delivering 1.48x Net Speedup
+  </text>
+
+  <g transform="translate(30, 75)">
+    <rect width="250" height="235" rx="10" fill="#f0fdfa" stroke="#14b8a6" stroke-width="1.5" filter="url(#shadow6)"/>
+    <rect x="0" y="0" width="250" height="34" rx="10" fill="#0d9488"/>
+    <rect x="0" y="24" width="250" height="10" fill="#0d9488"/>
+    <text x="125" y="22" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">ZERO-WEIGHT PROMPT DRAFT</text>
+
+    <rect x="12" y="46" width="226" height="42" rx="6" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="125" y="64" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#115e59">N-Gram Suffix Tree Matching</text>
+    <text x="125" y="78" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#0d9488">Proposal Latency: 0.0062 ms</text>
+
+    <rect x="12" y="98" width="226" height="42" rx="6" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="125" y="116" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#115e59">Speculative Candidate Horizon</text>
+    <text x="125" y="130" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#0d9488">K = 3 Proposed Tokens</text>
+
+    <rect x="12" y="150" width="226" height="42" rx="6" fill="#ffffff" stroke="#99f6e4"/>
+    <text x="125" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#115e59">Memory Footprint</text>
+    <text x="125" y="182" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#059669">0 MB (Zero weights loaded)</text>
+
+    <rect x="12" y="200" width="226" height="26" rx="6" fill="#ccfbf1" stroke="#5eead4"/>
+    <text x="125" y="217" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f766e">Eliminates 2nd Model VRAM Tax</text>
+  </g>
+
+  <path d="M 280 190 L 310 190" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arr6)"/>
+  <text x="295" y="178" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#2563eb">K=3</text>
+
+  <g transform="translate(315, 75)">
+    <rect width="250" height="235" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" filter="url(#shadow6)"/>
+    <rect x="0" y="0" width="250" height="34" rx="10" fill="#2563eb"/>
+    <rect x="0" y="24" width="250" height="10" fill="#2563eb"/>
+    <text x="125" y="22" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">TARGET MODEL VERIFICATION</text>
+
+    <rect x="12" y="46" width="226" height="42" rx="6" fill="#ffffff" stroke="#bfdbfe"/>
+    <text x="125" y="64" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#1e3a8a">Full Model (Qwen2.5-1.5B)</text>
+    <text x="125" y="78" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#2563eb">Single Forward Pass for K=3</text>
+
+    <rect x="12" y="98" width="226" height="42" rx="6" fill="#ffffff" stroke="#bfdbfe"/>
+    <text x="125" y="116" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#1e3a8a">Low-Precision GEMV Kernels</text>
+    <text x="125" y="130" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#2563eb">fused_w4a16_gemv / sm_75</text>
+
+    <rect x="12" y="150" width="226" height="42" rx="6" fill="#ffffff" stroke="#bfdbfe"/>
+    <text x="125" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#1e3a8a">Acceptance Criterion</text>
+    <text x="125" y="182" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#059669">Greedy argmax matching</text>
+
+    <rect x="12" y="200" width="226" height="26" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="125" y="217" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#1e40af">Parallel Token Validation</text>
+  </g>
+
+  <path d="M 565 190 L 595 190" stroke="#059669" stroke-width="2.5" marker-end="url(#arr6)"/>
+  <text x="580" y="178" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#059669">O(1)</text>
+
+  <g transform="translate(600, 75)">
+    <rect width="250" height="235" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" filter="url(#shadow6)"/>
+    <rect x="0" y="0" width="250" height="34" rx="10" fill="#059669"/>
+    <rect x="0" y="24" width="250" height="10" fill="#059669"/>
+    <text x="125" y="22" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">STATIC KV CACHE &amp; ROLLBACK</text>
+
+    <rect x="12" y="46" width="226" height="42" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="125" y="64" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#065f46">Zero Heap Allocation</text>
+    <text x="125" y="78" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#059669">Pre-allocated max_seq_len</text>
+
+    <rect x="12" y="98" width="226" height="42" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="125" y="116" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#065f46">O(1) Pointer Rollback</text>
+    <text x="125" y="130" font-family="'Courier New', monospace" font-size="10" text-anchor="middle" fill="#059669">rewind(accepted_count)</text>
+
+    <rect x="12" y="150" width="226" height="42" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="125" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#065f46">Net Wall-Clock Speedup</text>
+    <text x="125" y="182" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#047857">1.48x Net (up to 2.16x)</text>
+
+    <rect x="12" y="200" width="226" height="26" rx="6" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="125" y="217" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#064e3b">26.59 → 39.34 tok/s on T4</text>
+  </g>
+</svg>
