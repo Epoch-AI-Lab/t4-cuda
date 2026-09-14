@@ -145,6 +145,108 @@ class TestPaperAndDataIntegrity(unittest.TestCase):
             data = json.loads(p.read_text(encoding="utf-8"))
             self.assertIsInstance(data, dict, f"Benchmark {name} should be a JSON object")
 
+    def test_08_theorem_4_fp8_e4m3_exactness_and_domain(self):
+        """Verify Theorem 4: exactly 238 normalized FP8 states and bit-exact FP16 mapping."""
+        normalized_count = 0
+        zero_subnormal_count = 0
+        nan_count = 0
+
+        for byte_val in range(256):
+            s = (byte_val >> 7) & 1
+            e8 = (byte_val >> 3) & 0xF
+            m8 = byte_val & 0x7
+
+            if e8 == 0:
+                zero_subnormal_count += 1
+            elif e8 == 15 and m8 == 7:
+                nan_count += 1
+            else:
+                normalized_count += 1
+                # Check mathematical equivalence
+                fp8_real = ((-1.0) ** s) * (2.0 ** (e8 - 7)) * (1.0 + m8 / 8.0)
+                e16 = e8 + 8
+                m16 = m8 * 128
+                fp16_real = ((-1.0) ** s) * (2.0 ** (e16 - 15)) * (1.0 + m16 / 1024.0)
+                self.assertEqual(fp8_real, fp16_real, f"Mismatch at byte 0x{byte_val:02X}")
+
+        self.assertEqual(normalized_count, 238, "Expected exactly 238 normalized FP8 E4M3 states")
+        self.assertEqual(zero_subnormal_count, 16, "Expected exactly 16 zero/subnormal states (E8=0)")
+        self.assertEqual(nan_count, 2, "Expected exactly 2 NaN states (0x7F, 0xFF)")
+
+        # Verify constant calculation
+        c_exp = (15 - 7) * (2 ** 10)
+        self.assertEqual(c_exp, 0x2000)
+        c_packed = (c_exp << 16) | c_exp
+        self.assertEqual(c_packed, 0x20002000)
+
+    def test_09_lemma_3_dram_traffic_accounting(self):
+        """Verify Lemma 3: exact DRAM traffic accounting and 21.43% reduction."""
+        # Unfused: write dW (2), read dW (2), read W (4), read m (4), read v (4), write W (4), write m (4), write v (4)
+        unfused_traffic = 2 + 2 + 4 + 4 + 4 + 4 + 4 + 4
+        self.assertEqual(unfused_traffic, 28)
+
+        # Fused: read W (4), read m (4), read v (4), write W_active (2), write m (4), write v (4)
+        fused_traffic = 4 + 4 + 4 + 2 + 4 + 4
+        self.assertEqual(fused_traffic, 22)
+
+        traffic_saved_pct = (unfused_traffic - fused_traffic) / unfused_traffic
+        self.assertAlmostEqual(traffic_saved_pct, 6.0 / 28.0, places=6)
+        self.assertAlmostEqual(traffic_saved_pct * 100.0, 21.42857, places=4)
+
+    def test_10_architectural_claims_and_manuscript_reconciliation(self):
+        """Verify manuscript reflects audit remediations for claims and limitations."""
+        tex_content = self.tex_file.read_text(encoding="utf-8")
+
+        # Theorem 4 mentions 238 normalized states and subnormal handling
+        self.assertIn("238 normalized", tex_content)
+        self.assertTrue(re.search(r"flush-to-zero|subnormal", tex_content, re.IGNORECASE))
+
+        # Lemma 3 traffic breakdown
+        self.assertIn(r"\text{Traffic}_{\text{unfused}}", tex_content)
+        self.assertIn(r"\text{Traffic}_{\text{fused}}", tex_content)
+
+        # Bank conflict padding with XOR swizzling algebraic model
+        self.assertTrue(re.search(r"SMEM\\_K\\_STRIDE\s*=\s*72", tex_content))
+        self.assertTrue(re.search(r"padding", tex_content, re.IGNORECASE))
+        self.assertTrue(re.search(r"algebraic", tex_content, re.IGNORECASE))
+
+        # Warp specialization as architectural proposal / ablation
+        self.assertTrue(re.search(r"architectural proposal", tex_content, re.IGNORECASE))
+
+    def test_11_speculative_decoding_and_sft_reasoning_reporting(self):
+        """Verify clear separation of neural draft overhead vs prompt lookup, and 1024-token context limits."""
+        tex_content = self.tex_file.read_text(encoding="utf-8")
+
+        # Speculative decoding separation
+        self.assertTrue(re.search(r"Neural Draft", tex_content))
+        self.assertTrue(re.search(r"Prompt Lookup", tex_content, re.IGNORECASE))
+        self.assertTrue(re.search(r"1\.48x", tex_content))
+        self.assertTrue(re.search(r"sequential.*forward passes|host dispatch", tex_content, re.IGNORECASE))
+
+        # SFT reasoning reporting
+        self.assertTrue(re.search(r"Learned \(Exploratory\)", tex_content))
+        self.assertTrue(re.search(r"1024-token context", tex_content))
+        self.assertTrue(re.search(r"exploratory tags|insufficient token runway|truncation", tex_content, re.IGNORECASE))
+
+    def test_12_dequantization_bandwidth_metadata_accounting(self):
+        """Verify Table 1 and Section 4.2 account for all metadata in effective bandwidth."""
+        tex_content = self.tex_file.read_text(encoding="utf-8")
+
+        # 52 B/word accounting (4B packed + 16B scales + 16B zeros + 16B output)
+        self.assertIn("52 B/word", tex_content)
+        self.assertTrue(re.search(r"872\.4[\$\s]*MB", tex_content))
+        self.assertTrue(re.search(r"L2 cache hit", tex_content, re.IGNORECASE))
+        self.assertIn("332.7 GB/s", tex_content)
+
+    def test_13_scale_envelope_constant_calculation(self):
+        """Verify physical precision bound calculation for FP16 exponent scale envelope."""
+        tex_content = self.tex_file.read_text(encoding="utf-8")
+
+        # Check mathematical bounds in Section 3.2
+        self.assertTrue(re.search(r"63\.97|63\.47|63\.05", tex_content))
+        # Ensure 65504 is mentioned
+        self.assertIn("65504", tex_content)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

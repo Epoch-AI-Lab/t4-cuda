@@ -33,7 +33,7 @@
 
     <rect x="15" y="148" width="370" height="46" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
     <text x="25" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#1e293b">3. AdamW Optimizer Kernel</text>
-    <text x="25" y="182" font-family="'Courier New', monospace" font-size="9" fill="#64748b">Reads W, m, v (12 B) → updates → writes back W, W_fp16, m, v (12 B)</text>
+    <text x="25" y="182" font-family="'Courier New', monospace" font-size="9" fill="#64748b">Reads W, m, v (12 B) → updates → writes back W, m, v (12 B)</text>
     <text x="370" y="175" font-family="'Courier New', monospace" font-size="11.5" font-weight="bold" text-anchor="end" fill="#1e293b">+24 B</text>
 
     <rect x="15" y="202" width="370" height="38" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>

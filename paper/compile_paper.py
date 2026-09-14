@@ -268,6 +268,12 @@ def compile_pdf() -> bool:
                     text=True
                 )
                 print(f"  {GREEN}✓ PDF successfully generated at {pdf_target}{RESET}")
+
+                to_human_dir = REPO_ROOT / "to_human"
+                if to_human_dir.exists():
+                    shutil.copy2(pdf_target, to_human_dir / "t4_cuda_paper.pdf")
+                    shutil.copy2(TEX_FILE, to_human_dir / "t4_cuda_paper.tex")
+                    print(f"  {GREEN}✓ Synchronized PDF and TeX to {to_human_dir}{RESET}")
                 return True
             except subprocess.CalledProcessError as e:
                 print(f"  {YELLOW}pandoc+typst compilation failed: {e.stderr}{RESET}")
@@ -283,7 +289,13 @@ def compile_pdf() -> bool:
             subprocess.run([bibtex, "t4_cuda_paper"], cwd=PAPER_DIR, stdout=subprocess.PIPE)
             subprocess.run([pdflatex, "-interaction=nonstopmode", "t4_cuda_paper.tex"], cwd=PAPER_DIR, stdout=subprocess.PIPE)
             subprocess.run([pdflatex, "-interaction=nonstopmode", "t4_cuda_paper.tex"], cwd=PAPER_DIR, stdout=subprocess.PIPE)
-        print(f"  {GREEN}✓ PDF successfully generated at {PAPER_DIR / 't4_cuda_paper.pdf'}{RESET}")
+        pdf_target = PAPER_DIR / "t4_cuda_paper.pdf"
+        print(f"  {GREEN}✓ PDF successfully generated at {pdf_target}{RESET}")
+        to_human_dir = REPO_ROOT / "to_human"
+        if to_human_dir.exists():
+            shutil.copy2(pdf_target, to_human_dir / "t4_cuda_paper.pdf")
+            shutil.copy2(TEX_FILE, to_human_dir / "t4_cuda_paper.tex")
+            print(f"  {GREEN}✓ Synchronized PDF and TeX to {to_human_dir}{RESET}")
         return True
     except subprocess.CalledProcessError as e:
         print(f"  {RED}pdflatex compilation failed. See {PAPER_DIR / 't4_cuda_paper.log'}{RESET}")
