@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="880" height="340">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" width="900" height="360">
   <defs>
     <filter id="shadow3" x="-5%" y="-5%" width="110%" height="115%">
       <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
@@ -11,70 +11,72 @@
     </marker>
   </defs>
 
-  <rect width="880" height="340" fill="#ffffff"/>
+  <rect width="900" height="360" fill="#ffffff"/>
 
-  <text x="440" y="30" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
+  <text x="450" y="30" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
     PASSIVE 70W TESLA T4: DYNAMIC THERMAL THROTTLING VS OCCUPANCY PACING
   </text>
-  <text x="440" y="50" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
+  <text x="450" y="50" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
     Comparison of Unconstrained 100% Occupancy (DVFS Thermal Collapse) vs 25% Paced Boost Lock (Lemma 5)
   </text>
 
+  <!-- Left Box: Unconstrained -->
   <g transform="translate(30, 75)">
-    <rect width="395" height="235" rx="10" fill="#fef2f2" stroke="#f87171" stroke-width="1.5" filter="url(#shadow3)"/>
-    <rect x="0" y="0" width="395" height="34" rx="10" fill="#ef4444"/>
-    <rect x="0" y="24" width="395" height="10" fill="#ef4444"/>
-    <text x="197" y="22" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">UNCONSTRAINED OCCUPANCY (100% / 1024 THREADS/SM)</text>
+    <rect width="400" height="255" rx="10" fill="#fef2f2" stroke="#f87171" stroke-width="1.5" filter="url(#shadow3)"/>
+    <rect x="0" y="0" width="400" height="38" rx="10" fill="#ef4444"/>
+    <rect x="0" y="26" width="400" height="12" fill="#ef4444"/>
+    <text x="200" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">UNCONSTRAINED OCCUPANCY (100% / 1024 THREADS/SM)</text>
 
-    <rect x="15" y="46" width="365" height="32" rx="6" fill="#ffffff" stroke="#fca5a5"/>
-    <text x="25" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#991b1b">1. Maximum Warps Active</text>
-    <text x="365" y="66" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#dc2626">32 Warps / SM</text>
+    <rect x="15" y="48" width="370" height="36" rx="6" fill="#ffffff" stroke="#fca5a5"/>
+    <text x="25" y="70" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#991b1b">1. Maximum Warps Active</text>
+    <text x="370" y="70" font-family="'Courier New', monospace" font-size="12" font-weight="bold" text-anchor="end" fill="#dc2626">32 Warps / SM</text>
 
-    <path d="M 197 78 L 197 92" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
+    <path d="M 200 84 L 200 98" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
 
-    <rect x="15" y="94" width="365" height="32" rx="6" fill="#ffffff" stroke="#fca5a5"/>
-    <text x="25" y="114" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#991b1b">2. Dynamic Power Spikes</text>
-    <text x="365" y="114" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#dc2626">78.4W (&gt; 70W TDP)</text>
+    <rect x="15" y="100" width="370" height="36" rx="6" fill="#ffffff" stroke="#fca5a5"/>
+    <text x="25" y="122" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#991b1b">2. Dynamic Power Spikes</text>
+    <text x="370" y="122" font-family="'Courier New', monospace" font-size="12" font-weight="bold" text-anchor="end" fill="#dc2626">93.61W (&gt; 70W TDP)</text>
 
-    <path d="M 197 126 L 197 140" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
+    <path d="M 200 136 L 200 150" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
 
-    <rect x="15" y="142" width="365" height="32" rx="6" fill="#ffffff" stroke="#fca5a5"/>
-    <text x="25" y="162" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#991b1b">3. Hardware SW_POWER_CAP (0x0004)</text>
-    <text x="365" y="162" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#dc2626">Throttling Tripped</text>
+    <rect x="15" y="152" width="370" height="36" rx="6" fill="#ffffff" stroke="#fca5a5"/>
+    <text x="25" y="174" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#991b1b">3. Hardware SW_POWER_CAP (0x0004)</text>
+    <text x="370" y="174" font-family="'Courier New', monospace" font-size="11.5" font-weight="bold" text-anchor="end" fill="#dc2626">72.5% Throttled</text>
 
-    <path d="M 197 174 L 197 188" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
+    <path d="M 200 188 L 200 202" stroke="#ef4444" stroke-width="2" marker-end="url(#arr-red)"/>
 
-    <rect x="15" y="190" width="365" height="32" rx="6" fill="#fee2e2" stroke="#ef4444"/>
-    <text x="25" y="210" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#7f1d1d">4. Frequency Thermal Collapse</text>
-    <text x="365" y="210" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#991b1b">1590 → 950 MHz (-40%)</text>
+    <rect x="15" y="204" width="370" height="36" rx="6" fill="#fee2e2" stroke="#ef4444"/>
+    <text x="25" y="226" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#7f1d1d">4. Frequency Thermal Collapse</text>
+    <text x="370" y="226" font-family="'Courier New', monospace" font-size="12" font-weight="bold" text-anchor="end" fill="#991b1b">1193 MHz Mean (-25%)</text>
   </g>
 
-  <g transform="translate(455, 75)">
-    <rect width="395" height="235" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.5" filter="url(#shadow3)"/>
-    <rect x="0" y="0" width="395" height="34" rx="10" fill="#059669"/>
-    <rect x="0" y="24" width="395" height="10" fill="#059669"/>
-    <text x="197" y="22" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">PACED OCCUPANCY (25% / 256 THREADS/SM LAUNCH BOUNDS)</text>
+  <!-- Right Box: Paced -->
+  <g transform="translate(470, 75)">
+    <rect width="400" height="255" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.5" filter="url(#shadow3)"/>
+    <rect x="0" y="0" width="400" height="38" rx="10" fill="#059669"/>
+    <rect x="0" y="26" width="400" height="12" fill="#059669"/>
+    <text x="200" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">PACED OCCUPANCY (25% / 256 THREADS/SM LAUNCH BOUNDS)</text>
 
-    <rect x="15" y="46" width="365" height="32" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
-    <text x="25" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#065f46">1. Paced Launch Bounds</text>
-    <text x="365" y="66" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#059669">__launch_bounds__(256, 1)</text>
+    <rect x="15" y="48" width="370" height="36" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="25" y="70" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#065f46">1. Paced Launch Bounds</text>
+    <text x="370" y="70" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#059669">__launch_bounds__(128, 2)</text>
 
-    <path d="M 197 78 L 197 92" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
+    <path d="M 200 84 L 200 98" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
 
-    <rect x="15" y="94" width="365" height="32" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
-    <text x="25" y="114" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#065f46">2. Thermal Stabilization</text>
-    <text x="365" y="114" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#059669">50.36W (&lt; 70W Ceiling)</text>
+    <rect x="15" y="100" width="370" height="36" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="25" y="122" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#065f46">2. Thermal Stabilization</text>
+    <text x="370" y="122" font-family="'Courier New', monospace" font-size="12" font-weight="bold" text-anchor="end" fill="#059669">50.36W (&lt; 70W Ceiling)</text>
 
-    <path d="M 197 126 L 197 140" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
+    <path d="M 200 136 L 200 150" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
 
-    <rect x="15" y="142" width="365" height="32" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
-    <text x="25" y="162" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#065f46">3. Zero Throttling Flag</text>
-    <text x="365" y="162" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#059669">SW_POWER_CAP = 0</text>
+    <rect x="15" y="152" width="370" height="36" rx="6" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="25" y="174" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#065f46">3. Zero Throttling Flag</text>
+    <text x="370" y="174" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#059669">0.0% Power Throttle</text>
 
-    <path d="M 197 174 L 197 188" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
+    <path d="M 200 188 L 200 202" stroke="#059669" stroke-width="2" marker-end="url(#arr-green3)"/>
 
-    <rect x="15" y="190" width="365" height="32" rx="6" fill="#d1fae5" stroke="#10b981"/>
-    <text x="25" y="210" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#064e3b">4. Continuous Boost Lock</text>
-    <text x="365" y="210" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="end" fill="#047857">1590 MHz Locked (1.47x Gain)</text>
+    <rect x="15" y="204" width="370" height="36" rx="6" fill="#d1fae5" stroke="#10b981"/>
+    <text x="25" y="226" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#064e3b">4. Continuous Boost Lock</text>
+    <text x="370" y="226" font-family="'Courier New', monospace" font-size="12" font-weight="bold" text-anchor="end" fill="#047857">1590 MHz Locked (1.07x Fast)</text>
   </g>
 </svg>

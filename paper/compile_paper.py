@@ -57,7 +57,7 @@ def validate_structure(tex_content: str) -> bool:
     theorems = len(re.findall(r"\\begin\{theorem\}", tex_content))
     lemmas = len(re.findall(r"\\begin\{lemma\}", tex_content))
     tables = len(re.findall(r"\\begin\{table\}", tex_content))
-    figures = len(re.findall(r"\\begin\{figure\}", tex_content))
+    figures = len(re.findall(r"\\begin\{figure\*?\}", tex_content))
 
     print(f"  {GREEN}✓ Found {theorems} Theorems, {lemmas} Lemmas, {tables} Tables, {figures} Figures{RESET}")
     return True
@@ -230,14 +230,44 @@ def compile_pdf() -> bool:
         if pandoc and typst:
             print(f"  Compiling with pandoc & typst engine...")
             try:
-                res = subprocess.run(
-                    [pandoc, "t4_cuda_paper.tex", "-o", "t4_cuda_paper.pdf", "--pdf-engine=typst"],
+                typ_file = PAPER_DIR / "t4_cuda_paper.typ"
+                # Step 1: Export standalone Typst source with resolved BibTeX
+                subprocess.run(
+                    [pandoc, "t4_cuda_paper.tex", "-s", "--bibliography=references.bib", "-o", str(typ_file)],
                     cwd=PAPER_DIR,
                     check=True,
                     capture_output=True,
                     text=True
                 )
-                print(f"  {GREEN}✓ PDF successfully generated at {PAPER_DIR / 't4_cuda_paper.pdf'}{RESET}")
+                
+                # Step 2: Post-process Typst to ensure high-visibility figures & eliminate warnings
+                typ_content = typ_file.read_text(encoding="utf-8")
+                # Ensure all figures expand to 100% of the content width
+                if "#set image(width: 100%)" not in typ_content:
+                    typ_content = re.sub(
+                        r"(#set terms\(hanging-indent:[^\)]+\))",
+                        r"\1\n#set image(width: 100%)\n#show figure.where(kind: image): set figure(gap: 12pt)",
+                        typ_content
+                    )
+                # Ensure 0.75in margins matching LaTeX geometry
+                typ_content = typ_content.replace("margin: (x: 1.25in, y: 1.25in),", "margin: (x: 0.75in, y: 0.75in),")
+                # Fix language tag warning for c++
+                typ_content = typ_content.replace("```c++", "```c ++")
+                # Deduplicate "Figure @fig:" and "Table @tab:" since Typst prepends the label type
+                typ_content = re.sub(r"Figure[~\s]+@fig:", r"@fig:", typ_content)
+                typ_content = re.sub(r"Table[~\s]+@tab:", r"@tab:", typ_content)
+                typ_file.write_text(typ_content, encoding="utf-8")
+
+                # Step 3: Compile via typst
+                pdf_target = PAPER_DIR / "t4_cuda_paper.pdf"
+                subprocess.run(
+                    [typst, "compile", str(typ_file), str(pdf_target)],
+                    cwd=PAPER_DIR,
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                print(f"  {GREEN}✓ PDF successfully generated at {pdf_target}{RESET}")
                 return True
             except subprocess.CalledProcessError as e:
                 print(f"  {YELLOW}pandoc+typst compilation failed: {e.stderr}{RESET}")
