@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 390" width="920" height="390">
+  <defs>
+    <filter id="shadow8" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="920" height="390" fill="#ffffff"/>
+
+  <text x="460" y="28" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    DUAL-PATH W4A16 GEMM VS CUBLAS FP16: EMPIRICAL REGIME BOUNDARIES
+  </text>
+  <text x="460" y="48" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
+    Speedup across Batch Sizes M ∈ {1, 4, 8, 16, 32, 64} on Physical Tesla T4 Silicon (Table 4)
+  </text>
+
+  <!-- Panel A: Speedup vs Batch Size -->
+  <g transform="translate(40, 70)">
+    <rect width="420" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow8)"/>
+    <text x="210" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel A: Speedup Factor vs Batch Size M
+    </text>
+
+    <!-- Axes: x in [60, 395], y in [50, 240] -->
+    <line x1="60" y1="240" x2="395" y2="240" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="60" y1="50" x2="60" y2="240" stroke="#64748b" stroke-width="1.5"/>
+
+    <!-- 1.0x baseline reference line (y=150) -->
+    <line x1="60" y1="150" x2="395" y2="150" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <text x="390" y="144" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="end" fill="#475569">1.00x (cuBLAS Parity)</text>
+
+    <text x="52" y="244" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">0.0x</text>
+    <text x="52" y="199" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">0.5x</text>
+    <text x="52" y="154" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">1.0x</text>
+    <text x="52" y="109" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">1.5x</text>
+    <text x="52" y="64" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">2.0x</text>
+    <text x="18" y="145" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#334155" transform="rotate(-90 18 145)" text-anchor="middle">Speedup vs cuBLAS FP16</text>
+
+    <!-- Shaded CP-Hybrid regime: M <= 4 -->
+    <rect x="60" y="50" width="110" height="190" fill="#ecfdf5" fill-opacity="0.6"/>
+    <text x="115" y="38" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#047857">CP-Hybrid GEMV (M ≤ 4)</text>
+
+    <!-- X axis points: M=1 (85), M=4 (170), M=8 (225), M=16 (280), M=32 (335), M=64 (390) -->
+    <text x="85" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">1</text>
+    <text x="170" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">4</text>
+    <text x="225" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">8</text>
+    <text x="280" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">16</text>
+    <text x="335" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">32</text>
+    <text x="385" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">64</text>
+    <text x="225" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#334155">Batch Size M (Tokens)</text>
+
+    <!-- Curve 1: Attention Proj (896x896) -->
+    <polyline points="85,54.6 170,147.3 225,211.2 280,206.7" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+    <circle cx="85" cy="54.6" r="4.5" fill="#2563eb"/>
+    <text x="95" y="58" font-family="'Courier New', monospace" font-size="9" font-weight="bold" fill="#1e40af">2.06x</text>
+    <circle cx="170" cy="147.3" r="4" fill="#2563eb"/>
+    <circle cx="225" cy="211.2" r="4" fill="#2563eb"/>
+    <circle cx="280" cy="206.7" r="4" fill="#2563eb"/>
+
+    <!-- Curve 2: MLP Proj (896x4864) -->
+    <polyline points="85,89.7 170,152 335,205.8 385,216.6" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <circle cx="85" cy="89.7" r="4.5" fill="#d97706"/>
+    <text x="76" y="93" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="end" fill="#b45309">1.67x</text>
+    <circle cx="335" cy="205.8" r="4" fill="#d97706"/>
+    <circle cx="385" cy="216.6" r="4" fill="#d97706"/>
+
+    <!-- Legend -->
+    <g transform="translate(190, 75)">
+      <line x1="0" y1="0" x2="20" y2="0" stroke="#2563eb" stroke-width="2.5"/>
+      <circle cx="10" cy="0" r="3.5" fill="#2563eb"/>
+      <text x="25" y="4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" fill="#1e293b">Attn (896x896)</text>
+
+      <line x1="110" y1="0" x2="130" y2="0" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6,3"/>
+      <circle cx="120" cy="0" r="3.5" fill="#d97706"/>
+      <text x="135" y="4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" fill="#1e293b">MLP (896x4864)</text>
+    </g>
+  </g>
+
+  <!-- Panel B: Raw Latency Comparison (M=1 Single-Token Decode) -->
+  <g transform="translate(480, 70)">
+    <rect width="400" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow8)"/>
+    <text x="200" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel B: Execution Latency at Decode (M=1)
+    </text>
+
+    <!-- Grouped Bar Chart comparing cuBLAS FP16 vs W4A16 Fused -->
+    <line x1="50" y1="235" x2="360" y2="235" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="50" y1="50" x2="50" y2="235" stroke="#64748b" stroke-width="1.5"/>
+
+    <text x="42" y="239" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">0</text>
+    <text x="42" y="179" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">20</text>
+    <text x="42" y="119" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">40</text>
+    <text x="42" y="59" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">60</text>
+    <text x="18" y="145" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#334155" transform="rotate(-90 18 145)" text-anchor="middle">Kernel Latency (μs)</text>
+
+    <!-- Group 1: Attn Proj (896x896) -->
+    <rect x="85" y="178.3" width="38" height="56.7" rx="3" fill="#94a3b8"/>
+    <text x="104" y="172" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#475569">18.9</text>
+
+    <rect x="130" y="207.4" width="38" height="27.6" rx="3" fill="#2563eb"/>
+    <text x="149" y="201" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1e40af">9.2</text>
+    <text x="126" y="254" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#1e293b">Attention Proj</text>
+    <text x="149" y="150" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#059669">2.06x Fast</text>
+
+    <!-- Group 2: MLP Proj (896x4864) -->
+    <rect x="235" y="100" width="38" height="135" rx="3" fill="#94a3b8"/>
+    <text x="254" y="94" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#475569">45.0</text>
+
+    <rect x="280" y="154.3" width="38" height="80.7" rx="3" fill="#2563eb"/>
+    <text x="299" y="148" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1e40af">26.9</text>
+    <text x="276" y="254" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#1e293b">MLP Proj</text>
+    <text x="299" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#059669">1.67x Fast</text>
+
+    <!-- Legend -->
+    <g transform="translate(140, 275)">
+      <rect x="0" y="-8" width="14" height="14" rx="2" fill="#94a3b8"/>
+      <text x="20" y="3" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#475569">cuBLAS FP16</text>
+
+      <rect x="110" y="-8" width="14" height="14" rx="2" fill="#2563eb"/>
+      <text x="130" y="3" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#1e40af" font-weight="bold">W4A16 Fused</text>
+    </g>
+  </g>
+</svg>

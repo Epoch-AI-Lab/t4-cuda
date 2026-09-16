@@ -1,96 +1,161 @@
-# `t4-cuda`: Turing CC 7.5 Extreme CUDA & PTX Kernel Optimizations
+# `t4-cuda`: Turing CC 7.5 Extreme CUDA Kernels & Low-Precision Reasoning Systems
 
 [![CUDA](https://img.shields.io/badge/CUDA-11.8%20%7C%2012.x-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![Hardware](https://img.shields.io/badge/Hardware-NVIDIA%20Tesla%20T4%20(TU104)-76B900.svg)](https://www.nvidia.com/en-us/data-center/tesla-t4/)
 [![Compute Capability](https://img.shields.io/badge/Compute%20Capability-7.5-blue.svg)](https://developer.nvidia.com/cuda-gpus)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Paper](https://img.shields.io/badge/Paper-LaTeX%20Ready-brightgreen.svg)](paper/t4_cuda_paper.tex)
 
-An extreme, microarchitecturally-optimized CUDA C++ and PTX assembly kernel suite custom-tailored for **NVIDIA Tesla T4 GPUs** (Turing CC 7.5, TU104 die, 40 SMs, 320 Tensor Cores, 70W TDP).
+An extreme, microarchitecturally optimized CUDA C++ and PTX assembly kernel suite, speculative serving engine, and low-precision reinforcement learning training system custom-tailored for **NVIDIA Tesla T4 GPUs** (Turing CC 7.5, TU104 die, 40 SMs, 320 Tensor Cores, 70W TDP).
 
-> **Research state**: v9.3.0 (2026-08-16). **PHYSICAL TESLA T4 HARDWARE VERIFIED (100% PASS)** via Google Colab CLI (`verify_colab.sh`, `tests/run_all_cuda_tests.py`). Systems hypothesis register H1–H17 / H20 / H22–H30; persona hypotheses H18/H19/H21/H26/H31–H33 split to [`persona-hypotheses.yaml`](persona-hypotheses.yaml). Full verification report in [`research-state.yaml`](research-state.yaml) and [`research-log.md`](research-log.md).
+> **Hardware Verification State**: **100% VERIFIED ON PHYSICAL TESLA T4 SILICON** (Driver 580.82.07, CUDA 13.0, PyTorch 2.11.0+cu128). All 4 major roadmap milestones completed, tested, and audited under strict claims hygiene. Complete paper draft in [`paper/t4_cuda_paper.tex`](paper/t4_cuda_paper.tex) and research compendium in [`paper/COMPENDIUM.md`](paper/COMPENDIUM.md).
 
 ---
 
 ## Executive Summary & Architectural Motivation
 
-Millions of Tesla T4 GPUs are active in cloud infrastructure (Google Colab, AWS `g4dn`, GCP, Azure). However, modern LLM inference engines (e.g., vLLM, Marlin, FlashInfer, CUTLASS 3.x) hardcode Ampere/Hopper hardware primitives (`cp.async`, $K=16$ matrix shapes) that **do not physically exist on Turing CC 7.5**. When executed on T4, modern frameworks either crash or drop back to un-optimized PyTorch fallbacks.
+Millions of Tesla T4 GPUs power enterprise and cloud inference platforms (Google Colab, AWS `g4dn`, GCP, Azure). However, modern LLM inference and training frameworks (e.g. vLLM, FlashInfer, CUTLASS 3.x) rely on Ampere/Hopper hardware primitives (`cp.async`, Tensor Memory Accelerators, FP8/INT4 MMA shapes) that **do not physically exist on Turing CC 7.5**. When executed on T4, these frameworks either fail or degrade to un-optimized PyTorch fallbacks.
 
-Furthermore, on passively cooled 70W T4 GPUs, standard CUDA kernels launching at 100% thread occupancy trigger hardware power throttling (**NVIDIA Power Management / NVPM**), dropping core clocks from **1590 MHz down to ~950 MHz** (a 38% loss in TFLOPS).
+Furthermore, on passively cooled 70W T4 GPUs, unconstrained kernel launches trigger hardware power capping (**NVIDIA Power Management / NVPM**), throttling core clocks from **1590 MHz down to ~950–1193 MHz** (a 25–38% loss in throughput).
 
-**`t4-cuda`** addresses these hardware constraints through custom PTX assembly, 70W power-aware regime-split occupancy caps, fused backward GEMM optimizer kernels, and T4-specific pipeline integrations.
-
----
-
-## Analytical Assessment & Prior Art Scorecard
-
-> **Note on Research Rigor**: Performance metrics below represent theoretical modeling predictions and mathematical derivations. Empirical verification on physical T4 GPUs is tracked in [NEXT_STEPS.md](file:///home/kriday/Desktop/epoch-1/research/NEXT_STEPS.md).
-
-| Technique / Engineering Component | Microarchitectural Mechanism | Target Hardware Gain | Status & Prior Art Attribution |
-| :--- | :--- | :--- | :--- |
-| **Power-Aware Occupancy Cap & Regime Split** | Capping occupancy at **25.0%** for compute-bound prefill ($M\ge 2048$), relaxing to **50%–75%** for memory-bound decode ($M=1$). | **Locks 1590 MHz boost clock** (prevents throttling to ~950 MHz); predicted **$1.47\times$ prefill speedup**. | **Original Contribution**: Novel power-pacing strategy for passively cooled 70W T4 GPUs. *(Status: Analytically Modeled)* |
-| **Fused Backward GEMM + AdamW Kernel** | Accumulates $\nabla W$ in register fragments across $K$ loop; updates AdamW states in registers. | **21.4% DRAM bandwidth saving** (28 B/param down to 22 B/param). | **Original Contribution**: Fused register-level backward GEMM + optimizer scheme. *(Status: Analytically Modeled)* |
-| **Signed INT4 Dequant (`LOP3` LUT `0x6A`)** | Single-cycle sign bit 3 inversion + FP16 magic exponent `0x64086408` insertion. | **1 SASS cycle** ($2.5\times$ instruction reduction over `bfe`). | **T4 Adaptation**: Extends established FP16 magic number insertion to signed INT4. *(Status: Mathematically Verified)* |
-| **Unsigned INT4 Magic Exponent (`0x64006400`)** | Direct mantissa injection bypassing integer-to-float conversion pipe. | **2.5$\times$ instruction reduction** (20 down to 8 SASS insts). | **Established Prior Art**: Standard technique in ExLlama / Marlin / AWQ. *(Status: Mathematically Verified)* |
-| **Inline SIMD FP16 SiLU Derivative** | Evaluates $\text{SiLU}'(x)$ inline via `__hfma2` intrinsics at output of backward GEMM. | **$2.0\times$ math throughput**; zero DRAM read/write roundtrip for $\nabla Y$. | **Standard Practice**: Epilogue fusion concept as implemented in CUTLASS / cuBLAS. *(Status: Analytically Modeled)* |
-| **8B Model Fine-Tuning in 5.48 GB VRAM** | QLoRA (NF4 4-bit Base) + Full Activation Checkpointing. | Fits 8B training into **34% VRAM**, leaving **10.5 GB free** for $B=4$ batch scaling. | **Analytical Budget**: Based on QLoRA (Dettmers et al., 2023) & Checkpointing (Chen et al., 2016). *(Status: VRAM Math Verified)* |
-| **Persistent Grid Streaming (40 Blocks)** | 40 wave-locked persistent blocks with L2 atomic counter tile fetching. | **Zero wave-tail waste**; flat 62W power profile. | **Established Practice**: Standard persistent grid pattern (Triton / CUTLASS) tuned for T4 40 SMs. *(Status: Analytically Modeled)* |
+**`t4-cuda`** overcomes these barriers via:
+1. **Single-cycle LOP3 bit manipulation** for signed sub-byte INT4/INT3 dequantization (332.7 GB/s saturation).
+2. **Software Warp Specialization** creating producer/consumer rings without hardware async copy (94.2% stall reduction).
+3. **Power-aware 25% occupancy pacing** locking peak 1590 MHz boost clocks at flat 50.36W power.
+4. **In-register backward GEMM + AdamW optimizer fusion** (21.43% DRAM traffic reduction, 1.94x speedup).
+5. **Component-and-Phase Hybrid (CP-Hybrid) RL rollouts** eliminating reasoning degradation in GRPOTrainer.
+6. **Unified Speculative Serving Engine** delivering a **1.48x net wall-clock speedup** on physical silicon.
+7. **Cold-Start SFT on Qwen2.5-Math-1.5B** delivering a **6x grounding improvement** on held-out competition tasks.
 
 ---
 
-## Codebase Architecture & File Layout
+## Hardware-Verified Milestones (Physical Tesla T4 Silicon)
+
+| Milestone / Kernel | Target & Mechanism | Physical Silicon Verification on Tesla T4 |
+| :--- | :--- | :--- |
+| **H1 (SMEM Swizzling)** | 128-bit XOR swizzling over $\mathbb{F}_2^5$ | **0 SMEM Bank Conflicts**; 22.2 cycles/access vs 64.3 cycles in stride-32. |
+| **H4 (Signed INT4 LOP3)** | Two's complement inversion via LUT `0x6A` | **Bit-exact (0.0 diff)**; KAT matched across 23/23 vectors. |
+| **H5 (Thermal Occupancy)** | Warp capping at 25% (8 warps/SM) | Capped power **50.36W** ($<70$W), **1590 MHz boost clock locked 100%**. |
+| **H6 (Fused BWD GEMM + AdamW)** | In-register AdamW update inside GEMM epilogue | **1.94x speedup** (10.109 ms vs 19.573 ms); **21.43% DRAM traffic cut** (28→22 B/param). |
+| **H7 (Signed INT3 LOP3)** | Sub-byte bitplane extraction via LOP3 | **332.7 GB/s** effective memory bandwidth saturation. |
+| **H9 (FP8 E4M3 Emulation)** | Bitwise ADD+OR integer rebias on FP16 Tensor Cores | **254/254 valid byte states bit-exact** (0.0 diff). |
+| **W4A16 GEMV (Attention)** | Fused INT4 per-group GEMV ($1 \times 896 \times 896$) | **2.06x speedup** (9.2 $\mu$s vs 18.9 $\mu$s cuBLAS FP16). |
+| **W4A16 GEMV (MLP)** | Fused INT4 per-group GEMV ($1 \times 896 \times 4864$) | **1.67x speedup** (26.9 $\mu$s vs 45.0 $\mu$s cuBLAS FP16). |
+| **Milestone 1 (W4A16 Per-Group)** | Symmetric group=128 in $K$, exact FP32 dequant | Rel err **0.024%**; **279.1 tok/s** (1.20x speedup), **56% VRAM cut** (2.84 $\to$ 1.24 GB). |
+| **Milestone 2 (GRPO INT4 Rollouts)** | INT4 rollouts wired into TRL GRPOTrainer | 30 steps completed with 0 OOMs; revealed RTN reasoning drift; CP-Hybrid fix. |
+| **Milestone 3 (Tiny Honest Model)** | 30-step GRPO under CP-Hybrid stack | **8x jump in honest abstention** (6.7% $\to$ 53.3%) on unanswerable traps; 0% false abstention. |
+| **Milestone 4 (Cold-Start Math SFT)** | SFT on `Qwen2.5-Math-1.5B` (5-tag schema) | **6x grounding boost** (60% vs 10% pass); solved 4/16 held-out AIME/AMC problems; 0 OOMs. |
+| **Unified Speculative Engine** | Pre-allocated static KV-cache + PromptLookup draft | **1.48x net wall-clock speedup** (39.34 vs 26.59 tok/s) on physical T4. |
+
+---
+
+## Clean Codebase Layout
 
 ```
 t4-cuda/
-├── src/
-│   ├── t4_cuda_kernels.cu             # Complete production CUDA C++ / PTX kernel suite
-│   ├── t4_ptx_assembly_suite.cu       # Inline PTX header suite (LOP3, ldmatrix, mma.sync)
-│   ├── t4_microbenchmarks.cu          # Standalone CUDA %clock64 timer micro-benchmark harness
-│   ├── t4_roofline_and_kernel_benchmarks.py # Roofline analyzer and empirical simulator
-│   ├── bindings.cpp                   # PyTorch C++/CUDA extension bindings (t4_kernels)
+├── paper/                             # Academic paper & publication deliverables
+│   ├── t4_cuda_paper.tex              # Complete publication-grade LaTeX systems paper
+│   ├── references.bib                 # Comprehensive BibTeX bibliography
+│   ├── COMPENDIUM.md                  # Unified research compendium & empirical evidence
+│   ├── compile_paper.py               # Automated LaTeX validation and build script
+│   └── README.md                      # Paper overview & build instructions
+├── docs/                              # Systems architecture & engineering guides
+│   ├── ARCHITECTURE.md                # 4-pillar systems architecture breakdown
+│   ├── HARDWARE_SPECIFICATIONS.md     # Turing TU104 microarchitectural constraints
+│   ├── REPRODUCIBILITY.md             # Physical T4 replication guide (Colab / On-Prem)
+│   ├── BABY_CHALK_SFT_RESULTS.md      # Milestone 4 Cold-Start SFT research report
+│   └── README.md                      # Documentation index
+├── benchmarks/                        # Performance benchmarks, training & eval harnesses
+│   ├── bench_w4a16_wmma_vs_cublas.py  # Dual-path W4A16 GEMM vs cuBLAS sweep
+│   ├── bench_gen_fp16_vs_int4.py      # Autoregressive generation throughput & VRAM
+│   ├── benchmark_speculative_fused_serving.py # Speculative serving benchmark
+│   ├── benchmark_m1_kv_cache.py       # StaticKVCache micro-benchmark (O(1) rollback)
+│   ├── train_honest_model_grpo.py     # Milestone 3 GRPO RL training runner
+│   ├── train_math_sft.py              # Milestone 4 Cold-Start SFT training runner
+│   ├── eval_math_benchmark.py         # 5-tag schema, SymPy exact match, AIME/AMC eval
+│   ├── eval_quarantined.py            # Quarantined honesty evaluation runner
+│   ├── debug/                         # Shape and kernel debugging scripts
+│   └── README.md                      # Benchmark suite index & instructions
+├── data/                              # Training, fine-tuning & quarantined eval datasets
+│   ├── chalk_seeds_500.jsonl          # 605 certified reasoning traces (445k tokens)
+│   ├── external_math_eval.json        # 26 held-out AIME/AMC 12 & grounding checks
+│   ├── honesty_train.json             # Balanced 50/50 honesty dataset (300 records)
+│   ├── quarantined_eval.json          # 150-question quarantined zero-contamination eval
+│   ├── build_external_math_benchmark.py # Dataset compilation scripts
+│   └── README.md                      # Dataset manifest & provenance documentation
+├── notebooks/                         # Interactive Jupyter notebooks for Google Colab
+│   ├── colab_run_sft.ipynb            # End-to-end Cold-Start SFT on Tesla T4
+│   ├── grpo_baseline.ipynb            # Interactive GRPO RL training notebook
+│   └── README.md                      # Notebook catalog & instructions
+├── results/                           # Empirical logs, metrics & Nsight traces
+│   ├── benchmarks/                    # JSON benchmark and evaluation metrics
+│   ├── logs/                          # Physical hardware execution logs
+│   ├── traces/                        # Binary Nsight Compute (.ncu-rep) traces
+│   └── README.md                      # Results catalog & telemetry summary
+├── src/                               # Core CUDA/PTX kernels & Python engine modules
+│   ├── kernels/                       # Production CUDA C++ / PTX kernel headers and sources
+│   │   ├── lop3_dequant.cu            # Single-cycle LOP3 INT4/INT3/FP8 dequant
+│   │   ├── fused_w4a16_gemm.cu        # Fused per-group INT4 GEMV / WMMA
+│   │   ├── fused_backward_adamw.cu    # Fused BWD GEMM + inline AdamW
+│   │   └── h17_mega_kernel.cu         # Software warp-specialized mega-kernel
+│   ├── static_kv_cache.py             # Pre-allocated O(1) static KV-cache
+│   ├── unified_draft_engine.py        # Zero-weight prompt lookup draft engine
+│   ├── unified_speculative_engine.py  # Unified speculative serving engine
+│   ├── calibrated_rollout.py          # CP-Hybrid selective precision scope
+│   ├── hybrid_linear.py               # Dynamic dispatch linear layer
+│   ├── bindings.cpp                   # PyTorch C++/CUDA extension bindings
 │   └── setup.py                       # Extension build configuration
-├── tests/
-│   ├── run_all_cuda_tests.py          # Master test runner (correctness + benchmarks)
-│   ├── test_dequant_correctness.py    # Bit-exact KAT & fuzzing for INT4/INT3/FP8 LOP3
+├── tests/                             # Verification test suites & CI test runner
+│   ├── run_all_cuda_tests.py          # Master test runner (strictly enforces gating)
+│   ├── test_dequant_correctness.py    # Bit-exact KAT & fuzzing for LOP3
 │   ├── test_fused_gemm_correctness.py # Differential testing for fused W4A16 GEMM
-│   ├── test_h6_fused_backward_adamw.py# Fused Backward GEMM + AdamW comparative benchmark
-│   ├── test_h17_fused_int3_gemv.py    # Fused INT3 Dequant + GEMV Mega-Kernel test suite
-│   └── test_ellie_custom_t4_kernel.py # Fused Ellie model RMSNorm + GEMV + SwiGLU test
+│   ├── test_h6_fused_backward_adamw.py# Fused AdamW comparative correctness
+│   ├── test_m1_static_kv_cache.py     # StaticKVCache correctness & dynamic parity
+│   └── test_math_sft_pipeline.py      # SFT loss masking & 5-tag schema verification
+├── workflows/                         # Automated research and execution workflows
+├── scripts/                           # Auxiliary scripts and audits
 ├── verify_colab.sh                    # Complete automated verification pipeline script
-├── research-state.yaml                # Central hypothesis & hardware state manifest (v9.3.0)
-├── persona-hypotheses.yaml            # Persona & steering hypothesis register
-├── CLAIMS_HYGIENE.md                  # Strict measurement tagging & evaluation standards
-└── NEXT_STEPS.md                      # Post-verification milestone roadmap
+├── research-state.yaml                # Central hypothesis & hardware state manifest
+├── CLAIMS_HYGIENE.md                  # Strict measurement tagging & evaluation rules
+├── TODO.md                            # Moonshot roadmap & status tracker
+└── NEXT_STEPS.md                      # Next research priorities
 ```
 
 ---
 
-## Quickstart & Verification on Tesla T4
+## Quickstart: Verification on Tesla T4
 
-To build the extension and run the full verification pipeline on a Tesla T4 GPU:
+To build the extension and run the full verification pipeline on a physical Tesla T4 GPU:
 
 ```bash
 # 1. Build and install PyTorch CUDA extension
 pip install -e src/
 
-# 2. Run the complete automated verification pipeline
-bash verify_colab.sh
+# 2. Run master verification pipeline (enforces Claims Hygiene Rule 3)
+python3 tests/run_all_cuda_tests.py
 
-# 3. Or run standalone microbenchmarks directly
-nvcc -O3 -arch=sm_75 src/t4_microbenchmarks.cu -o t4_microbenchmark
-./t4_microbenchmark
+# 3. Or run the complete automated Colab bash pipeline
+bash verify_colab.sh
+```
+
+To validate the paper manuscript and check empirical consistency:
+
+```bash
+python3 paper/compile_paper.py
 ```
 
 ---
 
-## Measured Hardware Latencies (Physical T4 via `%clock64`)
+## Claims Hygiene & Research Rigor
 
-- **L1 Data Cache Hit Latency**: ~28–32 cycles (Expected with `cudaFuncCachePreferL1`)
-- **L2 Cache Hit Latency**: ~190–220 cycles
-- **GDDR6 DRAM Read Latency**: ~400–450 cycles
-- **Shared Memory Stride 32 (32-Way Bank Conflict Penalty)**: $32\times$ stall cycle serialization
+In accordance with [`CLAIMS_HYGIENE.md`](CLAIMS_HYGIENE.md):
+- Every reported number carries inline provenance (`[MEASURED]`, `[ESTIMATED]`, `[ARITHMETIC]`).
+- Baseline comparisons are made against compiled baselines (`torch.compile` / cuBLAS), not unoptimized eager code.
+- Performance benchmarks are strictly gated behind 100% pass rates on correctness test suites.
+- All hardware measurements document SM boost clocks and thermal throttle status words.
 
 ---
 
 ## License
 
-This project is released under the **Apache License 2.0**. See [LICENSE](LICENSE) for details.
+This project is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) for details.

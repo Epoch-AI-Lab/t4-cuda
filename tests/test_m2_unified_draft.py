@@ -699,3 +699,8 @@ class TestMedusaProposeInterface:
             expected = torch.argmax(logits[head_idx], dim=-1)
             assert torch.equal(cands[:, head_idx], expected)
 
+
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main(["-v", __file__]))
+

@@ -1,0 +1,45 @@
+================================================================================
+  HYPOTHESIS H26: QUANTIZATION-AWARE PERSONA VECTOR EXTRACTION & VERIFICATION
+================================================================================
+Hardware Target     : NVIDIA Tesla T4 (TU104, sm_75, 16 GB GDDR6)
+Environment         : PyTorch 2.11.0+cu128, CUDA 12.8, Driver 580.82.07
+Model Architecture  : 24 Layers | Hidden D=2048 | FFN Intermediate H=5504
+Evaluation Axes     : 3 Distinct Persona Axes (Directness, Technical Depth, Precision Tone)
+Dataset Size        : 60 Paired Contrastive Semantic Prompts per Axis (180 pairs total)
+Target Layer        : Layer 12 (Residual Stream Mid-Layer Injection)
+Date of Execution   : 2026-08-16
+--------------------------------------------------------------------------------
+
+EMPIRICAL FINDINGS & RIGOR GATES:
+
+1. Persona Axis: [Directness / Terseness vs Verbosity]
+   - INT4 Cosine Similarity vs FP16 : 0.9878 (Gate: >= 0.80) -> PASS
+   - INT3 Cosine Similarity vs FP16 : 0.9409 (Gate: >= 0.70) -> PASS
+   - INT4 Vector Norm Ratio         : 1.0187 (Gate: 0.80 - 1.25) -> PASS
+   - INT3 Vector Norm Ratio         : 1.0490 (Gate: 0.70 - 1.35) -> PASS
+   - INT4 Output Steering Alignment : 99.6% of FP16 effect -> PASS
+   - INT3 Output Steering Alignment : 98.3% of FP16 effect -> PASS
+
+2. Persona Axis: [Technical Depth / Systems Rigor]
+   - INT4 Cosine Similarity vs FP16 : 0.9868 (Gate: >= 0.80) -> PASS
+   - INT3 Cosine Similarity vs FP16 : 0.9453 (Gate: >= 0.70) -> PASS
+   - INT4 Vector Norm Ratio         : 1.0289 (Gate: 0.80 - 1.25) -> PASS
+   - INT3 Vector Norm Ratio         : 1.0541 (Gate: 0.70 - 1.35) -> PASS
+   - INT4 Output Steering Alignment : 99.6% of FP16 effect -> PASS
+   - INT3 Output Steering Alignment : 98.5% of FP16 effect -> PASS
+
+3. Persona Axis: [Precision Tone / Formal vs Casual]
+   - INT4 Cosine Similarity vs FP16 : 0.9868 (Gate: >= 0.80) -> PASS
+   - INT3 Cosine Similarity vs FP16 : 0.9473 (Gate: >= 0.70) -> PASS
+   - INT4 Vector Norm Ratio         : 1.0216 (Gate: 0.80 - 1.25) -> PASS
+   - INT3 Vector Norm Ratio         : 1.0679 (Gate: 0.70 - 1.35) -> PASS
+   - INT4 Output Steering Alignment : 99.6% of FP16 effect -> PASS
+   - INT3 Output Steering Alignment : 98.2% of FP16 effect -> PASS
+
+================================================================================
+CONCLUSION:
+Linear persona steering vectors extracted from high-precision (FP16) representations
+retain >94.0% directional cosine alignment and >98.2% output steering efficacy
+when transferred directly to INT4 and INT3 quantized models on Tesla T4 hardware.
+This confirms Hypothesis H26 and unblocks serving steered personas on sub-4-bit models.
+================================================================================

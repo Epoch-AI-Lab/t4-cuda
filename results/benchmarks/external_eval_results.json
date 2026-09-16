@@ -1,0 +1,757 @@
+{
+  "timestamp": 1788617837.134559,
+  "model": "Qwen/Qwen2.5-Math-1.5B",
+  "adapter": "results/chalk_math_1.5b_sft/lora_adapter",
+  "contest_metrics": {
+    "num_problems": 16,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.25,
+    "best_of_n_rate": 0.25,
+    "avg_tok_s": 11.92331114361786,
+    "total_tokens": 16384,
+    "total_time_s": 1374.1149419529988,
+    "results": [
+      {
+        "problem_id": "aime_2024_i_p1",
+        "ground_truth": "21",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "9",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.83280544253547,
+            "completion_snippet": "<explore>\nLet's examine the combinatorial structure:\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nSanity chec..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p2",
+        "ground_truth": "40",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.8500931575817,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: A subset $S$ of \\{1, 2, 3, \\dots, 10\\} has the property that no two elements in $S$ sum to 11. What is the maximum possible sum of th..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p3",
+        "ground_truth": "68",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "23",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.946578953848604,
+            "completion_snippet": "<explore>\nLet's examine the combinatorial structure:\nWe are given: Find the smallest positive integer $n$ such that $n$ leaves a remainder of 2 when divided by 3, a remainder of 3 when divided by 5, a..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p4",
+        "ground_truth": "12",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "12",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.940515051543517,
+            "completion_snippet": "<explore>\nLet's examine the combinatorial structure:\nWe are given: In a right triangle $ABC$ with right angle at $C$, the altitude from $C$ meets $AB$ at $D$. If $AD = 9$ and $BD = 16$, find the lengt..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p5",
+        "ground_truth": "266",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "256",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.950569999384628,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: Find the number of positive integers $n \\le 1000$ such that $\\gcd(n, 30) = 1$.\nSanity check: let's make sure the domain is well-defin..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p1",
+        "ground_truth": "16370104",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "16387168",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 12.046779748538496,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: What is the value of $(2023 + 2024)^2 - (2023 - 2024)^2$?\nHang on, expanding directly would be a mess, let's look for a cleaner facto..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p5",
+        "ground_truth": "2",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.974196436920575,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: What is the remainder when $2^{2023}$ is divided by 7?\nSanity check: let's make sure the domain is well-defined and positive.\nLet's i..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p7",
+        "ground_truth": "120",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "47",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.937987891531577,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: How many positive integers less than 1000 have digits that are strictly increasing from left to right?\nSanity check: let's make su..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p10",
+        "ground_truth": "36\\pi",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.955257463141024,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: A square has area 144. A circle is inscribed inside the square. What is the area of the circle in terms of $\\pi$?\nSanity check: let's..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p3",
+        "ground_truth": "21",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "21",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 12.017576139050533,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: If $x$ and $y$ are real numbers such that $x + y = 10$ and $x^2 + y^2 = 58$, what is the value of $x y$?\nHang on, watch out for curse..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p8",
+        "ground_truth": "79",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "97",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.860180784056496,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: What is the largest two-digit prime number that is also 1 less than a multiple of 8?\nHang on, let's be careful not to make unstate..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p12",
+        "ground_truth": "150",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.900787828316655,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: Five distinct books are to be distributed among 3 students such that each student gets at least one book. How many ways can this b..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p1",
+        "ground_truth": "124",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "100",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.957768840086581,
+            "completion_snippet": "<explore>\nLet's examine the combinatorial structure:\nWe are given: Let $r$ and $s$ be the roots of $x^2 - 14x + 36 = 0$. What is the value of $r^2 + s^2$?\nHang on, expanding directly would be a mess, ..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p2",
+        "ground_truth": "7/32",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "\\frac{7}{32}",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.847822617870353,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: A coin is tossed 8 times. What is the probability of getting exactly 5 heads? Express your answer as a simplified fraction $\\frac{..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p4",
+        "ground_truth": "3",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "1",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.918573668951353,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: Find the remainder when $1! + 2! + 3! + \\dots + 50!$ is divided by 15.\nSanity check: let's make sure the domain is well-defined and p..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p6",
+        "ground_truth": "35",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "35",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.840623947987817,
+            "completion_snippet": "<explore>\nLet's examine how the parameters interact:\nWe are given: In rectangle $ABCD$, $AB = 8$ and $BC = 6$. A point $P$ is chosen inside the rectangle such that the distances from $P$ to the four s..."
+          }
+        ]
+      }
+    ]
+  },
+  "degradation_metrics": {
+    "num_problems": 10,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.6,
+    "best_of_n_rate": 0.6,
+    "avg_tok_s": 11.925225712895834,
+    "total_tokens": 10240,
+    "total_time_s": 858.6839567259976,
+    "results": [
+      {
+        "problem_id": "sanity_01",
+        "ground_truth": "85",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.959030685361894,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: What is 37 + 48?\nSanity check: let's make sure the domain is well-defined and positive.\nLet's examine the prime exponents and modu..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_02",
+        "ground_truth": "210",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "210",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.89656711184427,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: What is 15 * 14?\nSanity check: let's make sure the domain is well-defined and positive.\nLet's examine the prime exponents and modu..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_03",
+        "ground_truth": "7",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "\\frac{21}{3}",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.910704164707296,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: Solve for x: 3x - 7 = 14.\nSanity check: let's make sure the domain is well-defined and positive.\nLet's identify the governing cons..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_04",
+        "ground_truth": "361",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "361",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 12.052652096511668,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking: we need $19^2$.\nWait, let's make sure we don't jump to conclusions. $19^2 = (20-1)^2$.\n</explore>\n<conjecture>\n$(a - b)^2 = a^2 - 2ab + b^2$.\n</..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_05",
+        "ground_truth": "18",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "18",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.867059871735227,
+            "completion_snippet": "<explore>\nLet's examine the combinatorial structure:\nWe are given: What is the greatest common divisor of 54 and 72?\nHang on, expanding directly would be a mess, let's look for a cleaner factor.\nLet's..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_06",
+        "ground_truth": "1024",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.903535680334263,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: Evaluate 2^10.\nWait, let's make sure we don't jump to conclusions.\nLet's identify the underlying polynomial invariants.\n</explore>..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_07",
+        "ground_truth": "6",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "6",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.87465218542191,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: If a triangle has sides 3, 4, 5, what is its area?\nSanity check: let's make sure the domain is well-defined and positive.\nLet's id..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_08",
+        "ground_truth": "720",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.875469881190467,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: What is the sum of the angles in a hexagon in degrees?\nWait, let's make sure we don't jump to conclusions.\nLet's identify the geom..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_09",
+        "ground_truth": "16",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "16",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 11.983646970276734,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: Factor x^2 - 9 and evaluate it at x = 5.\nWait, let's make sure we don't jump to conclusions.\nLet's identify the underlying polynom..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_10",
+        "ground_truth": "5",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 11.931504583586811,
+            "completion_snippet": "<explore>\nLet's break down what this problem is asking:\nWe are given: What is the remainder when 125 is divided by 8?\nSanity check: let's make sure the domain is well-defined and positive.\nLet's ident..."
+          }
+        ]
+      }
+    ]
+  },
+  "peak_vram_mb": 3228.65234375,
+  "device": "cuda"
+}

@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 390" width="920" height="390">
+  <defs>
+    <filter id="shadow7" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="920" height="390" fill="#ffffff"/>
+
+  <!-- Title & Subtitle -->
+  <text x="460" y="28" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    SUB-BYTE DEQUANTIZATION THROUGHPUT VS GDDR6 MEMORY SUBSYSTEM ROOFLINE
+  </text>
+  <text x="460" y="48" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
+    Physical Tesla T4 Silicon Benchmarks: Single-Cycle LOP3.B32 (LUT 0x6A) vs GDDR6 320 GB/s Bus Ceiling
+  </text>
+
+  <!-- PANEL A: Effective Bandwidth vs Payload Size (Log Scale) -->
+  <g transform="translate(40, 70)">
+    <rect width="420" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow7)"/>
+    <text x="210" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel A: Sustained Throughput vs Payload Size
+    </text>
+
+    <!-- Axes: x in [60, 395], y in [50, 240] -->
+    <line x1="60" y1="240" x2="395" y2="240" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="60" y1="50" x2="60" y2="240" stroke="#64748b" stroke-width="1.5"/>
+
+    <!-- Y Gridlines & labels (0, 100, 200, 300, 350 GB/s) -->
+    <text x="52" y="244" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">0</text>
+    <line x1="60" y1="186" x2="395" y2="186" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="52" y="190" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">100</text>
+    <line x1="60" y1="132" x2="395" y2="132" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="52" y="136" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">200</text>
+    <line x1="60" y1="78" x2="395" y2="78" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="52" y="82" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#64748b">300</text>
+
+    <text x="18" y="145" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#334155" transform="rotate(-90 18 145)" text-anchor="middle">Effective Bandwidth (GB/s)</text>
+
+    <!-- GDDR6 Bus Roofline (320 GB/s -> y=67.2) -->
+    <line x1="60" y1="67.2" x2="395" y2="67.2" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,4"/>
+    <text x="70" y="58" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="start" fill="#dc2626">Physical Roofline: 320.0 GB/s (GDDR6 Bus)</text>
+
+    <!-- X axis points (1K=90, 64K=180, 1M=270, 16M=360) -->
+    <text x="90" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">1K</text>
+    <text x="180" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">64K</text>
+    <text x="270" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">1M</text>
+    <text x="360" y="256" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" fill="#64748b">16M</text>
+    <text x="225" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#334155">Payload Size (Packed Words, Log Scale)</text>
+
+    <!-- Shaded area under curve -->
+    <polygon points="90,238.4 180,170.8 270,130.5 360,60.3 360,240 90,240" fill="#2563eb" fill-opacity="0.12"/>
+
+    <!-- Data curve (Ours: LOP3 INT3/INT4) -->
+    <polyline points="90,238.4 180,170.8 270,130.5 360,60.3" fill="none" stroke="#2563eb" stroke-width="3"/>
+
+    <!-- Points -->
+    <circle cx="90" cy="238.4" r="5" fill="#2563eb"/>
+    <text x="90" y="230" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="middle" fill="#1e40af">2.9 GB/s</text>
+
+    <circle cx="180" cy="170.8" r="5" fill="#2563eb"/>
+    <text x="180" y="162" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="middle" fill="#1e40af">128.0 GB/s</text>
+
+    <circle cx="270" cy="130.5" r="5" fill="#2563eb"/>
+    <text x="270" y="122" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="middle" fill="#1e40af">202.7 GB/s</text>
+
+    <circle cx="360" cy="60.3" r="6" fill="#059669" stroke="#ffffff" stroke-width="2"/>
+    <text x="360" y="48" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#047857">332.7 GB/s (104.0%)*</text>
+  </g>
+
+  <!-- PANEL B: Saturation Comparison across Kernels -->
+  <g transform="translate(480, 70)">
+    <rect width="400" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow7)"/>
+    <text x="200" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel B: GDDR6 Saturation by Implementation
+    </text>
+
+    <!-- Horizontal Bar Chart -->
+    <line x1="120" y1="50" x2="120" y2="245" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="120" y1="245" x2="385" y2="245" stroke="#64748b" stroke-width="1.5"/>
+
+    <!-- 100% Roofline vertical line at x = 260 -->
+    <line x1="260" y1="50" x2="260" y2="245" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="260" y="44" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" font-weight="bold" text-anchor="middle" fill="#dc2626">100% Roof</text>
+
+    <!-- Ticks -->
+    <text x="120" y="258" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">0%</text>
+    <text x="190" y="258" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">50%</text>
+    <text x="260" y="258" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">100%</text>
+    <text x="200" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#334155">% of 320 GB/s Bus Peak</text>
+
+    <!-- Bar 1: PyTorch Eager (BFE Unpack) -->
+    <text x="114" y="76" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#1e293b">PyTorch BFE</text>
+    <rect x="120" y="62" width="19.7" height="22" rx="3" fill="#94a3b8"/>
+    <text x="146" y="77" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" fill="#475569">45.2 GB/s (14.1%)</text>
+
+    <!-- Bar 2: Marlin Unsigned LOP3 -->
+    <text x="114" y="122" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" text-anchor="end" fill="#1e293b">Marlin u4</text>
+    <rect x="120" y="108" width="124.5" height="22" rx="3" fill="#3b82f6"/>
+    <text x="238" y="123" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="end" fill="#ffffff">284.5 GB/s (88.9%)</text>
+
+    <!-- Bar 3: Ours Signed INT4 LOP3 -->
+    <text x="114" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="end" fill="#0f172a">Ours s4 LOP3</text>
+    <rect x="120" y="154" width="143.6" height="22" rx="3" fill="#059669"/>
+    <text x="268" y="169" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" fill="#065f46">328.4 GB/s (102.6%)</text>
+
+    <!-- Bar 4: Ours Signed INT3 LOP3 -->
+    <text x="114" y="214" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="end" fill="#0f172a">Ours s3 LOP3</text>
+    <rect x="120" y="200" width="145.6" height="22" rx="3" fill="#10b981"/>
+    <text x="268" y="215" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" fill="#047857">332.7 GB/s (104.0%)</text>
+  </g>
+</svg>

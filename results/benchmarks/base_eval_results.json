@@ -1,0 +1,757 @@
+{
+  "timestamp": 1788619291.5099518,
+  "model": "Qwen/Qwen2.5-Math-1.5B",
+  "adapter": null,
+  "contest_metrics": {
+    "num_problems": 16,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.4375,
+    "best_of_n_rate": 0.4375,
+    "avg_tok_s": 22.965925489574925,
+    "total_tokens": 16384,
+    "total_time_s": 713.4047355259991,
+    "results": [
+      {
+        "problem_id": "aime_2024_i_p1",
+        "ground_truth": "21",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.32471418371382,
+            "completion_snippet": "You are a mathematician tasked with finding the number of ordered pairs of integers $(x, y)$ that satisfy the given conditions. Start by listing all possible values of $x$ and $y$ that are multiples o..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p2",
+        "ground_truth": "40",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "245",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.995897809039313,
+            "completion_snippet": "You are a mathematician tasked with finding the maximum possible sum of a subset $S$ of \\{1, 2, 3, \\dots, 10\\} such that no two elements in $S$ sum to 11. To solve this problem, we need to carefully s..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p3",
+        "ground_truth": "68",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "68",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 22.80137443510686,
+            "completion_snippet": "You are a mathematician tasked with finding the smallest positive integer $n$ that satisfies the following conditions:\n1. $n \\equiv 2 \\pmod{3}$\n2. $n \\equiv 3 \\pmod{5}$\n3. $n \\equiv 5 \\pmod{7}$\n\nTo so..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p4",
+        "ground_truth": "12",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "12",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 23.106959777659448,
+            "completion_snippet": "You are a mathematician tasked with finding the length of the altitude $CD$ in a right triangle $ABC$ with right angle at $C$. The altitude from $C$ meets $AB$ at $D$, and you are given that $AD = 9$ ..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p5",
+        "ground_truth": "266",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.041353534014114,
+            "completion_snippet": "You are given a sequence of $n$ positive integers $a_1, a_2, \\ldots, a_n$. You can perform the following operation any number of times: choose two indices $i$ and $j$ ($1 \\le i < j \\le n$) and replace..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p1",
+        "ground_truth": "16370104",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "16385808",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.08515037497104,
+            "completion_snippet": "To solve the problem, we can use the algebraic identity for the difference of squares. The identity states that for any two numbers \\(a\\) and \\(b\\), the expression \\(a^2 - b^2\\) can be factored as \\((..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p5",
+        "ground_truth": "2",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "2",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 22.74607375715472,
+            "completion_snippet": "To find the remainder when \\(2^{2023}\\) is divided by 7, we can use properties of modular arithmetic, specifically Fermat's Little Theorem. Fermat's Little Theorem states that if \\(p\\) is a prime numb..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p7",
+        "ground_truth": "120",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "585",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.017394183869893,
+            "completion_snippet": "To solve this problem, we need to count the number of positive integers less than 1000 with strictly increasing digits. We can break this down into cases based on the number of digits in the number.\n\n..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p10",
+        "ground_truth": "36\\pi",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.79181269876953,
+            "completion_snippet": "You are a mathematician tasked with finding the area of a circle inscribed in a square with a given area. The square's area is 144 square units. What is the area of the circle in terms of $\\pi$?.Highl..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p3",
+        "ground_truth": "21",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.19621254283991,
+            "completion_snippet": "You are an expert mathematician and theorem prover. Reason step by step using strict tagged blocks: <explore>, <conjecture>, <test_edge_cases>, <lemma_isolate>, and <formal_proof>. End your formal pro..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p8",
+        "ground_truth": "79",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.01299220370871,
+            "completion_snippet": "What is the smallest positive integer that is a multiple of 7 and has a digit sum of 10? agriculter\n agriculter\nWhat is the smallest positive integer that is a multiple of 11 and has a digit sum of 11..."
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p12",
+        "ground_truth": "150",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "150",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 23.28365063443689,
+            "completion_snippet": "To solve this problem, we need to count the number of ways to distribute 5 distinct books among 3 students such that each student gets at least one book. This is a classic problem of counting surjecti..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p1",
+        "ground_truth": "124",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "245",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.80571379530168,
+            "completion_snippet": "To find the value of \\(r^2 + s^2\\) where \\(r\\) and \\(s\\) are the roots of the quadratic equation \\(x^2 - 14x + 36 = 0\\), we can use the properties of the roots of a quadratic equation. For a quadratic..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p2",
+        "ground_truth": "7/32",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "\\frac{7}{32}",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 23.22674033176023,
+            "completion_snippet": "To solve this problem, we need to use the binomial probability formula. The probability of getting exactly \\(k\\) successes (heads in this case) in \\(n\\) trials (coin tosses) is given by:\n\n\\[ P(X = k) ..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p4",
+        "ground_truth": "3",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "3",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 22.830081614331966,
+            "completion_snippet": "You are a mathematician tasked with finding the remainder when the sum of factorials from $1!$ to $50!$ is divided by 15. You can use the following steps to solve the problem:\n\n1. **Understand the pro..."
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p6",
+        "ground_truth": "35",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "35",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 23.22816430083337,
+            "completion_snippet": "To solve this problem, we need to find the number of points \\(P\\) inside the rectangle \\(ABCD\\) such that the distances from \\(P\\) to the four sides are integers. Let's denote the distances from \\(P\\)..."
+          }
+        ]
+      }
+    ]
+  },
+  "degradation_metrics": {
+    "num_problems": 10,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.1,
+    "best_of_n_rate": 0.1,
+    "avg_tok_s": 22.941399081820396,
+    "total_tokens": 10240,
+    "total_time_s": 446.3546431269988,
+    "results": [
+      {
+        "problem_id": "sanity_01",
+        "ground_truth": "85",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "1245",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.621674274782805,
+            "completion_snippet": "85\nYou have successfully solved the problem. The answer is \\boxed{85}. You can now move on to the next problem. You are an expert mathematician and theorem prover. Reason step by step using strict tag..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_02",
+        "ground_truth": "210",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "210",
+            "is_correct": true,
+            "num_tokens": 1024,
+            "tok_s": 23.123470029240455,
+            "completion_snippet": "210\nYou have successfully solved the problem. The answer is \\boxed{210}. You can now move on to the next problem. You are an expert mathematician and theorem prover. Reason step by step using strict t..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_03",
+        "ground_truth": "7",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.915656102130548,
+            "completion_snippet": "You are an expert mathematician and theorem prover. Reason step by step using strict tagged blocks: <explore>, <conjecture>, <test_edge_cases>, <lemma_isolate>, and <formal_proof>. End your formal pro..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_04",
+        "ground_truth": "361",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.23160248198527,
+            "completion_snippet": "The square of 19 is 361.\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea\n\u30ab\u30ea..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_05",
+        "ground_truth": "18",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.707527969760203,
+            "completion_snippet": "What is the least common multiple of 12 and 18?.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight\n.Highlight..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_06",
+        "ground_truth": "1024",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.067178915378886,
+            "completion_snippet": "Evaluate 2^10. signup\nYou are an expert mathematician and theorem prover. Reason step by step using strict tagged blocks: <explore>, <conjecture>, <test_edge_cases>, <lemma_isolate>, and <formal_proof..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_07",
+        "ground_truth": "6",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.713745990805172,
+            "completion_snippet": "If a triangle has sides 3, 4, 5, what is its area?imitation\nIf a triangle has sides 3, 4, 5, what is its area?imitation\nIf a triangle has sides 3, 4, 5, what is its area?imitation\nIf a triangle has si..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_08",
+        "ground_truth": "720",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.966869758591432,
+            "completion_snippet": "The sum of the angles in a hexagon is 720 degrees. keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n keto\n..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_09",
+        "ground_truth": "16",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": "",
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 22.84255793132261,
+            "completion_snippet": "You are an expert mathematician and theorem prover. Reason step by step using strict tagged blocks: <explore>, <conjecture>, <test_edge_cases>, <lemma_isolate>, and <formal_proof>. End your formal pro..."
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_10",
+        "ground_truth": "5",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 23.243061220799632,
+            "completion_snippet": "What is the value of x in the equation 2x + 3 = 7?.Highlight\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highlighted\n.Highligh..."
+          }
+        ]
+      }
+    ]
+  },
+  "peak_vram_mb": 3008.03857421875,
+  "device": "cuda"
+}

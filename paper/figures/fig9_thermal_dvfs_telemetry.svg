@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 390" width="920" height="390">
+  <defs>
+    <filter id="shadow9" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="920" height="390" fill="#ffffff"/>
+
+  <text x="460" y="28" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    PHYSICAL SILICON TELEMETRY: THERMAL THROTTLING VS 25% OCCUPANCY PACING
+  </text>
+  <text x="460" y="48" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">
+    Telemetry Captured via NVML Queries: Core Clocks, Dynamic Power, and SW_POWER_CAP (Table 2)
+  </text>
+
+  <!-- Panel A: SM Core Clock over Time -->
+  <g transform="translate(40, 70)">
+    <rect width="420" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow9)"/>
+    <text x="210" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel A: SM Core Clock Stability (MHz)
+    </text>
+
+    <line x1="60" y1="240" x2="395" y2="240" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="60" y1="50" x2="60" y2="240" stroke="#64748b" stroke-width="1.5"/>
+
+    <text x="52" y="244" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">800</text>
+    <text x="52" y="202" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">1000</text>
+    <text x="52" y="160" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">1200</text>
+    <text x="52" y="118" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">1400</text>
+    <text x="52" y="78" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="end" fill="#059669">1590</text>
+    <text x="18" y="145" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#334155" transform="rotate(-90 18 145)" text-anchor="middle">SM Core Clock (MHz)</text>
+
+    <!-- X Axis: Execution Progress -->
+    <text x="60" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">0</text>
+    <text x="170" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">150M</text>
+    <text x="280" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">300M</text>
+    <text x="390" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">450M</text>
+    <text x="225" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#334155">Execution Time (GPU Cycles)</text>
+
+    <!-- Curve 1: 25% Pacing (Locked at 1590 MHz -> y=74) -->
+    <line x1="60" y1="74" x2="395" y2="74" stroke="#059669" stroke-width="3"/>
+    <text x="390" y="66" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="end" fill="#059669">1590 MHz (0.0% Throttled)</text>
+
+    <!-- Curve 2: 100% Unconstrained Occupancy (Drops to 1193 MHz) -->
+    <path d="M 60 74 L 85 74 L 100 157 L 130 152 L 150 162 L 170 154 L 200 160 L 230 152 L 260 164 L 290 155 L 320 160 L 350 153 L 395 158" 
+          fill="none" stroke="#dc2626" stroke-width="2.5"/>
+    <text x="240" y="146" font-family="'Courier New', monospace" font-size="9" font-weight="bold" text-anchor="middle" fill="#b91c1c">Mean: 1193 MHz (72.5% Throttled)</text>
+
+    <!-- Legend -->
+    <g transform="translate(70, 215)">
+      <line x1="0" y1="0" x2="20" y2="0" stroke="#059669" stroke-width="3"/>
+      <text x="25" y="4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#059669">25% Paced (Ours)</text>
+
+      <line x1="130" y1="0" x2="150" y2="0" stroke="#dc2626" stroke-width="2.5"/>
+      <text x="155" y="4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" fill="#b91c1c">100% Unconstrained</text>
+    </g>
+  </g>
+
+  <!-- Panel B: Dynamic Power Draw -->
+  <g transform="translate(480, 70)">
+    <rect width="400" height="290" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow9)"/>
+    <text x="200" y="24" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#1e293b">
+      Panel B: Dynamic GPU Power Draw (Watts)
+    </text>
+
+    <line x1="50" y1="240" x2="375" y2="240" stroke="#64748b" stroke-width="1.5"/>
+    <line x1="50" y1="50" x2="50" y2="240" stroke="#64748b" stroke-width="1.5"/>
+
+    <text x="42" y="244" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">0</text>
+    <text x="42" y="196" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">25</text>
+    <text x="42" y="149" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">50</text>
+    <text x="42" y="111" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="end" fill="#dc2626">70</text>
+    <text x="42" y="54" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="end" fill="#64748b">100</text>
+    <text x="16" y="145" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#334155" transform="rotate(-90 16 145)" text-anchor="middle">Dynamic Power (Watts)</text>
+
+    <!-- 70W TDP Ceiling line (y=107) -->
+    <line x1="50" y1="107" x2="375" y2="107" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,4"/>
+    <text x="370" y="101" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" text-anchor="end" fill="#dc2626">Passive TDP Ceiling: 70.0 W</text>
+
+    <!-- X Axis: Execution Progress -->
+    <text x="50" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">0</text>
+    <text x="155" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">150M</text>
+    <text x="260" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">300M</text>
+    <text x="365" y="255" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" text-anchor="middle" fill="#64748b">450M</text>
+    <text x="210" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#334155">Execution Time (GPU Cycles)</text>
+
+    <!-- Curve 1: 100% Occupancy (Peak 93.61W) -->
+    <path d="M 50 180 Q 75 62, 95 62 L 375 62" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+    <text x="370" y="56" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="end" fill="#b91c1c">Peak: 93.61W (Thermal Trip)</text>
+
+    <!-- Curve 2: 25% Pacing (Steady at 50.36W) -->
+    <line x1="50" y1="144.3" x2="375" y2="144.3" stroke="#059669" stroke-width="3"/>
+    <text x="370" y="138" font-family="'Courier New', monospace" font-size="9.5" font-weight="bold" text-anchor="end" fill="#047857">50.36W (28% Headroom)</text>
+  </g>
+</svg>

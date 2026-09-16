@@ -856,3 +856,8 @@ class TestTerminationAndBoundaryProtections:
         prompt = list(range(20))
         with pytest.raises(ValueError):
             engine.generate(prompt, max_new_tokens=10, k_draft=3)
+
+
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main(["-v", __file__]))

@@ -1,0 +1,459 @@
+================================================================================
+  TESLA T4 PHYSICAL HARDWARE EMPIRICAL VALIDATION & LOG DUMP
+================================================================================
+
+================================================================================
+  STEP: NVIDIA SMI GPU Telemetry
+  COMMAND: nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version,pstate,temperature.gpu,power.draw,clocks.sm,clocks.mem --format=csv
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:55:58.044535Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 0.043s)
+
+--- [STDOUT] ---
+name, memory.total [MiB], memory.free [MiB], driver_version, pstate, temperature.gpu, power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz]
+Tesla T4, 15360 MiB, 14913 MiB, 580.82.07, P8, 36, 11.25 W, 300 MHz, 405 MHz
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: NVCC Compiler Version
+  COMMAND: nvcc --version
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:55:58.088137Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 0.003s)
+
+--- [STDOUT] ---
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: PyTorch & CUDA Build Details
+  COMMAND: python3 -c 'import torch; print("PyTorch:", torch.__version__, "CUDA:", torch.version.cuda, "Device:", torch.cuda.get_device_name(0), "Device Count:", torch.cuda.device_count())'
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:55:58.091396Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 2.645s)
+
+--- [STDOUT] ---
+PyTorch: 2.11.0+cu128 CUDA: 12.8 Device: Tesla T4 Device Count: 1
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Compile Standalone sm_75 Microbenchmarks
+  COMMAND: nvcc -O3 -arch=sm_75 src/t4_microbenchmarks.cu -o t4_microbenchmark
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:00.736985Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 8.049s)
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Execute Standalone Hardware Microbenchmarks
+  COMMAND: ./t4_microbenchmark
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:08.785974Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 1.078s)
+
+--- [STDOUT] ---
+===================================================
+Tesla T4 (Turing CC 7.5) Hardware Micro-Benchmarks
+===================================================
+
+--- [1] Shared Memory Bank Conflict Benchmark ---
+Stride  1 ( 0-way conflict): 24709.0 total cycles (~24.71 cycles/access)
+Stride  2 ( 2-way conflict): 24835.0 total cycles (~24.84 cycles/access)
+Stride  4 ( 4-way conflict): 24698.0 total cycles (~24.70 cycles/access)
+Stride 32 (32-way conflict): 64359.0 total cycles (~64.36 cycles/access)
+
+--- [2] Pointer-Chasing Memory Latency Benchmark ---
+L1 Data Cache Latency : 45.6 cycles / load
+GDDR6 DRAM Latency    : 409.2 cycles / load
+
+--- [3] HMMA.884 Clock Throttling Profiling ---
+Profiling 100% Occupancy (1024 threads/SM)...
+  -> 100% Occupancy Duration: 449778568 cycles
+Profiling 25% Occupancy (256 threads/SM)...
+  -> 25% Occupancy Duration : 418500685 cycles
+
+===================================================
+[BENCHMARK COMPLETE] Empirical Measurements Collected.
+===================================================
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Build & Install PyTorch CUDA Extension (t4_kernels)
+  COMMAND: /usr/bin/python3 -m pip install -e src/
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:09.864038Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 9.812s)
+
+--- [STDOUT] ---
+Obtaining file:///content/t4-cuda/src
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Installing collected packages: t4_kernels
+  Attempting uninstall: t4_kernels
+    Found existing installation: t4_kernels 0.1.0
+    Uninstalling t4_kernels-0.1.0:
+      Successfully uninstalled t4_kernels-0.1.0
+  Running setup.py develop for t4_kernels
+Successfully installed t4_kernels-0.1.0
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Run Dequantization Correctness Suite
+  COMMAND: /usr/bin/python3 tests/test_dequant_correctness.py
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:19.676606Z
+================================================================================
+[EXIT CODE]: 1 (Duration: 2.881s)
+
+--- [STDOUT] ---
+================================================================================
+CUDA Dequantize (u4 & s4) Correctness Tests
+================================================================================
+Test Name                           | Status | Max Error    | Mean Error
+--------------------------------------------------------------------------------
+KAT Test (H4) - u4                  | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+KAT Test (H4) - s4                  | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+KAT Test (All Zeros) - u4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+KAT Test (All Zeros) - s4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+KAT Test (All Ones) - u4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+KAT Test (All Ones) - s4            | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+KAT Test (Identity) - u4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+KAT Test (Identity) - s4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Exhaustive Nibble Sweep - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Exhaustive Nibble Sweep - s4        | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+Random Fuzz (10K) - u4              | [91mFAIL[0m | Max Err: 7.5000e+00 | Mean Err: 7.0912e-01
+Random Fuzz (10K) - s4              | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+Batch Size Stress (1) - u4          | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (1) - s4          | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (256) - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (256) - s4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (4096) - u4       | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (4096) - s4       | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (1000000) - u4    | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Batch Size Stress (1000000) - s4    | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Scale Edge (scale=0) - u4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+Scale Edge (scale=65k) - u4         | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+Scale Edge (scale=1e-5) - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+================================================================================
+SUMMARY: 17/23 Tests Passed
+================================================================================
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Run Fused GEMM Correctness Suite
+  COMMAND: /usr/bin/python3 tests/test_fused_gemm_correctness.py
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:22.557580Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 4.614s)
+
+--- [STDOUT] ---
+Running Test: Identity Matrix
+  [PASS] Identity matched weights exactly
+Running Test: Known Small Matrix (M=1, K=8, N=4, Signed=False)
+  [PASS] Max Err: 0.0859, Mean Err: 0.0391
+Running Test: Eli Model Sizes (Decode) (M=1, K=3584, N=3584, Signed=False)
+  [FAIL] Max Err: 11.8125, Mean Err: 1.3262
+Running Test: Batch Decode M=1 (M=1, K=2048, N=4096, Signed=True)
+  [FAIL] Max Err: 3.3125, Mean Err: 0.3850
+Running Test: Batch Decode M=2 (M=2, K=2048, N=4096, Signed=True)
+  [FAIL] Max Err: 7.4492, Mean Err: 0.5786
+Running Test: Batch Decode M=4 (M=4, K=2048, N=4096, Signed=True)
+  [FAIL] Max Err: 6.0000, Mean Err: 0.4631
+Running Test: Batch Decode M=8 (M=8, K=2048, N=4096, Signed=True)
+  [FAIL] Max Err: 8.3750, Mean Err: 0.3354
+
+Running Random Fuzz...
+  Fuzz 100 iterations -> Max Err: 10.0000, Avg Mean Err: 0.2313
+Running Test: Edge Case: Minimum K, Single N (M=1, K=8, N=1, Signed=False)
+  [PASS] Max Err: 0.2207, Mean Err: 0.2207
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Run Flagship H17 Fused INT3 Mega-Kernel Test
+  COMMAND: /usr/bin/python3 tests/test_h17_fused_int3_gemv.py
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:27.171745Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 6.809s)
+
+--- [STDOUT] ---
+================================================================================
+      RUNNING HYPOTHESIS H17 FUSED INT3 MEGA-KERNEL SUITE
+================================================================================
+=== [KAT TEST] H17 INT3 3-Bit Packing and Unpacking KAT Vectors ===
+  [PASS] KAT 1: Bit-packing uint8 [0..7] -> 3 Bytes exact match.
+  [PASS] KAT 2: All-7s bit-packing -> 0xFFFFFF exact match.
+  [PASS] KAT 3: All-Zeros bit-packing -> 0x000000 exact match.
+
+=== [CORRECTNESS TEST] H17 Fused INT3 Dequant + GEMV vs References ===
+  [PASS] Grid B= 1, M=   1 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2086 (MSE=22.11), NF4 MSE=4.36
+  [PASS] Grid B= 1, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2130 (MSE=23.56), NF4 MSE=4.35
+  [PASS] Grid B= 1, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2136 (MSE=23.39), NF4 MSE=4.35
+  [PASS] Grid B= 4, M=   1 | Fused Kernel Bitwise Match Diff=3.5e-05 | INT3 Relative RMSE=0.2123 (MSE=24.03), NF4 MSE=4.56
+  [PASS] Grid B= 4, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2130 (MSE=23.32), NF4 MSE=4.35
+  [PASS] Grid B= 4, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2134 (MSE=23.30), NF4 MSE=4.32
+  [PASS] Grid B=16, M=   1 | Fused Kernel Bitwise Match Diff=5.7e-05 | INT3 Relative RMSE=0.2129 (MSE=23.56), NF4 MSE=4.34
+  [PASS] Grid B=16, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2137 (MSE=23.35), NF4 MSE=4.32
+  [PASS] Grid B=16, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2134 (MSE=23.32), NF4 MSE=4.33
+
+=== [EDGE CASES TEST] H17 Fused INT3 Mega-Kernel Edge Cases ===
+  [PASS] Edge Case 1: All Zeros input -> Output exactly 0.0.
+  [PASS] Edge Case 2: Negative Activations & Weights -> Correct positive dot product (960.00 vs expected 960.00).
+  [PASS] Edge Case 3: Positive-Only Range & Odd dimensions (K=13, N=1025) padding fix verified.
+  [PASS] Edge Case 4: Misaligned/corrupted byte stream truncated safely without crash.
+  [PASS] Edge Case 5: Extreme tensor size (K=8192, N=4096) handled seamlessly.
+
+=== [MICROBENCHMARK] Speed-of-Light & Latency / Bandwidth Comparison ===
+Simulating memory bandwidth bottleneck on GPU (T4 / A100 VRAM transfer bounds)...
+Batch (B) Seq (M)   FP16 Bytes    NF4 Bytes     INT3 Bytes    INT3 Latency    INT3 Speedup vs FP16
+--------------------------------------------------------------------------------------------------
+1         1         33.55         9.44          7.34          22.96          us  4.57              x
+1         128       33.55         9.44          7.34          26.21          us  4.12              x
+1         2048      33.55         9.44          7.34          75.37          us  2.09              x
+4         1         33.55         9.44          7.34          23.04          us  4.56              x
+4         128       33.55         9.44          7.34          36.04          us  3.27              x
+4         2048      33.55         9.44          7.34          232.65         us  1.35              x
+16        1         33.55         9.44          7.34          23.35          us  4.51              x
+16        128       33.55         9.44          7.34          75.37          us  2.09              x
+16        2048      33.55         9.44          7.34          861.80         us  1.10              x
+
+  [ASSERT] H17 Fused INT3 Mega-Kernel bandwidth reduction factor verified (~5.33x weight compression vs FP16).
+
+=== [ON-GPU EXTENSION TEST] H17 Fused INT3 CUDA Extension ===
+  non-zero GEMV: M=1 K=200 N=64 num_groups=2
+  max_abs_diff (GPU vs CPU FP16-dequant ref) = 1.254501  (gate <= 2.0)
+  [PASS] Live GPU execution + non-vacuous correctness gate. Output shape: torch.Size([1, 64])
+
+================================================================================
+ALL TESTS PASSED SUCCESSFULLY! (0 Errors)
+================================================================================
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Run Layer & Kernel Performance Benchmarks
+  COMMAND: /usr/bin/python3 tests/benchmark_kernels.py
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:33.980690Z
+================================================================================
+[EXIT CODE]: 0 (Duration: 15.495s)
+
+--- [STDOUT] ---
+=====================================================================================
+Benchmark                 |     Latency |  Peak VRAM |  Bandwidth |  Speedup
+=====================================================================================
+Dequant 1024 packed       |    29.79 us |          - |   1.8 GB/s |        -
+Dequant 65536 packed      |    34.75 us |          - |  98.1 GB/s |        -
+Dequant 1048576 packed    |   280.58 us |          - | 194.3 GB/s |        -
+Dequant 16777216 packed   |  2622.85 us |          - | 332.6 GB/s |        -
+Base Attn Proj            |   144.16 us |   102.8 MB |          - |        -
+Fused Attn Proj           |    45.44 us |   102.8 MB |          - |    3.17x
+Base MLP Up               |   372.35 us |   151.2 MB |          - |        -
+Fused MLP Up              |   159.78 us |   151.2 MB |          - |    2.33x
+Base MLP Down             |   262.14 us |   150.9 MB |          - |        -
+Fused MLP Down            |   161.82 us |   150.9 MB |          - |    1.62x
+Base Vocab Proj           |  4143.90 us |  1371.6 MB |          - |        -
+Fused Vocab Proj          |  2916.64 us |  1371.6 MB |          - |    1.42x
+
+Summary against Targets:
+- H4 Target (2.50x SASS speedup): Check 'Speedup' column vs Base.
+- H7 Target (3.08x speedup, 303 GB/s): Check Dequant throughput.
+- H8 Target (94.2% fetch stall reduction): Indirectly measured by overall latency.
+--------------------------------------------------------------------------------
+
+================================================================================
+  STEP: Run Master CUDA Test Suite
+  COMMAND: /usr/bin/python3 tests/run_all_cuda_tests.py --all
+  CWD: /content/t4-cuda
+  TIMESTAMP: 2026-08-13T17:56:49.476094Z
+================================================================================
+[EXIT CODE]: 1 (Duration: 38.566s)
+
+--- [STDOUT] ---
+
+[96m========================================================================
+  EPOCH-1 CUDA KERNEL VERIFICATION SUITE
+========================================================================[0m
+
+  Date: 2026-08-13 17:56:49
+  Mode: Correctness + Benchmarks
+
+[96m========================================================================
+  GPU DETECTION
+========================================================================[0m
+
+  GPU: Tesla T4, 15360 MiB, 7.5
+
+[96m========================================================================
+  BUILD CHECK
+========================================================================[0m
+
+  [93mt4_kernels not installed. Building...[0m
+  Running: pip install -e /content/t4-cuda/src
+  [92mBuild successful[0m
+
+[96m========================================================================
+  STAGE 1: CORRECTNESS TESTS
+========================================================================[0m
+
+
+  Running: LOP3 Dequantization (U4 + S4)
+    ================================================================================
+    CUDA Dequantize (u4 & s4) Correctness Tests
+    ================================================================================
+    Test Name                           | Status | Max Error    | Mean Error
+    --------------------------------------------------------------------------------
+    KAT Test (H4) - u4                  | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    KAT Test (H4) - s4                  | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+    KAT Test (All Zeros) - u4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    KAT Test (All Zeros) - s4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    KAT Test (All Ones) - u4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    KAT Test (All Ones) - s4            | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+    KAT Test (Identity) - u4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    KAT Test (Identity) - s4            | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Exhaustive Nibble Sweep - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Exhaustive Nibble Sweep - s4        | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+    Random Fuzz (10K) - u4              | [91mFAIL[0m | Max Err: 7.2500e+00 | Mean Err: 7.1843e-01
+    Random Fuzz (10K) - s4              | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+    Batch Size Stress (1) - u4          | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (1) - s4          | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (256) - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (256) - s4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (4096) - u4       | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (4096) - s4       | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (1000000) - u4    | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Batch Size Stress (1000000) - s4    | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Scale Edge (scale=0) - u4           | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    Scale Edge (scale=65k) - u4         | [91mFAIL[0m | Max Err: inf | Mean Err: inf
+    Scale Edge (scale=1e-5) - u4        | [92mPASS[0m | Max Err: 0.0000e+00 | Mean Err: 0.0000e+00
+    ================================================================================
+    SUMMARY: 17/23 Tests Passed
+    ================================================================================
+  [[91mFAIL[0m] LOP3 Dequantization (U4 + S4) (3.4s)
+
+  Running: Fused W4A16 GEMM (U4 + S4)
+    Running Test: Identity Matrix
+      [PASS] Identity matched weights exactly
+    Running Test: Known Small Matrix (M=1, K=8, N=4, Signed=False)
+      [PASS] Max Err: 0.0085, Mean Err: 0.0028
+    Running Test: Eli Model Sizes (Decode) (M=1, K=3584, N=3584, Signed=False)
+      [FAIL] Max Err: 11.2500, Mean Err: 1.2236
+    Running Test: Batch Decode M=1 (M=1, K=2048, N=4096, Signed=True)
+      [FAIL] Max Err: 2.0156, Mean Err: 0.2333
+    Running Test: Batch Decode M=2 (M=2, K=2048, N=4096, Signed=True)
+      [FAIL] Max Err: 0.9375, Mean Err: 0.1073
+    Running Test: Batch Decode M=4 (M=4, K=2048, N=4096, Signed=True)
+      [FAIL] Max Err: 9.5000, Mean Err: 0.5889
+    Running Test: Batch Decode M=8 (M=8, K=2048, N=4096, Signed=True)
+      [FAIL] Max Err: 9.1875, Mean Err: 0.4292
+    
+    Running Random Fuzz...
+      Fuzz 100 iterations -> Max Err: 5.5000, Avg Mean Err: 0.2359
+    Running Test: Edge Case: Minimum K, Single N (M=1, K=8, N=1, Signed=False)
+      [PASS] Max Err: 0.0017, Mean Err: 0.0017
+  [[92mPASS[0m] Fused W4A16 GEMM (U4 + S4) (4.0s)
+
+  Running: H17 Fused INT3 Dequant + GEMV Mega-Kernel
+    ================================================================================
+          RUNNING HYPOTHESIS H17 FUSED INT3 MEGA-KERNEL SUITE
+    ================================================================================
+    === [KAT TEST] H17 INT3 3-Bit Packing and Unpacking KAT Vectors ===
+      [PASS] KAT 1: Bit-packing uint8 [0..7] -> 3 Bytes exact match.
+      [PASS] KAT 2: All-7s bit-packing -> 0xFFFFFF exact match.
+      [PASS] KAT 3: All-Zeros bit-packing -> 0x000000 exact match.
+    
+    === [CORRECTNESS TEST] H17 Fused INT3 Dequant + GEMV vs References ===
+      [PASS] Grid B= 1, M=   1 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2086 (MSE=22.11), NF4 MSE=4.36
+      [PASS] Grid B= 1, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2130 (MSE=23.56), NF4 MSE=4.35
+      [PASS] Grid B= 1, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2136 (MSE=23.39), NF4 MSE=4.35
+      [PASS] Grid B= 4, M=   1 | Fused Kernel Bitwise Match Diff=3.5e-05 | INT3 Relative RMSE=0.2123 (MSE=24.03), NF4 MSE=4.56
+      [PASS] Grid B= 4, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2130 (MSE=23.32), NF4 MSE=4.35
+      [PASS] Grid B= 4, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2134 (MSE=23.30), NF4 MSE=4.32
+      [PASS] Grid B=16, M=   1 | Fused Kernel Bitwise Match Diff=5.7e-05 | INT3 Relative RMSE=0.2129 (MSE=23.56), NF4 MSE=4.34
+      [PASS] Grid B=16, M= 128 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2137 (MSE=23.35), NF4 MSE=4.32
+      [PASS] Grid B=16, M=2048 | Fused Kernel Bitwise Match Diff=0.0e+00 | INT3 Relative RMSE=0.2134 (MSE=23.32), NF4 MSE=4.33
+    
+    === [EDGE CASES TEST] H17 Fused INT3 Mega-Kernel Edge Cases ===
+      [PASS] Edge Case 1: All Zeros input -> Output exactly 0.0.
+      [PASS] Edge Case 2: Negative Activations & Weights -> Correct positive dot product (960.00 vs expected 960.00).
+      [PASS] Edge Case 3: Positive-Only Range & Odd dimensions (K=13, N=1025) padding fix verified.
+      [PASS] Edge Case 4: Misaligned/corrupted byte stream truncated safely without crash.
+      [PASS] Edge Case 5: Extreme tensor size (K=8192, N=4096) handled seamlessly.
+    
+    === [MICROBENCHMARK] Speed-of-Light & Latency / Bandwidth Comparison ===
+    Simulating memory bandwidth bottleneck on GPU (T4 / A100 VRAM transfer bounds)...
+    Batch (B) Seq (M)   FP16 Bytes    NF4 Bytes     INT3 Bytes    INT3 Latency    INT3 Speedup vs FP16
+    --------------------------------------------------------------------------------------------------
+    1         1         33.55         9.44          7.34          22.96          us  4.57              x
+    1         128       33.55         9.44          7.34          26.21          us  4.12              x
+    1         2048      33.55         9.44          7.34          75.37          us  2.09              x
+    4         1         33.55         9.44          7.34          23.04          us  4.56              x
+    4         128       33.55         9.44          7.34          36.04          us  3.27              x
+    4         2048      33.55         9.44          7.34          232.65         us  1.35              x
+    16        1         33.55         9.44          7.34          23.35          us  4.51              x
+    16        128       33.55         9.44          7.34          75.37          us  2.09              x
+    16        2048      33.55         9.44          7.34          861.80         us  1.10              x
+    
+      [ASSERT] H17 Fused INT3 Mega-Kernel bandwidth reduction factor verified (~5.33x weight compression vs FP16).
+    
+    === [ON-GPU EXTENSION TEST] H17 Fused INT3 CUDA Extension ===
+      non-zero GEMV: M=1 K=200 N=64 num_groups=2
+      max_abs_diff (GPU vs CPU FP16-dequant ref) = 1.254501  (gate <= 2.0)
+      [PASS] Live GPU execution + non-vacuous correctness gate. Output shape: torch.Size([1, 64])
+    
+    ================================================================================
+    ALL TESTS PASSED SUCCESSFULLY! (0 Errors)
+    ================================================================================
+  [[92mPASS[0m] H17 Fused INT3 Dequant + GEMV Mega-Kernel (7.0s)
+
+[96m========================================================================
+  STAGE 2: PERFORMANCE BENCHMARKS
+========================================================================[0m
+
+
+  Running: Kernel Benchmarks
+    =====================================================================================
+    Benchmark                 |     Latency |  Peak VRAM |  Bandwidth |  Speedup
+    =====================================================================================
+    Dequant 1024 packed       |    18.46 us |          - |   2.9 GB/s |        -
+    Dequant 65536 packed      |    26.62 us |          - | 128.0 GB/s |        -
+    Dequant 1048576 packed    |   268.99 us |          - | 202.7 GB/s |        -
+    Dequant 16777216 packed   |  2622.40 us |          - | 332.7 GB/s |        -
+    Base Attn Proj            |   144.74 us |   102.8 MB |          - |        -
+    Fused Attn Proj           |    46.37 us |   102.8 MB |          - |    3.12x
+    Base MLP Up               |   374.69 us |   151.2 MB |          - |        -
+    Fused MLP Up              |   160.13 us |   151.2 MB |          - |    2.34x
+    Base MLP Down             |   262.24 us |   150.9 MB |          - |        -
+    Fused MLP Down            |   159.74 us |   150.9 MB |          - |    1.64x
+    Base Vocab Proj           |  4146.24 us |  1371.6 MB |          - |        -
+    Fused Vocab Proj          |  2920.45 us |  1371.6 MB |          - |    1.42x
+    
+    Summary against Targets:
+    - H4 Target (2.50x SASS speedup): Check 'Speedup' column vs Base.
+    - H7 Target (3.08x speedup, 303 GB/s): Check Dequant throughput.
+    - H8 Target (94.2% fetch stall reduction): Indirectly measured by overall latency.
+  [[92mPASS[0m] Performance Benchmarks (15.1s)
+
+[96m========================================================================
+  FINAL SUMMARY
+========================================================================[0m
+
+  [[91mFAIL[0m] LOP3 Dequantization (U4 + S4) (3.4s)
+  [[92mPASS[0m] Fused W4A16 GEMM (U4 + S4) (4.0s)
+  [[92mPASS[0m] H17 Fused INT3 Dequant + GEMV Mega-Kernel (7.0s)
+  [[92mPASS[0m] Performance Benchmarks (15.1s)
+
+  [1mTotal: 3/4 passed in 29.6s[0m
+
+  [91m[1m>>> 1 TEST(S) FAILED <<<[0m
+--------------------------------------------------------------------------------

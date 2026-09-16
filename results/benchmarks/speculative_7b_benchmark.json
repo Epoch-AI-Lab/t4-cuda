@@ -1,0 +1,22 @@
+{
+  "target_model": "Qwen/Qwen2.5-7B-Instruct",
+  "draft_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "runs": {
+    "target_baseline": {
+      "mean_tok_sec": 14.876837763478765,
+      "mean_p50_ms": 57.44089484214783
+    },
+    "speculative_k_2": {
+      "mean_tok_sec": 11.295128217324265,
+      "speedup_factor": 0.7592425485107286,
+      "acceptance_rate_pct": 68.33333333333334,
+      "avg_tokens_per_target_step": 2.066269841269841
+    },
+    "speculative_k_3": {
+      "mean_tok_sec": 11.472004103989537,
+      "speedup_factor": 0.7711318955263615,
+      "acceptance_rate_pct": 53.93650793650793,
+      "avg_tokens_per_target_step": 2.257936507936508
+    }
+  }
+}
