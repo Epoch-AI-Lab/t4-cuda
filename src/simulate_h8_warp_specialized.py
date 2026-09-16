@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Simulation script for Hypothesis 8 (H8): Warp-Specialized Split-K GEMM on Turing CC 7.5 (Tesla T4).
+[THEORETICAL MODEL] Microarchitectural Analytical Model for Hypothesis 8 (H8): Warp-Specialized Split-K GEMM on Turing CC 7.5 (Tesla T4).
 Simulates SM occupancy, SASS pipeline stall cycles, bank conflict swizzles, memory traffic, and roofline speedups.
+(Analytical mathematical model; physical execution requires GPU hardware).
 """
 
 import json
 import numpy as np
 
 def simulate_h8():
-    print("=== Running Microarchitectural Simulation for H8 (Warp-Specialized Split-K GEMM) ===")
+    print("=== Running Theoretical Analytical Model for H8 (Warp-Specialized Split-K GEMM) ===")
     
     # Problem dimensions for decode GEMM
     M, N, K = 1, 4096, 4096
@@ -70,7 +71,7 @@ def simulate_h8():
     roofline_speedup = splitk_effective_bw_gbs / std_effective_bw_gbs # 2.45x speedup
     
     results = {
-        "experiment": "H8: Warp-Specialized Split-K GEMM",
+        "experiment": "[Theoretical Model] H8: Warp-Specialized Split-K GEMM",
         "sm_occupancy": {
             "standard_grid_blocks": std_blocks,
             "splitk_grid_blocks": splitk_blocks,

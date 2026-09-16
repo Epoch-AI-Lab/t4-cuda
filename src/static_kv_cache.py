@@ -88,12 +88,12 @@ class StaticKVCache:
     def __init__(
         self,
         max_batch_size: int = 1,
-        max_seq_len: int = 2048,
+        max_seq_len: int = 16384,
         num_layers: int = 28,
         num_heads: int = 2,
         head_dim: int = 128,
         device: Union[str, torch.device] = "cuda",
-        dtype: torch.dtype = torch.float32,
+        dtype: Optional[torch.dtype] = None,
     ):
         self.max_batch_size = max_batch_size
         self.max_seq_len = max_seq_len
@@ -115,7 +115,12 @@ class StaticKVCache:
         else:
             self.device = torch.device("cpu")
 
-        self.dtype = dtype
+        if dtype is None:
+            # Default to float16 for 16k context scalability,
+            # retaining float32 default for legacy short sequences
+            self.dtype = torch.float16 if max_seq_len >= 16384 else torch.float32
+        else:
+            self.dtype = dtype
 
         # Integer write pointer tracking the current committed sequence length
         self.current_pos = 0
@@ -162,11 +167,16 @@ class StaticKVCache:
         cls,
         config: Any,
         max_batch_size: int = 1,
-        max_seq_len: int = 2048,
+        max_seq_len: Optional[int] = None,
         device: Union[str, torch.device] = "cuda",
-        dtype: torch.dtype = torch.float32,
+        dtype: Optional[torch.dtype] = None,
     ) -> "StaticKVCache":
         """Constructs StaticKVCache from a HuggingFace PretrainedConfig."""
+        if max_seq_len is None:
+            max_seq_len = getattr(config, "max_position_embeddings", None)
+            if max_seq_len is None:
+                max_seq_len = 2048
+
         num_layers = getattr(config, "num_hidden_layers", None)
         if num_layers is None:
             num_layers = getattr(config, "n_layer", 28)
@@ -188,6 +198,9 @@ class StaticKVCache:
             head_dim = getattr(config, "kv_channels", None)
         if head_dim is None:
             head_dim = hidden_size // num_attn_heads
+
+        if dtype is None:
+            dtype = torch.float16 if max_seq_len >= 16384 else torch.float32
 
         return cls(
             max_batch_size=max_batch_size,

@@ -66,8 +66,8 @@
       "problem_number": 1,
       "discipline": "Algebra",
       "problem": "What is the value of $(2023 + 2024)^2 - (2023 - 2024)^2$?",
-      "ground_truth": "16370104",
-      "boxed_answer": "16370104"
+      "ground_truth": "16378208",
+      "boxed_answer": "16378208"
     },
     {
       "id": "amc12_2023_a_p5",
@@ -85,7 +85,7 @@
       "year": 2023,
       "problem_number": 7,
       "discipline": "Combinatorics",
-      "problem": "How many positive integers less than 1000 have digits that are strictly increasing from left to right?",
+      "problem": "How many positive integers with at least two digits and less than 1000 have digits that are strictly increasing from left to right?",
       "ground_truth": "120",
       "boxed_answer": "120"
     },

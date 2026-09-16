@@ -1,0 +1,80 @@
+# 3-Way Head-to-Head Kernel Benchmark Report (Tesla T4)
+
+- **Hardware Device**: Tesla T4 (sm_75, 16GB GDDR6)
+- **Timing Config**: 20 warmup iterations, 50 timed iterations (CUDA events)
+- **Quantization**: Symmetric INT4 / NF4 / FP4 with group_size=128
+- **Baselines**: cuBLAS FP16, bitsandbytes NF4, bitsandbytes FP4, Marlin (Req sm_80+)
+
+### [Qwen2.5-7B Full] Qwen-7B Gate/Up Proj (K=3584, N=18944)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 581.2 us | 280.6 us | 760.9 us | 759.2 us | Req sm_80+ | 2.07x | 2.71x |
+| M=4 | 663.2 us | 877.5 us | 799.8 us | 740.7 us | Req sm_80+ | 0.76x | 0.91x |
+| M=16 | 629.4 us | 1157.1 us | 696.0 us | 736.5 us | Req sm_80+ | 0.54x | 0.60x |
+| M=64 | 749.6 us | 2007.7 us | 946.5 us | 979.8 us | Req sm_80+ | 0.37x | 0.47x |
+| M=256 | 1709.2 us | 7491.6 us | 1904.6 us | 2601.0 us | Req sm_80+ | 0.23x | 0.25x |
+### [Qwen2.5-7B Full] Qwen-7B Down Proj (K=18944, N=3584)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 591.9 us | 888.9 us | 733.2 us | 405.5 us | Req sm_80+ | 0.67x | 0.82x |
+| M=4 | 622.6 us | 588.7 us | 885.0 us | 817.8 us | Req sm_80+ | 1.06x | 1.50x |
+| M=16 | 649.2 us | 1302.7 us | 817.5 us | 860.2 us | Req sm_80+ | 0.50x | 0.63x |
+| M=64 | 792.6 us | 2139.9 us | 1176.7 us | 1175.2 us | Req sm_80+ | 0.37x | 0.55x |
+| M=256 | 1929.2 us | 7693.3 us | 2922.7 us | 3002.4 us | Req sm_80+ | 0.25x | 0.38x |
+### [Qwen2.5-7B Full] Qwen-7B QKV / Q-Proj (K=3584, N=3584)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 136.7 us | 99.5 us | 138.4 us | 139.3 us | Req sm_80+ | 1.37x | 1.39x |
+| M=4 | 152.0 us | 108.3 us | 215.0 us | 213.3 us | Req sm_80+ | 1.40x | 1.99x |
+| M=16 | 153.9 us | 272.4 us | 217.1 us | 218.8 us | Req sm_80+ | 0.56x | 0.80x |
+| M=64 | 196.3 us | 471.0 us | 291.3 us | 291.1 us | Req sm_80+ | 0.42x | 0.62x |
+| M=256 | 346.0 us | 1565.2 us | 622.6 us | 626.7 us | Req sm_80+ | 0.22x | 0.40x |
+### [Qwen2.5-7B Full] Qwen-7B KV-Proj (K=3584, N=512)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 52.6 us | 71.5 us | 110.6 us | 108.8 us | Req sm_80+ | 0.74x | 1.55x |
+| M=4 | 66.3 us | 67.6 us | 109.3 us | 106.5 us | Req sm_80+ | 0.98x | 1.62x |
+| M=16 | 73.8 us | 151.7 us | 161.0 us | 157.7 us | Req sm_80+ | 0.49x | 1.06x |
+| M=64 | 67.2 us | 208.9 us | 150.4 us | 149.8 us | Req sm_80+ | 0.32x | 0.72x |
+| M=256 | 87.9 us | 301.0 us | 232.8 us | 239.1 us | Req sm_80+ | 0.29x | 0.77x |
+### [Qwen2.5-7B TP Sharded] TP Gate/Up (Col-Parallel) (K=3584, N=9472)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 299.4 us | 104.9 us | 222.9 us | 229.7 us | Req sm_80+ | 2.86x | 2.13x |
+| M=4 | 329.2 us | 235.5 us | 433.1 us | 417.8 us | Req sm_80+ | 1.40x | 1.84x |
+| M=16 | 335.9 us | 630.8 us | 383.7 us | 378.9 us | Req sm_80+ | 0.53x | 0.61x |
+| M=64 | 398.4 us | 1093.4 us | 464.8 us | 523.9 us | Req sm_80+ | 0.36x | 0.43x |
+| M=256 | 588.1 us | 3782.7 us | 1280.2 us | 1321.0 us | Req sm_80+ | 0.16x | 0.34x |
+### [Qwen2.5-7B TP Sharded] TP Down (Row-Parallel) (K=9472, N=3584)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 300.4 us | 234.0 us | 216.2 us | 215.0 us | Req sm_80+ | 1.28x | 0.92x |
+| M=4 | 325.6 us | 256.3 us | 482.2 us | 460.2 us | Req sm_80+ | 1.27x | 1.88x |
+| M=16 | 347.7 us | 659.3 us | 432.0 us | 432.1 us | Req sm_80+ | 0.53x | 0.66x |
+| M=64 | 418.1 us | 1173.1 us | 671.7 us | 612.3 us | Req sm_80+ | 0.36x | 0.57x |
+| M=256 | 798.5 us | 3871.2 us | 1364.4 us | 1538.1 us | Req sm_80+ | 0.21x | 0.35x |
+### [Llama-3-8B Full] Llama-3-8B Gate/Up (K=4096, N=14336)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 486.7 us | 143.4 us | 350.2 us | 350.3 us | Req sm_80+ | 3.39x | 2.44x |
+| M=4 | 523.5 us | 482.5 us | 796.7 us | 645.1 us | Req sm_80+ | 1.08x | 1.65x |
+| M=16 | 546.8 us | 1011.4 us | 609.4 us | 656.9 us | Req sm_80+ | 0.54x | 0.60x |
+| M=64 | 649.2 us | 1760.3 us | 812.9 us | 867.9 us | Req sm_80+ | 0.37x | 0.46x |
+| M=256 | 1331.2 us | 6535.6 us | 2277.4 us | 2281.5 us | Req sm_80+ | 0.20x | 0.35x |
+### [Llama-3-8B Full] Llama-3-8B Down Proj (K=14336, N=4096)
+
+| Batch M | cuBLAS FP16 | t4_kernels | bnb (NF4) | bnb (FP4) | Marlin | Speedup (T4/cuB) | Speedup (T4/BNB) |
+|---|---|---|---|---|---|---|---|
+| M=1 | 511.2 us | 675.9 us | 433.0 us | 429.4 us | Req sm_80+ | 0.76x | 0.64x |
+| M=4 | 571.4 us | 713.0 us | 965.4 us | 702.5 us | Req sm_80+ | 0.80x | 1.35x |
+| M=16 | 577.5 us | 1135.6 us | 716.8 us | 716.9 us | Req sm_80+ | 0.51x | 0.63x |
+| M=64 | 671.1 us | 1976.7 us | 940.3 us | 942.1 us | Req sm_80+ | 0.34x | 0.48x |
+| M=256 | 1699.5 us | 6815.7 us | 2607.6 us | 2580.5 us | Req sm_80+ | 0.25x | 0.38x |
+

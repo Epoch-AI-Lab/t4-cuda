@@ -32,6 +32,20 @@ void launch_fused_w4a16_gemm_u4(
     cudaStream_t stream = 0);
 
 /**
+ * Re-Tiled Fused Unsigned INT4 (W4A16) GEMV Kernel
+ * 100% Memory Coalesced along N dimension using vectorized 128-bit loads
+ */
+void launch_fused_w4a16_gemv_u4_retiled(
+    const half* d_A,
+    const uint32_t* d_W_packed,
+    const half* d_scale,
+    const half* d_zero,
+    half* d_C,
+    int M, int N, int K,
+    int group_size = 0,
+    cudaStream_t stream = 0);
+
+/**
  * Fused Signed Two's Complement INT4 (S4A16) GEMM / GEMV Kernel
  * 
  * Performs on-the-fly single-cycle LOP3 0x6A sign-flip + exponent injection in registers:

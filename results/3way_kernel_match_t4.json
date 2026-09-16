@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "timestamp": "2026-09-06T10:02:49Z",
+    "hardware_device": "cpu",
+    "device_name": "CPU",
+    "dry_run": true,
+    "device_info": {
+      "cuda_available": false,
+      "device_count": 0,
+      "device_name": "CPU",
+      "cuda_version": null,
+      "pytorch_version": "2.14.0+cpu"
+    },
+    "config": {
+      "iters": 2,
+      "warmup": -5,
+      "group_size": 128,
+      "batch_sizes": [
+        1
+      ]
+    },
+    "hardware_baselines": {
+      "t4_peak_bandwidth_gb_s": 320.0,
+      "t4_peak_fp16_tc_tflops": 65.0
+    },
+    "kernel_availability": {
+      "t4_kernels": false,
+      "bitsandbytes": false,
+      "marlin": false
+    }
+  },
+  "results": [
+    {
+      "category": "Qwen2.5-7B Full",
+      "name": "Qwen-7B KV-Proj",
+      "M": 1,
+      "K": 3584,
+      "N": 512,
+      "cuBLAS_FP16": {
+        "status": "COMPLETED",
+        "latency_us": 605.1380005374085,
+        "raw_timings_us": [
+          495.88199908612296,
+          605.1380005374085
+        ],
+        "median_us": 605.1380005374085,
+        "p95_us": 605.1380005374085,
+        "min_us": 495.88199908612296,
+        "max_us": 605.1380005374085,
+        "bandwidth_gb_s": 6.078296184892491,
+        "pct_t4_bandwidth": 1.9,
+        "tflops": 0.006064758776908321,
+        "pct_t4_tflops": 0.01
+      },
+      "t4_kernels": {
+        "status": "SKIPPED: Dry-run CPU mode",
+        "latency_us": null,
+        "raw_timings_us": [],
+        "median_us": null,
+        "p95_us": null,
+        "min_us": null,
+        "max_us": null,
+        "bandwidth_gb_s": null,
+        "pct_t4_bandwidth": null,
+        "tflops": null,
+        "pct_t4_tflops": null,
+        "max_err": null,
+        "cos_sim": null,
+        "speedup_vs_cublas": null,
+        "speedup_vs_bnb_nf4": null,
+        "speedup_vs_bnb_fp4": null
+      },
+      "bitsandbytes": {
+        "status": "SKIPPED: Dry-run CPU mode",
+        "latency_us": null,
+        "raw_timings_us": [],
+        "median_us": null,
+        "p95_us": null,
+        "min_us": null,
+        "max_us": null,
+        "bandwidth_gb_s": null,
+        "pct_t4_bandwidth": null,
+        "tflops": null,
+        "pct_t4_tflops": null,
+        "cos_sim": null,
+        "max_err": null
+      },
+      "bitsandbytes_nf4": {
+        "status": "SKIPPED: Dry-run CPU mode",
+        "latency_us": null,
+        "raw_timings_us": [],
+        "median_us": null,
+        "p95_us": null,
+        "min_us": null,
+        "max_us": null,
+        "bandwidth_gb_s": null,
+        "pct_t4_bandwidth": null,
+        "tflops": null,
+        "pct_t4_tflops": null,
+        "cos_sim": null,
+        "max_err": null
+      },
+      "bitsandbytes_fp4": {
+        "status": "SKIPPED: Dry-run CPU mode",
+        "latency_us": null,
+        "raw_timings_us": [],
+        "median_us": null,
+        "p95_us": null,
+        "min_us": null,
+        "max_us": null,
+        "bandwidth_gb_s": null,
+        "pct_t4_bandwidth": null,
+        "tflops": null,
+        "pct_t4_tflops": null,
+        "cos_sim": null,
+        "max_err": null
+      },
+      "marlin": {
+        "status": "SKIPPED: Dry-run CPU mode",
+        "latency_us": null,
+        "raw_timings_us": [],
+        "median_us": null,
+        "p95_us": null,
+        "min_us": null,
+        "max_us": null,
+        "bandwidth_gb_s": null,
+        "pct_t4_bandwidth": null,
+        "tflops": null,
+        "pct_t4_tflops": null,
+        "cos_sim": null,
+        "max_err": null
+      }
+    }
+  ]
+}

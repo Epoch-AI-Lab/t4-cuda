@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Simulation script for Hypothesis 7 (H7): INT3 Dequantization via LOP3 Bit Manipulation on Turing CC 7.5 (Tesla T4).
-Simulates SASS instruction count, bank conflict swizzles, arithmetic intensity, memory traffic, and roofline speedups.
+[THEORETICAL MODEL] Microarchitectural Analytical Model for Hypothesis 7 (H7): INT3 Dequantization via LOP3 Bit Manipulation on Turing CC 7.5 (Tesla T4).
+Simulates SASS instruction counts, bank conflict swizzles, arithmetic intensity, memory traffic, and roofline speedups.
+(Analytical mathematical model; physical execution requires GPU hardware).
 """
 
 import json
 import numpy as np
 
 def simulate_h7():
-    print("=== Running Microarchitectural Simulation for H7 (INT3 LOP3 Dequantization) ===")
+    print("=== Running Theoretical Analytical Model for H7 (INT3 LOP3 Dequantization) ===")
     
     # 1. SASS Instruction Count Simulation
     # Baseline: BFE-based dequantization per 32-bit register (unpacking 2 x 3-bit values into FP16x2)
@@ -74,7 +75,7 @@ def simulate_h7():
     roofline_speedup_decode = int3_throughput_decode / fp16_throughput_decode # 4.46x
     
     results = {
-        "experiment": "H7: INT3 LOP3 Dequantization",
+        "experiment": "[Theoretical Model] H7: INT3 LOP3 Dequantization",
         "sass_instruction_count": {
             "baseline_bfe_per_word": baseline_sass_per_word,
             "optimized_lop3_per_word": optimized_sass_per_word,

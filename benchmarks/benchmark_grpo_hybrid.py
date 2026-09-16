@@ -40,6 +40,8 @@ except ImportError:
 from src.hybrid_linear import quantize_weight_sym_int4, is_mlp_module, is_attention_module
 
 ANSWER_RE = re.compile(r"####\s*(-?[0-9][0-9,\.]*)")
+_tokenized_gen_tokens = 0
+_tokenizer_cache = None
 
 
 def extract_answer(text: str) -> str | None:
@@ -53,6 +55,7 @@ def extract_answer(text: str) -> str | None:
 
 def reward_correct(completions, answer, **kwargs):
     """+1 exact match, 0 otherwise."""
+    global _tokenized_gen_tokens, _tokenizer_cache
     rewards = []
     for comp, gold in zip(completions, answer):
         if isinstance(comp, list):
@@ -63,6 +66,11 @@ def reward_correct(completions, answer, **kwargs):
             rewards.append(1.0)
         else:
             rewards.append(0.0)
+        if _tokenizer_cache is not None:
+            try:
+                _tokenized_gen_tokens += len(_tokenizer_cache.encode(comp, add_special_tokens=False))
+            except Exception:
+                pass
     return rewards
 
 
@@ -204,12 +212,39 @@ def main():
         train_dataset=ds,
     )
 
+    global _tokenizer_cache
+    try:
+        from transformers import AutoTokenizer
+        _tokenizer_cache = AutoTokenizer.from_pretrained(args.model)
+    except Exception:
+        _tokenizer_cache = None
+
     # Wrap trainer.model.generate with CPHybridRolloutScope
     orig_generate = transformers.GenerationMixin.generate
+    actual_gen_tokens = 0
 
     def hybrid_generate(self, *g_args, **g_kwargs):
+        nonlocal actual_gen_tokens
         with CPHybridRolloutScope(self, group_size=args.group_size):
-            return orig_generate(self, *g_args, **g_kwargs)
+            res = orig_generate(self, *g_args, **g_kwargs)
+        try:
+            input_ids = g_kwargs.get("input_ids", None)
+            if input_ids is None and len(g_args) > 0 and isinstance(g_args[0], torch.Tensor):
+                input_ids = g_args[0]
+            seqs = res.sequences if hasattr(res, "sequences") else res
+            if isinstance(seqs, torch.Tensor):
+                in_len = input_ids.shape[1] if (input_ids is not None and isinstance(input_ids, torch.Tensor)) else 0
+                gen = seqs[:, in_len:]
+                pad_id = getattr(self.generation_config, "pad_token_id", None)
+                if pad_id is None:
+                    pad_id = getattr(self.config, "pad_token_id", None)
+                if pad_id is not None:
+                    actual_gen_tokens += int((gen != pad_id).sum().item())
+                else:
+                    actual_gen_tokens += int(gen.numel())
+        except Exception:
+            pass
+        return res
 
     transformers.GenerationMixin.generate = hybrid_generate
 
@@ -252,7 +287,7 @@ def main():
     mean_rew_c = sum(rewards_correct_list) / len(rewards_correct_list) if rewards_correct_list else 0
     mean_rew_f = sum(rewards_format_list) / len(rewards_format_list) if rewards_format_list else 0
     peak_vram = torch.cuda.max_memory_allocated() / 1e9
-    total_tokens = args.steps * args.bs * args.num_gens * args.max_len
+    total_tokens = actual_gen_tokens if actual_gen_tokens > 0 else _tokenized_gen_tokens
     effective_tok_per_sec = total_tokens / total_time if total_time > 0 else 0
 
     print("\n" + "=" * 70)

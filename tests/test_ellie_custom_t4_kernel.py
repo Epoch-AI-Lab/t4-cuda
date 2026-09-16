@@ -11,6 +11,7 @@ import math
 import time
 import torch
 import torch.nn.functional as F
+import pytest
 
 def pack_int4_signed(tensor_2d, group_size=128):
     """
@@ -158,9 +159,16 @@ def run_tests():
             group_size, eps
         )
         diff_mega_max = (fused_out.cpu() - swiglu_ref).abs().max().item()
-        print(f"  [✓] Fused Mega-Kernel Max Abs Diff: {diff_mega_max:.4f} (Gate: < 0.15), Mean Abs Diff: {diff_mega_mean:.4f} (Gate: < 0.02)")
+        diff_mega_mean = (fused_out.cpu() - swiglu_ref).abs().mean().item()
+        cos_sim = torch.nn.functional.cosine_similarity(
+            fused_out.cpu().flatten().float(),
+            swiglu_ref.flatten().float(),
+            dim=0,
+        ).item()
+        print(f"  [✓] Fused Mega-Kernel Max Abs Diff: {diff_mega_max:.4f} (Gate: < 0.15), Mean Abs Diff: {diff_mega_mean:.4f} (Gate: < 0.02), Cos Sim: {cos_sim:.4f}")
         assert diff_mega_max < 0.15, f"Mega-kernel max diff {diff_mega_max} exceeds tolerance 0.15!"
         assert diff_mega_mean < 0.02, f"Mega-kernel mean diff {diff_mega_mean} exceeds tolerance 0.02!"
+        assert cos_sim >= 0.999, f"Mega-kernel cosine similarity {cos_sim} < 0.999!"
 
 
         print("\n[3/3] Benchmarking Kernel Latency on Tesla T4...")
@@ -214,11 +222,39 @@ def run_tests():
 
         print("  [✓] LOP3.b32 0x6A Logic: 16/16 Bit-Exact Signed INT4 States Verified on CPU!")
         print("  [SKIP] CUDA Kernel Latency and Hardware Benchmarks Skipped (No GPU/Extension).")
-
+        print("\n" + "=" * 70)
+        print("  ELLIE 4B CPU BITWISE VERIFICATION PASSED (CUDA Kernels Skipped)")
+        print("=" * 70)
+        return
 
     print("\n" + "=" * 70)
     print("  ALL ELLIE 4B CUSTOM T4 KERNEL VERIFICATIONS: PASSED (100%)")
     print("=" * 70)
+
+
+def test_ellie_lop3_bitwise_cpu():
+    """Validate mathematical properties of LOP3 0x6A dequantization on CPU."""
+    for nib in range(16):
+        s4_val = nib - 16 if nib >= 8 else nib
+        c = 0x6408
+        b = 0x000F
+        a = nib
+        raw = ((a ^ c) & b) | (c & (~b & 0xFFFF))
+        f16_val = torch.tensor(raw, dtype=torch.int16).view(torch.float16).item()
+        recovered = f16_val - 1032.0
+        assert abs(recovered - s4_val) < 1e-4, f"Mismatch on nibble {nib}: got {recovered}, expected {s4_val}"
+
+
+def test_ellie_custom_t4_cuda_kernels():
+    """Live CUDA verification for Ellie custom T4 kernels."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA device not available")
+    try:
+        import t4_kernels
+    except ImportError:
+        pytest.skip("t4_kernels C++ extension not available")
+    run_tests()
+
 
 if __name__ == "__main__":
     run_tests()

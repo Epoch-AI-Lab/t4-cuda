@@ -249,6 +249,41 @@ empirical_validation:
     - "Documented FP16 scale envelope: single-cycle exponent insertion requires 1024*scale <= 65504 (scale <= 63.4)"
     - "Scaled FP16 GEMM accumulation tolerance to O(sqrt(K)) to account for hardware floating-point non-associativity"
 
+  # ===========================================================================
+  # MILESTONE A - End-to-End Serving Benchmark (Tesla T4 via colab-cli, 2026-09-09)
+  # ===========================================================================
+  milestone_a_e2e_serving:
+    date: "2026-09-09"
+    hardware: "Tesla T4 (CC 7.5), Driver 580.82.07, PyTorch 2.11.0+cu128, CUDA 12.8"
+    log: "results/milestone_a_e2e_serving.log"
+    script: "benchmarks/benchmark_end_to_end_serving.py"
+    commit: "102c32d"
+    config: "24 layers, D=2048, FFN H=5504, 16 heads, B=1 single-token decode, 30 warmup / 120 timed tokens"
+    results:
+      eager_fp16:      { tok_sec: 57.44,  p50_ms: 15.76, p99_ms: 29.58, speedup: 1.00 }
+      inductor_compile: { tok_sec: 62.36,  p50_ms: 15.55, p99_ms: 20.40, speedup: 1.09 }
+      t4_fused_int4:   { tok_sec: 123.66, p50_ms: 7.79,  p99_ms: 12.83, speedup: 2.15 }
+    notes:
+      - "Two real bugs fixed to get here: device was never defined (NameError, commit 3f6cf81), then device compared to torch.device against string 'cuda' (all non-eager engines silently skipped, commit 102c32d)."
+      - "Inductor ran with cudagraphs disabled (mutated inputs, 48 instances) - reduce-overhead fell back to normal Inductor codegen; 1.09x is honest Inductor-only, not cudagraph-accelerated."
+      - "T4 fused INT4 mega-kernel path: 2.15x over eager, 1.98x over Inductor, on real T4 silicon with CUDA-event timing + torch.cuda.synchronize()."
+
+  # ===========================================================================
+  # MILESTONE C - NCU / NSYS Traces (Tesla T4 via colab-cli, 2026-09-09)
+  # ===========================================================================
+  milestone_c_traces:
+    date: "2026-09-09"
+    hardware: "Tesla T4, Driver 580.82.07, Nsight Compute 2025.1.1, Nsight Systems (nsys at /opt/nvidia/nsight-compute/2025.1.1/host/target-linux-x64/nsys - not on PATH)"
+    capture_log: "results/traces/trace_capture_20260909.log"
+    workload: "H6 fused_backward_gemm_adamw (4096x4096x2048 fp16) + H17 fused_h17_gemv_s3 (K=8190, N=2048, group=100 INT3, canonical quantizer from tests/test_h17_fused_int3_gemv.py)"
+    artifacts:
+      ncu_h6:  "results/traces/h6_fused_adamw_t4.ncu-rep"
+      ncu_h17: "results/traces/h17_w4a16_gemv_t4.ncu-rep"
+      nsys_timeline: "results/traces/t4_kernels_timeline.nsys-rep"
+    notes:
+      - "First repo .nsys-rep; fills the missing H17 NCU trace slot. NCU captured full workload with --set basic (9-pass replay on h17 kernel)."
+      - "nsys is not on the Colab VM PATH; invoked by absolute path. Capture script fails loud (non-zero exit) if any report is missing/empty."
+
 artifacts:
   monograph_pdf: "research/to_human/t4_cuda_monograph.pdf"
   monograph_pages: 11

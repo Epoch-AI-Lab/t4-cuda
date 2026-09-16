@@ -28,9 +28,13 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    GenerationConfig
+    GenerationConfig,
+    StoppingCriteria,
+    StoppingCriteriaList,
 )
 from peft import PeftModel
+
+from src.rope_scaling import configure_rope_scaling
 
 try:
     import t4_kernels
@@ -342,6 +346,20 @@ class CPHybridInferenceScope:
             torch.cuda.empty_cache()
 
 
+class StopOnFormalProof(StoppingCriteria):
+    def __init__(self, tokenizer, prompt_len: int = 0):
+        self.tokenizer = tokenizer
+        self.prompt_len = prompt_len
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        new_tokens = input_ids[0, self.prompt_len:]
+        if new_tokens.shape[0] < 8:
+            return False
+        tail = new_tokens[-20:]
+        text = self.tokenizer.decode(tail, skip_special_tokens=False)
+        return "</formal_proof>" in text or "<|im_end|>" in text
+
+
 def evaluate_model_on_dataset(
     model,
     tokenizer,
@@ -357,6 +375,12 @@ def evaluate_model_on_dataset(
     total_generation_time = 0.0
 
     scope = CPHybridInferenceScope(model) if use_kernels else contextlib.nullcontext()
+
+    # Build comprehensive EOS tokens
+    eos_token_ids = [tokenizer.eos_token_id]
+    im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+    if isinstance(im_end_id, int) and im_end_id not in eos_token_ids:
+        eos_token_ids.append(im_end_id)
 
     with scope:
         for idx, item in enumerate(dataset):
@@ -376,13 +400,16 @@ def evaluate_model_on_dataset(
                     torch.cuda.synchronize()
                 t0 = time.perf_counter()
 
+                stopping_criteria = StoppingCriteriaList([StopOnFormalProof(tokenizer, prompt_len=input_len)])
+
                 outputs = model.generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
                     do_sample=(num_samples_per_problem > 1),
                     temperature=0.7 if num_samples_per_problem > 1 else 1.0,
                     pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-                    eos_token_id=tokenizer.encode("<|im_end|>")[0]
+                    eos_token_id=eos_token_ids,
+                    stopping_criteria=stopping_criteria,
                 )
 
                 if device == "cuda":
@@ -424,7 +451,11 @@ def evaluate_model_on_dataset(
             status_icon = "PASS" if any_correct else "FAIL"
             tok_s = problem_rollouts[0]["tok_s"]
             num_tokens = problem_rollouts[0]["num_tokens"]
-            print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:20]:20s} | {status_icon} | {num_tokens:4d} toks | {tok_s:5.1f} tok/s", flush=True)
+            last_rollout = problem_rollouts[0]
+            pred_val = str(last_rollout['pred_boxed'] or 'None')
+            gold_val = str(item['ground_truth'])
+            tag_cnt = sum(1 for t in TAG_NAMES if f"<{t}>" in last_rollout['completion_text'] and f"</{t}>" in last_rollout['completion_text'])
+            print(f"  [{idx+1:2d}/{len(dataset):2d}] {item.get('id', 'prob')[:18]:18s} | {status_icon:4s} | Pred: {pred_val[:10]:10s} (Gold: {gold_val[:10]:10s}) | Tags: {tag_cnt}/5 | {num_tokens:4d} toks | {tok_s:4.1f} t/s", flush=True)
 
     adherence_rate = sum(r["rollouts"][0]["adherence"]["adherent"] for r in results) / max(len(results), 1)
     pass_1_rate = sum(r["pass_at_1"] for r in results) / max(len(results), 1)
@@ -445,14 +476,15 @@ def evaluate_model_on_dataset(
 
 def parse_args():
     parser = argparse.ArgumentParser(description="External Math Benchmark Evaluation")
-    parser.add_argument("--base_model", "--model_name_or_path", dest="base_model", default="Qwen/Qwen2.5-Math-1.5B")
-    parser.add_argument("--adapter_path", default=None, help="Path to fine-tuned LoRA adapter checkpoint")
-    parser.add_argument("--eval_dataset", "--benchmark_path", dest="eval_dataset", default="data/external_math_eval.json")
+    parser.add_argument("--base_model", "--model_name_or_path", "--model_path", dest="base_model", default="Qwen/Qwen2.5-Math-1.5B")
+    parser.add_argument("--adapter_path", "--lora_path", dest="adapter_path", default=None, help="Path to fine-tuned LoRA adapter checkpoint")
+    parser.add_argument("--eval_dataset", "--benchmark_path", "--eval_path", dest="eval_dataset", default="data/external_math_eval.json")
     parser.add_argument("--num_samples", type=int, default=1, help="Samples per problem (e.g. 16 for Best-of-16)")
-    parser.add_argument("--max_tokens", type=int, default=1024)
+    parser.add_argument("--max_tokens", "--max_new_tokens", dest="max_tokens", type=int, default=1024)
     parser.add_argument("--use_kernels", action="store_true", help="Enable CP-Hybrid W4A16 GEMV kernel")
     parser.add_argument("--output_file", "--output_path", dest="output_file", default="results/external_eval_summary.json")
     parser.add_argument("--device", default=None, help="Target device (default: cuda if available)")
+    parser.add_argument("--load_in_4bit", action="store_true", help="Load base model in 4-bit NF4 (QLoRA) for low-memory environments")
     parser.add_argument("--dry_run", action="store_true", help="Dry run on mock/miniature config for pipeline verification")
     return parser.parse_args()
 
@@ -470,34 +502,39 @@ def main():
     with open(args.eval_dataset, "r", encoding="utf-8") as f:
         bench_data = json.load(f)
 
-    contest_probs = bench_data["contest_problems"]
-    degrad_probs = bench_data["degradation_checks"]
+    contest_probs = bench_data.get("contest_problems", [])
+    degrad_probs = bench_data.get("degradation_checks", bench_data.get("degradation_problems", []))
 
-    # Load Tokenizer
-    local_snapshot = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
-    tok_path = local_snapshot if os.path.exists(local_snapshot) else args.base_model
-    tokenizer = AutoTokenizer.from_pretrained(tok_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     if args.dry_run:
-        print("[DRY RUN] Creating miniature test model...")
-        cfg = AutoConfig.from_pretrained(tok_path)
+        print("[DRY RUN] Instantiating miniature test model from configuration...")
+        cfg = AutoConfig.from_pretrained(args.base_model)
         cfg.num_hidden_layers = 2
         cfg.hidden_size = 128
         cfg.intermediate_size = 256
         cfg.num_attention_heads = 4
         cfg.num_key_value_heads = 2
         model = AutoModelForCausalLM.from_config(cfg)
-        model.eval()
-        # Limit evaluation items for quick dry run
         contest_probs = contest_probs[:2]
         degrad_probs = degrad_probs[:2]
     else:
         print(f"Loading Base Model: {args.base_model}...")
+        bnb_config = None
+        if args.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+            )
         model = AutoModelForCausalLM.from_pretrained(
             args.base_model,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            quantization_config=bnb_config,
             device_map="auto" if device == "cuda" else None
         )
         if args.adapter_path and os.path.exists(args.adapter_path):
@@ -508,7 +545,8 @@ def main():
                 model = model.merge_and_unload()
         model.eval()
 
-    model.to(device)
+    if not hasattr(model, "hf_device_map"):
+        model.to(device)
 
     print(f"--> Evaluating Contest Problems (N={len(contest_probs)})...")
     contest_metrics = evaluate_model_on_dataset(

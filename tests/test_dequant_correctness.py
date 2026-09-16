@@ -4,14 +4,19 @@ import numpy as np
 
 try:
     import t4_kernels
+    HAS_T4_KERNELS = True
 except ImportError:
-    print("ERROR: t4_kernels not found. Please run build_and_check.sh first.")
-    sys.exit(1)
+    t4_kernels = None
+    HAS_T4_KERNELS = False
 
 # Ensure PyTorch uses the GPU
-if not torch.cuda.is_available():
-    print("ERROR: CUDA is not available. This test requires a GPU.")
-    sys.exit(1)
+if not torch.cuda.is_available() or not HAS_T4_KERNELS:
+    if "pytest" in sys.modules:
+        import pytest
+        pytest.skip("t4_kernels extension or CUDA GPU not available", allow_module_level=True)
+    else:
+        print("[SKIP] t4_kernels extension or CUDA GPU not available")
+        sys.exit(0)
 
 device = torch.device('cuda')
 
@@ -102,11 +107,19 @@ def run_test_case(name, packed_vals, scales, zps, is_signed):
         max_err = abs_diff.max().item()
         mean_err = abs_diff.float().mean().item()
         
-        # Compare with tolerance suitable for FP16 double-rounding (1 ulp <= 0.0625)
-        is_pass = torch.allclose(gpu_out, cpu_out, atol=5e-2, rtol=1e-3)
+        # Enforce strict cosine similarity >= 0.999
+        if gpu_out.abs().sum() == 0 and cpu_out.abs().sum() == 0:
+            cos_sim = 1.0
+        else:
+            cos_sim = torch.nn.functional.cosine_similarity(
+                gpu_out.flatten().float(), cpu_out.flatten().float(), dim=0
+            ).item()
+        
+        # Compare with tight tolerance and cosine similarity
+        is_pass = torch.allclose(gpu_out, cpu_out, atol=1e-2, rtol=1e-3) and (cos_sim >= 0.999)
         
         status = "\033[92mPASS\033[0m" if is_pass else "\033[91mFAIL\033[0m"
-        print(f"{name:<35} | {status} | Max Err: {max_err:.4e} | Mean Err: {mean_err:.4e}")
+        print(f"{name:<35} | {status} | Max Err: {max_err:.4e} | Mean Err: {mean_err:.4e} | Cos Sim: {cos_sim:.4f}")
         return is_pass
         
     except Exception as e:
@@ -215,6 +228,11 @@ def main():
     
     if passed_tests < total_tests:
         sys.exit(1)
+
+def test_dequant_correctness():
+    """Pytest test entrypoint for CUDA dequantize correctness."""
+    main()
+
 
 if __name__ == "__main__":
     main()

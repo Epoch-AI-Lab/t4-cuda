@@ -5,4 +5,6 @@ __pycache__/
 .env.local
 !.env.example
 results/chalk_math_1.5b_sft/
+# Fresh benchmark outputs land here; committed reference snapshots live in results/
+outputs/
 
