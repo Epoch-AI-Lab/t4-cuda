@@ -35,7 +35,14 @@ from src.rl.modified_grpo_loss import ModifiedGRPOLoss
 class TestAdapterAuditorAndRLLoader(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.local_snapshot = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
+        local_snapshot_kriday = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
+        local_snapshot_user = os.path.expanduser("~/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2")
+        if os.path.exists(local_snapshot_kriday):
+            cls.local_snapshot = local_snapshot_kriday
+        elif os.path.exists(local_snapshot_user):
+            cls.local_snapshot = local_snapshot_user
+        else:
+            cls.local_snapshot = "Qwen/Qwen2.5-Math-1.5B"
         cls.adapter_path = os.path.join(REPO_DIR, "results/chalk_math_1.5b_sft/lora_adapter")
 
     def test_01_dry_run_adapter_mismatch_detection(self):

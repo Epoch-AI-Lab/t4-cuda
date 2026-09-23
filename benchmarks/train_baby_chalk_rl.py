@@ -248,7 +248,7 @@ def build_prompts_and_evaluators(data_path: str):
 
     rottweiler = RottweilerVerifier(timeout_seconds=3.0)
     abstention = CalibratedAbstentionRewardEngine()
-    format_engine = FormatDiscriminationRewardEngine(general_penalty=-1.5)
+    format_engine = FormatDiscriminationRewardEngine(math_penalty=-1.5, general_penalty=-1.5)
 
     return buffer, rottweiler, abstention, format_engine
 
@@ -286,18 +286,26 @@ def evaluate_rollout_rewards(
                 )
                 r_correct = 1.0 if eval_res["symbolic_correct"] else -1.5
 
-                # Granular scaffold compliance: reward partial tag progress to break rollout ties
-                tags = ["explore", "conjecture", "test_edge_cases", "lemma_isolate", "formal_proof"]
-                open_tags = sum(1 for t in tags if f"<{t}>" in comp)
-                closed_tags = sum(1 for t in tags if f"</{t}>" in comp)
-                # Formatted tags yield -1.0 for 0 tags up to 0.0 for all 5 tags
-                r_format = 0.1 * open_tags + 0.1 * closed_tags - 1.0
-                if eval_res.get("boxed_answer"):
-                    r_format += 0.3
+                lemma_pen = eval_res.get("lemma_penalty", 0.0)
 
-                # Reward math reasoning density (LaTeX delimiters and equality) to break flat rollout ties
-                math_density = comp.count("$") + comp.count("=") + comp.count("\\")
-                r_format += min(0.2, math_density * 0.01)
+                # Scaffold compliance & format discrimination penalty
+                if eval_res.get("scaffold_adherent", False):
+                    tags = ["explore", "conjecture", "test_edge_cases", "lemma_isolate", "formal_proof"]
+                    open_tags = sum(1 for t in tags if f"<{t}>" in comp)
+                    closed_tags = sum(1 for t in tags if f"</{t}>" in comp)
+                    # Formatted tags yield -1.0 for 0 tags up to 0.0 for all 5 tags
+                    r_format = 0.1 * open_tags + 0.1 * closed_tags - 1.0
+                    if eval_res.get("boxed_answer"):
+                        r_format += 0.3
+
+                    # Reward math reasoning density (LaTeX delimiters and equality) to break flat rollout ties
+                    math_density = comp.count("$") + comp.count("=") + comp.count("\\")
+                    r_format += min(0.2, math_density * 0.01)
+
+                    base_format_score = 0.3 * r_format
+                else:
+                    # Enforce strict -1.5 format discrimination penalty on malformed / unclosed / stray tags
+                    base_format_score = eval_res.get("format_penalty", -1.5)
 
                 # Check abstention
                 r_abstain, _ = abstention.compute_reward(comp, gold)
@@ -305,7 +313,7 @@ def evaluate_rollout_rewards(
                 if "<abstain>" in comp.lower() or "cannot be determined" in comp.lower():
                     final_r = r_abstain
                 else:
-                    final_r = r_correct + 0.3 * r_format
+                    final_r = r_correct + base_format_score + lemma_pen
             else:
                 # General conversation: penalize leaked reasoning XML tags
                 final_r = format_engine.evaluate_format_compliance(p_type, comp)

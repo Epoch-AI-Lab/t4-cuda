@@ -282,6 +282,158 @@ def test_ngram_tracker_sliding_window():
     assert not tracker.loop_detected
 
 
+def test_tag_progression_corrupted_tag_rejection():
+    """Verify corrupted tags and stray boundary punctuation are rejected with -1.5 format penalty."""
+    tracker = XMLProgressionTracker()
+
+    # Prefix stray closing tag: *</explore>
+    trace_corrupt_prefix = (
+        "<explore>Exploring constraints.</explore>\n"
+        "<conjecture>Conjecturing solution.</conjecture>\n"
+        "<test_edge_cases>Checking boundaries.</test_edge_cases>\n"
+        "*</explore>\n"
+        "<lemma_isolate>Isolating lemma.</lemma_isolate>\n"
+        "<formal_proof>Proof yields \\boxed{42}.</formal_proof>"
+    )
+    rep1 = tracker.validate_trace(trace_corrupt_prefix)
+    assert rep1["valid"] is False
+    assert rep1["format_penalty"] == -1.5
+    assert any("Corrupted closing tag" in v or "Duplicate" in v for v in rep1["violations"])
+
+    # Colon prefix closing tag: :</explore>
+    trace_colon = (
+        "<explore>Exploring constraints.</explore>\n"
+        "<conjecture>Conjecturing solution.</conjecture>\n"
+        "<test_edge_cases>Checking boundaries.</test_edge_cases>\n"
+        " :</explore>\n"
+        "<lemma_isolate>Isolating lemma.</lemma_isolate>\n"
+        "<formal_proof>Proof yields \\boxed{42}.</formal_proof>"
+    )
+    rep2 = tracker.validate_trace(trace_colon)
+    assert rep2["valid"] is False
+    assert rep2["format_penalty"] == -1.5
+
+    # Malformed internal whitespace: < /explore>
+    trace_malformed = (
+        "<explore>Exploring constraints.< /explore>\n"
+        "<conjecture>Conjecturing solution.</conjecture>\n"
+        "<test_edge_cases>Checking boundaries.</test_edge_cases>\n"
+        "<lemma_isolate>Isolating lemma.</lemma_isolate>\n"
+        "<formal_proof>Proof yields \\boxed{42}.</formal_proof>"
+    )
+    rep3 = tracker.validate_trace(trace_malformed)
+    assert rep3["valid"] is False
+    assert rep3["format_penalty"] == -1.5
+
+    # Embedded malformed tag inside block with otherwise valid outer tags
+    trace_embedded_malformed = (
+        "<explore>Exploring constraints.< /conjecture> more notes.</explore>\n"
+        "<conjecture>Conjecturing solution.</conjecture>\n"
+        "<test_edge_cases>Checking boundaries.</test_edge_cases>\n"
+        "<lemma_isolate>Isolating lemma.</lemma_isolate>\n"
+        "<formal_proof>Proof yields \\boxed{42}.</formal_proof>"
+    )
+    rep4 = tracker.validate_trace(trace_embedded_malformed)
+    assert rep4["valid"] is False
+    assert rep4["format_penalty"] == -1.5
+    assert any("Malformed tag syntax" in v for v in rep4["violations"])
+
+
+def test_tag_progression_interleaved_tags():
+    """Verify interleaved tags violate strict sequential progression and receive -1.5 penalty."""
+    tracker = XMLProgressionTracker()
+    interleaved_trace = (
+        "<explore>Exploring constraints.\n"
+        "<conjecture>Conjecture opened before explore closed.\n"
+        "</explore>\n"
+        "</conjecture>\n"
+        "<test_edge_cases>Testing edge cases.</test_edge_cases>\n"
+        "<lemma_isolate>Isolating lemma.</lemma_isolate>\n"
+        "<formal_proof>Proof concludes \\boxed{42}.</formal_proof>"
+    )
+    rep = tracker.validate_trace(interleaved_trace)
+    assert rep["valid"] is False
+    assert rep["format_penalty"] == -1.5
+    assert any("Interleaved" in v or "Nesting" in v for v in rep["violations"])
+
+
+def test_tag_progression_feed_token_corrupted_boundary():
+    """Verify feed_token immediately halts upon encountering corrupted tag syntax."""
+    tracker = XMLProgressionTracker()
+
+    # Normal feed
+    ok1, _ = tracker.feed_token("<explore>")
+    assert ok1 is True
+    ok2, _ = tracker.feed_token("Some exploration content.")
+    assert ok2 is True
+    ok3, _ = tracker.feed_token("</explore>")
+    assert ok3 is True
+
+    # Streaming corrupted closing tag
+    tracker.reset()
+    tracker.feed_token("<explore>Content</explore>")
+    is_valid, reason = tracker.feed_token("*</explore>")
+    assert is_valid is False
+    assert "Corrupted" in reason or "Mismatched" in reason or "Backtracking" in reason
+
+    # Streaming malformed tag syntax: < /conjecture>
+    tracker.reset()
+    tracker.feed_token("<explore>Content")
+    is_valid_m, reason_m = tracker.feed_token("< /conjecture>")
+    assert is_valid_m is False
+    assert "Malformed tag syntax" in reason_m
+
+
+def test_tag_progression_inner_corrupted_tag_syntax():
+    """Verify inner punctuations inside tag brackets and casing variations are rejected by validate_trace."""
+    tracker = XMLProgressionTracker()
+    inner_corrupt = [
+        "<explore>Content </*explore> more.</explore><conjecture>Conj</conjecture><test_edge_cases>Edge</test_edge_cases><lemma_isolate>Lemma</lemma_isolate><formal_proof>Proof \\boxed{1}</formal_proof>",
+        "<explore>Content <*explore> more.</explore><conjecture>Conj</conjecture><test_edge_cases>Edge</test_edge_cases><lemma_isolate>Lemma</lemma_isolate><formal_proof>Proof \\boxed{1}</formal_proof>",
+        "<explore>Content <:explore> more.</explore><conjecture>Conj</conjecture><test_edge_cases>Edge</test_edge_cases><lemma_isolate>Lemma</lemma_isolate><formal_proof>Proof \\boxed{1}</formal_proof>",
+        "<explore>Content <//explore> more.</explore><conjecture>Conj</conjecture><test_edge_cases>Edge</test_edge_cases><lemma_isolate>Lemma</lemma_isolate><formal_proof>Proof \\boxed{1}</formal_proof>",
+        "<explore>Content <Explore> more.</explore><conjecture>Conj</conjecture><test_edge_cases>Edge</test_edge_cases><lemma_isolate>Lemma</lemma_isolate><formal_proof>Proof \\boxed{1}</formal_proof>",
+    ]
+    for trace in inner_corrupt:
+        rep = tracker.validate_trace(trace)
+        assert rep["valid"] is False
+        assert rep["format_penalty"] == -1.5
+        assert any("Malformed tag syntax" in v for v in rep["violations"])
+
+
+def test_tag_progression_feed_token_inner_corrupted_syntax():
+    """Verify feed_token streaming rejects inner punctuation malformed tags immediately."""
+    tracker = XMLProgressionTracker()
+    tracker.feed_token("<explore>Content ")
+    is_valid, reason = tracker.feed_token("</*conjecture>")
+    assert is_valid is False
+    assert "Malformed tag syntax" in reason
+
+
+def test_tag_progression_no_false_positive_on_valid_punctuation_and_inequalities():
+    """Verify feed_token and validate_trace do not falsely flag %, quotes, commas, or inequalities."""
+    tracker = XMLProgressionTracker()
+
+    # Streaming test with inequality expression
+    tracker.reset()
+    ok1, _ = tracker.feed_token("<explore>Assume 0 < explore(y) for all y > 0. Probability is 50% </explore>")
+    assert ok1 is True
+    ok2, _ = tracker.feed_token("<conjecture>Valid conjecture.</conjecture>")
+    assert ok2 is True
+
+    # Trace test with valid punctuation
+    full_trace = (
+        "<explore>We call it \"symmetric\", where x > 0 and 50% holds.</explore>\n"
+        "<conjecture>Valid conjecture.</conjecture>\n"
+        "<test_edge_cases>Checking boundary.</test_edge_cases>\n"
+        "<lemma_isolate>Lemma statement.</lemma_isolate>\n"
+        "<formal_proof>Proof concludes \\boxed{42}.</formal_proof>"
+    )
+    rep = tracker.validate_trace(full_trace)
+    assert rep["valid"] is True
+    assert rep["format_penalty"] == 0.0
+
+
 if __name__ == "__main__":
     import pytest
     sys.exit(pytest.main([__file__]))

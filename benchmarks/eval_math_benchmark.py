@@ -66,13 +66,59 @@ def check_5tag_adherence(text: str) -> Dict[str, Any]:
     tags_present = {}
     is_strictly_ordered = True
 
+    # Check for corrupted tags, stray punctuation attached to boundaries, or malformed tags
+    has_corrupted_tags = False
+    for tag in TAG_NAMES:
+        prefix_close_pat = r"\s+[:*#`~_\-;]+\s*</" + tag + ">"
+        direct_close_pat = r"[\*\:\#\`\~_\-;]\s*</" + tag + ">"
+        if re.search(prefix_close_pat, text) or re.search(direct_close_pat, text):
+            has_corrupted_tags = True
+            break
+        suffix_close_pat = r"</" + tag + r">\s*[\*:\#\`\~_\-;]+"
+        if re.search(suffix_close_pat, text):
+            has_corrupted_tags = True
+            break
+        prefix_open_pat = r"[\*\:\#\`\~_\-;]\s*<" + tag + ">"
+        prefix_space_open_pat = r"\s+[:*#`~_\-;]+\s*<" + tag + ">"
+        if re.search(prefix_open_pat, text) or re.search(prefix_space_open_pat, text):
+            has_corrupted_tags = True
+            break
+        suffix_open_pat = r"<" + tag + r">\s*[\*:\#\`\~_\-;]+(?:\s*[\r\n]|\s*<)"
+        if re.search(suffix_open_pat, text):
+            has_corrupted_tags = True
+            break
+        malformed_tag_pat = r"<[\s/\\*:#`~_\-;]*" + tag + r"[\s/\\*:#`~_\-;]*>"
+        for m in re.finditer(malformed_tag_pat, text, re.IGNORECASE):
+            raw_tag = m.group(0)
+            if raw_tag not in (f"<{tag}>", f"</{tag}>"):
+                has_corrupted_tags = True
+                break
+        if has_corrupted_tags:
+            break
+
     for tag in TAG_NAMES:
         open_c = text.count(f"<{tag}>")
         close_c = text.count(f"</{tag}>")
         tags_present[tag] = (open_c == 1 and close_c == 1)
 
-    all_present = all(tags_present.values())
+    all_present = all(tags_present.values()) and not has_corrupted_tags
     if not all_present:
+        return {
+            "adherent": False,
+            "all_tags_present": all_present,
+            "strictly_ordered": False,
+            "tags": tags_present
+        }
+
+    # Verify interleaved tags and exact alternating sequence
+    expected_sequence = []
+    for t in TAG_NAMES:
+        expected_sequence.append(f"<{t}>")
+        expected_sequence.append(f"</{t}>")
+
+    tag_pattern = re.compile(rf"</?(?:{'|'.join(TAG_NAMES)})>")
+    observed_tags = [m.group(0) for m in tag_pattern.finditer(text)]
+    if observed_tags != expected_sequence:
         return {
             "adherent": False,
             "all_tags_present": all_present,

@@ -238,7 +238,8 @@ class XMLProgressionTracker:
     def __init__(
         self,
         tag_order: Optional[List[str]] = None,
-        per_stage_token_limits: Optional[Dict[str, int]] = None
+        per_stage_token_limits: Optional[Dict[str, int]] = None,
+        format_penalty: float = -1.5,
     ):
         self.tag_order = list(tag_order) if tag_order is not None else list(self.DEFAULT_TAG_ORDER)
         self.stage_token_limits = (
@@ -246,6 +247,7 @@ class XMLProgressionTracker:
             if per_stage_token_limits is not None
             else dict(self.DEFAULT_TOKEN_LIMITS)
         )
+        self.format_penalty = format_penalty
 
         self.current_state = self.STATE_PROMPT
         self.visited_states = [self.STATE_PROMPT]
@@ -291,6 +293,47 @@ class XMLProgressionTracker:
                 if violation not in self.violations:
                     self.violations.append(violation)
                 return False, violation
+
+        # Check for corrupted tags and malformed tag syntax in buffer
+        for tag in self.tag_order:
+            prefix_close_pat = r"\s+[:*#`~_\-;]+\s*</" + tag + ">"
+            direct_close_pat = r"[\*\:\#\`\~_\-;]\s*</" + tag + ">"
+            if re.search(prefix_close_pat, self._raw_buffer) or re.search(direct_close_pat, self._raw_buffer):
+                violation = f"Corrupted closing tag detected: stray prefix attached to </{tag}>"
+                if violation not in self.violations:
+                    self.violations.append(violation)
+                return False, violation
+
+            suffix_close_pat = r"</" + tag + r">\s*[\*:\#\`\~_\-;]+"
+            if re.search(suffix_close_pat, self._raw_buffer):
+                violation = f"Corrupted closing tag detected: stray suffix attached to </{tag}>"
+                if violation not in self.violations:
+                    self.violations.append(violation)
+                return False, violation
+
+            prefix_open_pat = r"[\*\:\#\`\~_\-;]\s*<" + tag + ">"
+            prefix_space_open_pat = r"\s+[:*#`~_\-;]+\s*<" + tag + ">"
+            if re.search(prefix_open_pat, self._raw_buffer) or re.search(prefix_space_open_pat, self._raw_buffer):
+                violation = f"Corrupted opening tag detected: stray prefix attached to <{tag}>"
+                if violation not in self.violations:
+                    self.violations.append(violation)
+                return False, violation
+
+            suffix_open_pat = r"<" + tag + r">\s*[\*:\#\`\~_\-;]+(?:\s*[\r\n]|\s*<)"
+            if re.search(suffix_open_pat, self._raw_buffer):
+                violation = f"Corrupted opening tag detected: stray suffix attached to <{tag}>"
+                if violation not in self.violations:
+                    self.violations.append(violation)
+                return False, violation
+
+            malformed_tag_pat = r"<[\s/\\*:#`~_\-;]*" + tag + r"[\s/\\*:#`~_\-;]*>"
+            for m in re.finditer(malformed_tag_pat, self._raw_buffer, re.IGNORECASE):
+                raw_tag = m.group(0)
+                if raw_tag not in (f"<{tag}>", f"</{tag}>"):
+                    violation = f"Malformed tag syntax detected: '{raw_tag}'"
+                    if violation not in self.violations:
+                        self.violations.append(violation)
+                    return False, violation
 
         # Check for newly completed opening tags
         for tag in self.tag_order:
@@ -345,12 +388,38 @@ class XMLProgressionTracker:
         """Validates a complete text trace against FSM progression rules.
 
         Returns:
-            Dict containing valid flag, current state, visited states, violations, and counts.
+            Dict containing valid flag, current state, visited states, violations, counts, and format_penalty.
         """
         violations: List[str] = []
         tag_positions: Dict[str, Tuple[int, int]] = {}
 
-        # 1. Check tag presence and counts
+        # 1. Detect corrupted tags and stray punctuation attached to tag boundaries
+        for tag in self.tag_order:
+            prefix_close_pat = r"\s+[:*#`~_\-;]+\s*</" + tag + ">"
+            direct_close_pat = r"[\*\:\#\`\~_\-;]\s*</" + tag + ">"
+            if re.search(prefix_close_pat, text) or re.search(direct_close_pat, text):
+                violations.append(f"Corrupted closing tag detected: stray prefix attached to </{tag}>")
+
+            suffix_close_pat = r"</" + tag + r">\s*[\*:\#\`\~_\-;]+"
+            if re.search(suffix_close_pat, text):
+                violations.append(f"Corrupted closing tag detected: stray suffix attached to </{tag}>")
+
+            prefix_open_pat = r"[\*\:\#\`\~_\-;]\s*<" + tag + ">"
+            prefix_space_open_pat = r"\s+[:*#`~_\-;]+\s*<" + tag + ">"
+            if re.search(prefix_open_pat, text) or re.search(prefix_space_open_pat, text):
+                violations.append(f"Corrupted opening tag detected: stray prefix attached to <{tag}>")
+
+            suffix_open_pat = r"<" + tag + r">\s*[\*:\#\`\~_\-;]+(?:\s*[\r\n]|\s*<)"
+            if re.search(suffix_open_pat, text):
+                violations.append(f"Corrupted opening tag detected: stray suffix attached to <{tag}>")
+
+            malformed_tag_pat = r"<[\s/\\*:#`~_\-;]*" + tag + r"[\s/\\*:#`~_\-;]*>"
+            for m in re.finditer(malformed_tag_pat, text, re.IGNORECASE):
+                raw_tag = m.group(0)
+                if raw_tag not in (f"<{tag}>", f"</{tag}>"):
+                    violations.append(f"Malformed tag syntax detected: '{raw_tag}'")
+
+        # 2. Check tag presence and counts
         for tag in self.tag_order:
             open_count = text.count(f"<{tag}>")
             close_count = text.count(f"</{tag}>")
@@ -365,7 +434,18 @@ class XMLProgressionTracker:
                     violations.append(f"Malformed tag order for <{tag}>: close before open")
                 tag_positions[tag] = (o_pos, c_pos)
 
-        # 2. Strict sequential order and no nesting / backtracking
+        # 3. Check for interleaved tags and strict sequential sequence
+        expected_sequence = []
+        for t in self.tag_order:
+            expected_sequence.append(f"<{t}>")
+            expected_sequence.append(f"</{t}>")
+
+        tag_pattern = re.compile(rf"</?(?:{'|'.join(self.tag_order)})>")
+        observed_tags = [m.group(0) for m in tag_pattern.finditer(text)]
+        if observed_tags != expected_sequence:
+            violations.append(f"Interleaved or out-of-order tag sequence: observed {observed_tags}")
+
+        # 4. Strict sequential order and no nesting / backtracking
         last_close = -1
         for i, tag in enumerate(self.tag_order):
             if tag not in tag_positions:
@@ -383,14 +463,14 @@ class XMLProgressionTracker:
 
             last_close = c_pos + len(f"</{tag}>")
 
-        # 3. Check for stage skipping
+        # 5. Check for stage skipping
         present_tags = [t for t in self.tag_order if t in tag_positions]
         if present_tags != self.tag_order:
             missing = [t for t in self.tag_order if t not in tag_positions]
             if not any("Missing required tag" in v for v in violations):
                 violations.append(f"Stage skipped: missing {missing}")
 
-        # 4. Token limit checks
+        # 6. Token limit checks
         computed_counts: Dict[str, int] = {}
         for tag in self.tag_order:
             if tag in tag_positions:
@@ -417,7 +497,8 @@ class XMLProgressionTracker:
             "visited_states": self.STATES if is_valid else [self.STATE_PROMPT],
             "violations": violations,
             "stage_token_counts": computed_counts,
-            "error_message": violations[0] if violations else None
+            "error_message": violations[0] if violations else None,
+            "format_penalty": 0.0 if is_valid else self.format_penalty,
         }
 
 
