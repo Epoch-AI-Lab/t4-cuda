@@ -1,5 +1,13 @@
 # Project: Chalk 16,384-Token Context Expansion & RL Post-Training Pipeline
 
+> **Status (2026-09-23): COMPLETE ✅** — All milestones M1–M6 implemented and verified.
+> Executed end-to-end on physical Tesla T4 silicon: Baby-Chalk (1.5B) RL post-training
+> achieved Contest Pass@1 **56.2%** (9/16), Grounding Sanity **80.0%** (8/10, 8x base),
+> 45.7% token reduction, 6.39 GB peak VRAM (0 OOMs). The 2026-09-17 scaffolding fix
+> (strict stray-tag rejection, lemma premise validation, 605-seed curation) passed its
+> independent victory audit — see `docs/VICTORY_AUDIT_BABY_CHALK_FIX.md` and
+> `docs/BABY_CHALK_RL_RESULTS.md`.
+
 ## Architecture
 This project implements Chalk's 16,384-token context expansion and RL post-training pipeline with behavioral verifiers and controls under zero tolerance.
 The system is partitioned into two tracks:
@@ -36,12 +44,12 @@ The system is partitioned into two tracks:
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | M1: 16k RoPE Scaling & Memory Attention | Implement RoPE scaling config, scaled static KV cache, SDPA integration, and VRAM verification | none | PLANNED |
-| 2 | M2: Cursor-Style Modified GRPO Loop | Implement ModifiedGRPOLoss with unscaled advantages, no length norm, and detached CISPO clipping | none | PLANNED |
-| 3 | M3: Calibrated Abstention Engine | Implement CalibratedAbstentionRewardEngine with asymmetric rewards, EV calibration, and anti-hedging | none | PLANNED |
-| 4 | M4: Anti-Looping & Tag Progression | Implement 4-gram stopping criteria, XML progression FSM, and entropy regularization floor | none | PLANNED |
-| 5 | M5: Rottweiler Verifier & Format Replay | Implement 5-stage XML validator, SymPy reverse substitution verifier, and format replay buffer | none | PLANNED |
-| 6 | M6: E2E Integration & Verification | Integrated pipeline runner, 4-tier test suite, and forensic verification gate | M1, M2, M3, M4, M5 | PLANNED |
+| 1 | M1: 16k RoPE Scaling & Memory Attention | RoPE scaling config, scaled static KV cache, SDPA integration, VRAM verification | none | DONE ✅ (tests/test_context_expansion_16k.py: 10 passed) |
+| 2 | M2: Cursor-Style Modified GRPO Loop | ModifiedGRPOLoss with unscaled advantages, no length norm, detached CISPO clipping | none | DONE ✅ (30-step T4 RL run, 0 OOMs) |
+| 3 | M3: Calibrated Abstention Engine | CalibratedAbstentionRewardEngine asymmetric rewards, EV calibration, anti-hedging | none | DONE ✅ (grounding sanity 80% vs 10% base) |
+| 4 | M4: Anti-Looping & Tag Progression | 4-gram stopping criteria, XML progression FSM, entropy floor + strict stray-tag rejection | none | DONE ✅ (loop attractors eliminated, <340 tok avg) |
+| 5 | M5: Rottweiler Verifier & Format Replay | 5-stage XML validator, SymPy verifier, format replay buffer, lemma premise validation | none | DONE ✅ (victory audit PASS 2026-09-23) |
+| 6 | M6: E2E Integration & Verification | Integrated pipeline runner, tiered test suite, forensic verification gate | M1, M2, M3, M4, M5 | DONE ✅ (87 passed / 2 skipped regression gate) |
 
 ## Interface Contracts
 ### Context Scaling (`src/rope_scaling.py`)

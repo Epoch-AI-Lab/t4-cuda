@@ -1,7 +1,7 @@
-version: "9.4.0"
-updated_at: "2026-08-16T22:37:00+05:30"
-phase: "TRAINING_AND_SERVING_KERNELS_VERIFIED"
-priority_track: "PERSONA_COEXISTENCE_AND_PERSISTENCE_EVAL"
+version: "9.5.0"
+updated_at: "2026-09-23T00:00:00+00:00"
+phase: "BABY_CHALK_RL_VERIFIED_BIG_CHALK_NEXT"
+priority_track: "BIG_CHALK_7B_RL_POST_TRAINING"
 
 target_hardware:
   name: "NVIDIA Tesla T4"

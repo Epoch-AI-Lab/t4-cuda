@@ -74,7 +74,18 @@ identity. Every claim stays machine-verifiable.
   - Added multi-GPU bash runner: `scripts/run_kaggle_7b_sft.sh`.
   - Full test suite: 132 tests passing across `test_multi_gpu_guard.py`, `test_sharding_tp_correctness.py`, `test_sharding_pp_correctness.py`, and `test_e2e_multigpu_suite.py`.
 
-## 6. Conjecture loop (stretch, rides the same kernels)
+## 5.5. Baby-Chalk (1.5B) RL Post-Training + Scaffolding Fix (DONE ✅ 2026-09-17, audited 2026-09-23)
+
+- **Phase 2 GRPO on physical T4:** 30 steps, cursor-style modified GRPO loss, Rottweiler SymPy verifier, calibrated abstention, 4-gram repetition stopping. Peak VRAM 6.39 GB, 0 OOMs.
+- **Results vs SFT-only / base:** Contest Pass@1 25.0% → **56.2%** (9/16, matches base); Grounding Sanity **80.0%** (8/10, 8x base); −45.7% tokens; geometry 3/3. Report: `docs/BABY_CHALK_RL_RESULTS.md`.
+- **Scaffolding fix (2026-09-17 follow-up):** strict stray-tag rejection (`*</explore>` etc.) with −1.5 format penalty at verifier/FSM/benchmark levels; `LemmaConsistencyValidator` premise checks (Wilson's on composite modulus → −1.5); all 605 seeds curated (100% well-formed ordered scaffolds, 0 boilerplate). **Victory audit PASS** (`docs/VICTORY_AUDIT_BABY_CHALK_FIX.md`): 47/47 gate tests, 87/87 extended suite, benchmark gates held.
+
+## 6. Big-Chalk (7B) RL Post-Training (NEXT — infra done, training pending)
+
+- Infrastructure from §5 is complete (device guards, PP=2/TP=2 sharding, Kaggle SFT runner).
+- Remaining: RL training runner for 7B (cursor-style GRPO + verifier stack under dual-T4 VRAM budget), then external AIME/AMC eval with the same gates as Baby-Chalk (≥56.2% Pass@1, ≥80% sanity, 0 malformed tags).
+
+## 7. Conjecture loop (stretch, rides the same kernels)
 
 - Old-model sees post-cutoff mathlib/Lean-Workbook + recent arXiv, proposes
   lemmas, Lean 4 checks truth, embeddings check novelty.
