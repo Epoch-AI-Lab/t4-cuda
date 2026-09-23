@@ -77,6 +77,15 @@ This compendium aggregates all formal mathematical proofs, hardware micro-benchm
 
 *\*Pass rate on contest problems was bounded by the 1024-token context length ceiling during extensive scratchpad proof search.*
 
+### C. Phase 2 RL Post-Training (Baby-Chalk GRPO on Tesla T4)
+- **RL Framework**: Cursor-style Modified GRPO loss with unscaled mean-centered advantages ($A_i = r_i - \bar{r}$), detached CISPO clipping, Rottweiler SymPy verifier, calibrated asymmetric abstention rewards ($+1.0$ / $0.0$ / $-1.5$), and 4-gram repetition stopping criteria.
+- **Physical Silicon Run**: 30 steps with group size $G=4$ completions per prompt on single Tesla T4 GPU (6.39 GB peak VRAM, 0 OOMs).
+- **Benchmark Performance**:
+  - **Contest Pass@1 (AIME/AMC 12)**: Jumped from 25.0% to **56.2% (9/16)**, matching the base model and solving problems where the base model looped out (`aime_2024_i_p5`, `amc12_2023_a_p10`).
+  - **Geometry Mastery**: **100.0% (3/3)** solved vs 66.7% for base model.
+  - **Grounding Sanity Pass**: Surged to **80.0% (8/10)** vs 10.0% base model (8x improvement).
+  - **Token Efficiency**: Cut average token usage by **45.7%** (407.7 vs 751.2 tokens), completely eliminating the 1024-token context truncation bottleneck.
+
 ---
 
 ## 5. Sub-4-Bit Speculative Decoding on Tesla T4

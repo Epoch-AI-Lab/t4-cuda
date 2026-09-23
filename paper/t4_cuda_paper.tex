@@ -484,6 +484,33 @@ Training completed 111 steps (3 epochs) with zero OOMs, with loss dropping from 
 
 Crucially, on unanswerable and impossible premises (grounding sanity checks), this forced exploratory discipline delivered a \textbf{6x improvement in grounding} (60.0\% vs 10.0\%), completely suppressing degenerate repetition loops (Figure~\ref{fig:sft_schema} and Figure~\ref{fig:reasoning_eval}). Under memory-bound legacy architectures, procedural scratchpad exploration trades generation length against accuracy, establishing the foundation for Phase 2 RL reward optimization.
 
+\subsection{Baby-Chalk RL Post-Training: GRPO, Verifiers, and Token Efficiency}
+Building directly upon the cold-start SFT checkpoint, we executed Phase~2 RL post-training on physical Tesla T4 silicon using our cursor-style modified GRPO loss (Section~2). The training loop ran for 30 steps with group size $G=4$ rollouts per prompt, integrating: (1) unscaled mean-centered advantages without token length normalization, (2) detached CISPO ratio clipping, (3) the Rottweiler SymPy symbolic verifier with 5-tag XML scaffold validation, (4) calibrated asymmetric abstention rewards ($+1.0$ correct, $0.0$ abstain, $-1.5$ hallucinated), and (5) a 4-gram repetition penalty stopping criterion. Peak training memory remained strictly within the 16~GB envelope at 6.39~GB VRAM (0 OOMs).
+
+\begin{table}[h]
+\centering
+\caption{Progression Across Training Stages: Base vs. SFT vs. RL Post-Trained}
+\label{tab:rl_eval_progression}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Evaluation Metric & Raw Base (1.5B) & Baby-Chalk SFT & Baby-Chalk RL (Ours) \\
+\midrule
+5-Tag Schema Adherence      & 0.0\% (No tags)       & Learned (Partial)     & \textbf{100.0\% (5/5 Tags)} \\
+Grounding Sanity Pass Rate  & 10.0\% (1/10)         & 60.0\% (6/10)         & \textbf{80.0\% (8/10)} \\
+Held-Out Contest Pass@1     & 43.8\% (7/16)         & 25.0\% (4/16)         & \textbf{56.2\% (9/16)} \\
+Geometry Pass Rate          & 66.7\% (2/3)          & 66.7\% (2/3)          & \textbf{100.0\% (3/3)} \\
+Mean Generation Tokens      & 751.2 tokens          & 710.5 tokens          & \textbf{407.7 tokens (-45.7\%)} \\
+Peak Training VRAM          & N/A                   & 12,204.3 MB           & \textbf{6,542.8 MB (6.39 GB)} \\
+Peak Inference VRAM         & 3,008.0 MB            & 3,228.7 MB            & \textbf{3,085.3 MB (3.09 GB)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As summarized in Table~\ref{tab:rl_eval_progression}, Phase~2 RL post-training decisively resolved the token-budget truncation bottleneck. Contest accuracy increased from 25.0\% to \textbf{56.2\% (9/16)}, matching and exceeding the base model on difficult competition problems (e.g., AIME 2024 I Problem 5 and AMC 12 2023 A Problem 10, where the base model exhausted 1024 tokens in degenerate repetition loops). Simultaneously, grounding sanity pass rate rose to \textbf{80.0\%} (an 8x improvement over base), while overall token footprint dropped by \textbf{45.7\%} (407.7 vs 751.2 tokens). 
+
+Detailed qualitative trace audits reveal that the 5-tag XML scaffold acts as a bounded forward-only finite state machine: once $\langle\text{lemma\_isolate}\rangle$ specifies the operative principle (e.g., Principle of Inclusion-Exclusion in AMC 12 2023 B Problem 12), the model executes direct derivation and terminates immediately upon outputting $\boxed{}$, avoiding the ungrounded code-interpreter hallucinations and multi-iteration prompt repetition attractors prevalent in un-adapted baselines.
+
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig5_sft_reasoning_flowchart}

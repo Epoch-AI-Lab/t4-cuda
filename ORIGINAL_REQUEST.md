@@ -192,4 +192,61 @@ Integrity mode: development
 - [ ] Conversational prompts ("Hi", general code) generate clean, direct responses without XML tags.
 - [ ] Mathematical prompts adhere to all 5 XML tags in strict sequence.
 
+## Follow-up — 2026-09-17T17:38:55Z
 
+This is a single self-contained fix; keep it small and focused.
+
+Resolve reasoning and structural scaffolding nuances in the Baby-Chalk (1.5B) RL post-training pipeline on Tesla T4: eliminate stray XML tag syntax artifacts (e.g., `*</explore>`), penalize mismatched or invalid lemma premises, and clean generic boilerplate from the bootstrap SFT seed traces.
+
+Working directory: /home/k5/code/research/t4-cuda
+Integrity mode: development
+
+## Requirements
+
+### R1. Strict XML Scaffold Parser & Stray Tag Validator
+Enhance the tag validation engine in `src/rl/rottweiler_verifier.py` and `src/rl/anti_looping.py` to strictly enforce clean XML syntax. The verifier must detect and penalize any malformed tags, stray punctuation attached to tag boundaries (e.g., `*</explore>` or ` :</explore>`), unclosed blocks, and out-of-order tag state transitions during RL rollouts, assigning a -1.5 format discrimination penalty.
+
+### R2. Lemma Premise & Semantic Consistency Check
+Integrate premise sanity checks into the Rottweiler verifier for common theorem classes (e.g., verifying that Wilson's Theorem or prime-specific modular properties are only applied when the modulus is certified prime). Discourage semantic divergence between the theorem declared in `<lemma_isolate>` and the algebraic techniques utilized in `<formal_proof>`.
+
+### R3. SFT Bootstrap Trace Curation
+Audit and clean `data/chalk_seeds_500.jsonl` (605 records) to replace generic repetitive template boilerplate in `<test_edge_cases>` with domain-specific boundary evaluations, and ensure 100% concordance between lemma declarations and proof bodies across all seeds.
+
+### R4. Verification & Memory Preservation
+Ensure all modifications execute within the existing Tesla T4 memory budget (<= 12.5 GB peak VRAM in SFT, <= 7.0 GB peak VRAM in RL rollouts) and pass existing unit and integration test harnesses without regressions.
+
+## Acceptance Criteria
+
+### Scaffold & Tag Integrity
+- [ ] `check_5tag_adherence` and `RottweilerVerifier.verify_xml_scaffold` reject corrupted closing tags (e.g., `*</explore>`, ` :</explore>`) and duplicate/interleaved tags.
+- [ ] A dedicated unit test suite in `tests/test_rottweiler_verifier.py` verifies positive and negative test cases for stray prefix/suffix tag corruptions.
+
+### Lemma & Verifier Consistency
+- [ ] Rottweiler verifier flags invalid theorem preconditions on composite moduli or mismatched declarations with reward penalties.
+
+### Dataset Cleanliness
+- [ ] `data/chalk_seeds_500.jsonl` contains zero generic boilerplate in `<test_edge_cases>` and 100% well-formed, clean XML tags across all 605 seeds.
+
+### Performance & Regression Gate
+- [ ] `pytest tests/test_rottweiler_verifier.py tests/test_anti_looping.py` passes with exit code 0.
+- [ ] Benchmark evaluation on `data/external_math_eval.json` maintains >= 56.2% contest Pass@1 and >= 80.0% grounding sanity pass rate with 0% malformed tag artifacts.
+
+## Follow-up — 2026-09-18T06:20:56Z
+
+The server restarted and all background tasks and child subagents were paused. Please resume the teamwork preview run immediately:
+1. Check the status of your child subagents (orchestrator and implementers); restart/revive or respawn them as needed.
+2. Inspect the current workspace and git diff (`src/rl/rottweiler_verifier.py`, `src/rl/anti_looping.py`, `benchmarks/train_baby_chalk_rl.py`, etc.).
+3. Continue executing the requirements and acceptance criteria (strict tag parsing, lemma premise verification, SFT seed curation, and unit tests).
+4. Carry the workflow through review rounds and the independent victory audit to completion.
+
+## Follow-up — 2026-09-18T06:31:30Z
+
+The server restarted. Please resume immediately:
+1. Re-engage the SWE Light orchestrator (`efe483e3-8a25-4bcb-8ba4-095147c0a7cd`).
+2. Complete the adversarial reviewer rounds on the verified changes.
+3. Trigger and finalize the independent victory audit against all acceptance criteria.
+4. Conclude and report the final outcome.
+
+## Follow-up — 2026-09-18T07:18:03Z
+
+The server restarted. Reviewer rounds have completed. Please immediately spawn and run the independent victory auditor to verify the workspace against all acceptance criteria and conclude the project.
