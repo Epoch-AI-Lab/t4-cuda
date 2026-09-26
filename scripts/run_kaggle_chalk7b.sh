@@ -45,6 +45,9 @@ MAX_STEPS="${MAX_STEPS:--1}"
 
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export TOKENIZERS_PARALLELISM="false"
+# Progress prints come from the trainer. Unbuffered so they stream through tee,
+# which is what keeps the Kaggle cell from looking frozen.
+export PYTHONUNBUFFERED="1"
 
 ts() { date -u +%H:%M:%S; }
 log() { echo "[$(ts)] $*"; }
@@ -143,7 +146,10 @@ fi
 
 log "[5/6] cold-start SFT"
 log "  model=$MODEL epochs=$EPOCHS lr=$LR out=$OUT"
-python3 "$REPO/benchmarks/train_math_sft.py" \
+log "  (unbuffered stdout: progress appears live; do NOT kill this cell)"
+# -u is REQUIRED: stdout is a pipe into tee, so CPython would otherwise
+# block-buffer every print and the notebook would look frozen for hours.
+python3 -u "$REPO/benchmarks/train_math_sft.py" \
     --model_name_or_path "$MODEL" \
     --data_path "$SEED" \
     --output_dir "$OUT" \
@@ -165,7 +171,7 @@ nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader || t
 
 # ---------- 6. eval + package ----------
 log "[6/6] contest evaluation"
-python3 "$REPO/benchmarks/eval_math_benchmark.py" \
+python3 -u "$REPO/benchmarks/eval_math_benchmark.py" \
     --model_name_or_path "$MODEL" \
     --adapter_path "$OUT/lora_adapter" \
     --benchmark_path "$REPO/data/external_math_eval.json" \
