@@ -1,0 +1,783 @@
+{
+  "timestamp": 1789664029.754911,
+  "model": "Qwen/Qwen2.5-Math-1.5B",
+  "adapter": "results/baby_chalk_rl/checkpoint_step_30",
+  "contest_metrics": {
+    "num_problems": 16,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.5625,
+    "best_of_n_rate": 0.5625,
+    "avg_tok_s": 12.820200015797122,
+    "total_tokens": 7231,
+    "total_time_s": 564.0317616799989,
+    "results": [
+      {
+        "problem_id": "aime_2024_i_p1",
+        "ground_truth": "21",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 480,
+            "tok_s": 12.72616737224043,
+            "completion_text": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's isolate the variables and identify the domain constraints.\n</explore>\n<conjecture>\nWe conjecture that the solution lies in counting the lattice points within a circle of radius $\\sqrt{50}$ centered at the origin, where the coordinates are multiples of 3.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity: Both $x$ and $y$ must be even.\n2. Checking the non-negativity: The coordinates cannot be negative.\n3. Checking the distinctness: We ensure that we do not double-count any points.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Triples): The only Pythagorean triples with all sides integers are $(3, 4, 5)$ and its multiples.\n</lemma_isolate>\n<formal_proof>\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's isolate the variables and identify the domain constraints:\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's count the lattice points within a circle of radius $\\sqrt{50}$ centered at the origin, where the coordinates are multiples of 3.\nBy the Pythagorean theorem, the only Pythagorean triples with all sides integers are $(3, 4, 5)$ and its multiples. Since $x$ and $y$ are multiples of 3, we can only have $(3, 0)$, $(0, 3)$, and $(3, 3)$ as valid points.\nThus, there are 3 valid points.\nTherefore, the number of ordered pairs is 3.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's isolate the variables and identify the domain constraints.\n</explore>\n<conjecture>\nWe conjecture that the solution lies in counting the lattice points within a circle of radius $\\sqrt{50}$ centered at the origin, where the coordinates are multiples of 3.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity: Both $x$ and $y$ must be even.\n2. Checking the non-negativity: The coordinates cannot be negative.\n3. Checking the distinctness: We ensure that we do not double-count any points.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Triples): The only Pythagorean triples with all sides integers are $(3, 4, 5)$ and its multiples.\n</lemma_isolate>\n<formal_proof>\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's isolate the variables and identify the domain constraints:\nWe are given: Find the number of ordered pairs of integers $(x, y)$ such that $x^2 + y^2 < 50$ and $x$ and $y$ are both multiples of 3.\nLet's count the lattice points within a circle of radius $\\sqrt{50}$ centered at the origin, where the coordinates are multiples of 3.\nBy the Pythagorean theorem, the only Pythagorean triples with all sides integers are $(3, 4, 5)$ and its multiples. Since $x$ and $y$ are multiples of 3, we can only have $(3, 0)$, $(0, 3)$, and $(3, 3)$ as valid points.\nThus, there are 3 valid points.\nTherefore, the number of ordered pairs is 3.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p2",
+        "ground_truth": "40",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "40",
+            "is_correct": true,
+            "num_tokens": 398,
+            "tok_s": 12.843856382199311,
+            "completion_text": "<explore>\nLet's unpack the constraints and identify the key elements:\nWe are given: A subset $S$ of \\{1, 2, 3, \\dots, 10\\} has the property that no two elements in $S$ sum to 11. What is the maximum possible sum of the elements in $S$?\nLet's break down the problem into manageable parts.\n</explore>\n<conjecture>\nWe conjecture that the maximum sum is achieved when the elements are chosen to maximize the sum while adhering to the given constraint.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the solution holds when the set is empty.\n2. Testing the behavior when the set contains only one element.\n3. Checking the parity and divisibility constraints.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Pigeonhole Principle): If $n$ items are distributed into $m$ containers, then at least one container contains at least $\\lceil \\frac{n}{m} \\rceil$ items.\n</lemma_isolate>\n<formal_proof>\nTo maximize the sum, we should include the largest possible elements while avoiding pairs that sum to 11. The pairs that sum to 11 are (1, 10), (2, 9), (3, 8), (4, 7), and (5, 6). We can include at most one element from each pair. The optimal choice is to include the larger element from each pair: 10, 9, 8, 7, and 6. The sum of these elements is 10 + 9 + 8 + 7 + 6 = 40.\n\nThus, the maximum possible sum of the elements in $S$ is \\boxed{40}.\n</formal_proof>",
+            "completion_snippet": "<explore>\nLet's unpack the constraints and identify the key elements:\nWe are given: A subset $S$ of \\{1, 2, 3, \\dots, 10\\} has the property that no two elements in $S$ sum to 11. What is the maximum possible sum of the elements in $S$?\nLet's break down the problem into manageable parts.\n</explore>\n<conjecture>\nWe conjecture that the maximum sum is achieved when the elements are chosen to maximize the sum while adhering to the given constraint.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the solution holds when the set is empty.\n2. Testing the behavior when the set contains only one element.\n3. Checking the parity and divisibility constraints.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Pigeonhole Principle): If $n$ items are distributed into $m$ containers, then at least one container contains at least $\\lceil \\frac{n}{m} \\rceil$ items.\n</lemma_isolate>\n<formal_proof>\nTo maximize the sum, we should include the largest possible elements while avoiding pairs that sum to 11. The pairs that sum to 11 are (1, 10), (2, 9), (3, 8), (4, 7), and (5, 6). We can include at most one element from each pair. The optimal choice is to include the larger element from each pair: 10, 9, 8, 7, and 6. The sum of these elements is 10 + 9 + 8 + 7 + 6 = 40.\n\nThus, the maximum possible sum of the elements in $S$ is \\boxed{40}.\n</formal_proof>"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p3",
+        "ground_truth": "68",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "107",
+            "is_correct": false,
+            "num_tokens": 358,
+            "tok_s": 12.870385272148784,
+            "completion_text": "<explore>\nLet's unpack the constraints:\nWe are given: Find the smallest positive integer $n$ such that $n$ leaves a remainder of 2 when divided by 3, a remainder of 3 when divided by 5, and a remainder of 5 when divided by 7.\n</explore>\n<conjecture>\nWe conjecture that the Chinese Remainder Theorem (CRT) can be applied to find the unique solution modulo the product of the moduli.\n</conjecture>\n<test_edge_cases>\nLet's verify the constraints on the variables:\n1. Checking the parity: The parity of the variables matches the given conditions.\n2. Checking the domain: The variables are restricted to positive integers.\n3. Checking the boundary conditions: The boundary values satisfy the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Chinese Remainder Theorem): If the moduli are pairwise coprime, the system of congruences has a unique solution modulo the product of the moduli.\n</lemma_isolate>\n<formal_proof>\nBy the Chinese Remainder Theorem, the system of congruences has a unique solution modulo the product of the moduli, which is 3 * 5 * 7 = 105. We can find the solution by solving the system of congruences:\nn \u2261 2 (mod 3)\nn \u2261 3 (mod 5)\nn \u2261 5 (mod 7)\nUsing the method of successive substitution, we find that n = 107 satisfies all the congruences. Therefore, the smallest positive integer n that satisfies the given conditions is \\boxed{107}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the constraints:\nWe are given: Find the smallest positive integer $n$ such that $n$ leaves a remainder of 2 when divided by 3, a remainder of 3 when divided by 5, and a remainder of 5 when divided by 7.\n</explore>\n<conjecture>\nWe conjecture that the Chinese Remainder Theorem (CRT) can be applied to find the unique solution modulo the product of the moduli.\n</conjecture>\n<test_edge_cases>\nLet's verify the constraints on the variables:\n1. Checking the parity: The parity of the variables matches the given conditions.\n2. Checking the domain: The variables are restricted to positive integers.\n3. Checking the boundary conditions: The boundary values satisfy the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Chinese Remainder Theorem): If the moduli are pairwise coprime, the system of congruences has a unique solution modulo the product of the moduli.\n</lemma_isolate>\n<formal_proof>\nBy the Chinese Remainder Theorem, the system of congruences has a unique solution modulo the product of the moduli, which is 3 * 5 * 7 = 105. We can find the solution by solving the system of congruences:\nn \u2261 2 (mod 3)\nn \u2261 3 (mod 5)\nn \u2261 5 (mod 7)\nUsing the method of successive substitution, we find that n = 107 satisfies all the congruences. Therefore, the smallest positive integer n that satisfies the given conditions is \\boxed{107}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p4",
+        "ground_truth": "12",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "12",
+            "is_correct": true,
+            "num_tokens": 646,
+            "tok_s": 12.955382296120185,
+            "completion_text": "<explore>\nLet's unpack the given information and identify the key relationships:\nWe are given: In a right triangle $ABC$ with right angle at $C$, the altitude from $C$ meets $AB$ at $D$. If $AD = 9$ and $BD = 16$, find the length of the altitude $CD$.\nLet's identify the key elements and constraints: We are given the lengths of segments on the hypotenuse and need to find the length of the altitude.\n</explore>\n<conjecture>\nWe conjecture that the Pythagorean theorem or the area formula for a right triangle will be useful.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries and edge cases:\n1. Checking if the configuration is valid: The given lengths satisfy the triangle inequality.\n2. Testing the boundary condition where the altitude coincides with one of the legs: This would imply a degenerate triangle.\n3. Checking the parity and divisibility constraints: The lengths are integers, so the altitude must also be an integer.\n</test_edge_cases>\n :</explore>\n<lemma_isolate>\nLemma (Pythagorean Theorem): In a right triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides.\n</lemma_isolate>\n :</explore>\n<formal_proof>\nBy the Pythagorean Theorem, we have $AC^2 + BC^2 = AB^2$. Since $AD = 9$ and $BD = 16$, we have $AB = AD + BD = 25$. Let $CD = h$. By the area formula for a right triangle, we have $\\frac{1}{2} \\cdot AC \\cdot BC = \\frac{1}{2} \\cdot AB \\cdot h$. Substituting the known values, we get $\\frac{1}{2} \\cdot AC \\cdot BC = \\frac{1}{2} \\cdot 25 \\cdot h$. Simplifying, we have $AC \\cdot BC = 25h$. By the Pythagorean Theorem, we have $AC^2 + BC^2 = 25^2$. Substituting $AC \\cdot BC = 25h$, we get $AC^2 + BC^2 = 25^2 = (AC + BC)^2 - 2AC \\cdot BC = (AC + BC)^2 - 2(25h)$. Expanding and simplifying, we have $AC^2 + BC^2 = AC^2 + 2AC \\cdot BC + BC^2 - 50h$. Canceling like terms, we get $0 = 2AC \\cdot BC - 50h$. Substituting $AC \\cdot BC = 25h$, we have $0 = 2(25h) - 50h$. Simplifying, we get $0 = 50h - 50h$. Therefore, $h = \\boxed{12}$.\n</formal_proof>",
+            "completion_snippet": "<explore>\nLet's unpack the given information and identify the key relationships:\nWe are given: In a right triangle $ABC$ with right angle at $C$, the altitude from $C$ meets $AB$ at $D$. If $AD = 9$ and $BD = 16$, find the length of the altitude $CD$.\nLet's identify the key elements and constraints: We are given the lengths of segments on the hypotenuse and need to find the length of the altitude.\n</explore>\n<conjecture>\nWe conjecture that the Pythagorean theorem or the area formula for a right triangle will be useful.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries and edge cases:\n1. Checking if the configuration is valid: The given lengths satisfy the triangle inequality.\n2. Testing the boundary condition where the altitude coincides with one of the legs: This would imply a degenerate triangle.\n3. Checking the parity and divisibility constraints: The lengths are integers, so the altitude must also be an integer.\n</test_edge_cases>\n :</explore>\n<lemma_isolate>\nLemma (Pythagorean Theorem): In a right triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides.\n</lemma_isolate>\n :</explore>\n<formal_proof>\nBy the Pythagorean Theorem, we have $AC^2 + BC^2 = AB^2$. Since $AD = 9$ and $BD = 16$, we have $AB = AD + BD = 25$. Let $CD = h$. By the area formula for a right triangle, we have $\\frac{1}{2} \\cdot AC \\cdot BC = \\frac{1}{2} \\cdot AB \\cdot h$. Substituting the known values, we get $\\frac{1}{2} \\cdot AC \\cdot BC = \\frac{1}{2} \\cdot 25 \\cdot h$. Simplifying, we have $AC \\cdot BC = 25h$. By the Pythagorean Theorem, we have $AC^2 + BC^2 = 25^2$. Substituting $AC \\cdot BC = 25h$, we get $AC^2 + BC^2 = 25^2 = (AC + BC)^2 - 2AC \\cdot BC = (AC + BC)^2 - 2(25h)$. Expanding and simplifying, we have $AC^2 + BC^2 = AC^2 + 2AC \\cdot BC + BC^2 - 50h$. Canceling like terms, we get $0 = 2AC \\cdot BC - 50h$. Substituting $AC \\cdot BC = 25h$, we have $0 = 2(25h) - 50h$. Simplifying, we get $0 = 50h - 50h$. Therefore, $h = \\boxed{12}$.\n</formal_proof>"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2024_i_p5",
+        "ground_truth": "266",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "266",
+            "is_correct": true,
+            "num_tokens": 539,
+            "tok_s": 12.842020362343051,
+            "completion_text": "<explore>\nLooking at the prime factorization of 30, we see that it is $2 \\cdot 3 \\cdot 5$. This means that $n$ cannot be divisible by 2, 3, or 5.\n</explore>\n<conjecture>\nWe conjecture that the number of integers $n \\le 1000$ with $\\gcd(n, 30) = 1$ is equal to the number of integers $n \\le 1000$ that are not divisible by 2, 3, or 5.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for small values:\n1. Testing the parity: If $n$ is odd, then $\\gcd(n, 30) = 1$ if and only if $n$ is not divisible by 2.\n2. Testing the divisibility by 3: If $n$ is divisible by 3, then $\\gcd(n, 30) \\neq 1$.\n3. Testing the divisibility by 5: If $n$ is divisible by 5, then $\\gcd(n, 30) \\neq 1$.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Euler's Totient Function): If $n = p_1^{e_1} p_2^{e_2} \\cdots p_k^{e_k}$, then $\\phi(n) = n \\left(1 - \\frac{1}{p_1}\\right) \\left(1 - \\frac{1}{p_2}\\right) \\cdots \\left(1 - \\frac{1}{p_k}\\right)$.\n</lemma_isolate>\n<formal_proof>\nBy Euler's Totient Function, the number of integers $n \\le 1000$ with $\\gcd(n, 30) = 1$ is equal to $1000 \\left(1 - \\frac{1}{2}\\right) \\left(1 - \\frac{1}{3}\\right) \\left(1 - \\frac{1}{5}\\right) = 1000 \\cdot \\frac{1}{2} \\cdot \\frac{2}{3} \\cdot \\frac{4}{5} = 266.666...$. Since we are counting integers, we round down to get 266.\n\nThus, the final result is \\boxed{266}.\n</formal_proof>",
+            "completion_snippet": "<explore>\nLooking at the prime factorization of 30, we see that it is $2 \\cdot 3 \\cdot 5$. This means that $n$ cannot be divisible by 2, 3, or 5.\n</explore>\n<conjecture>\nWe conjecture that the number of integers $n \\le 1000$ with $\\gcd(n, 30) = 1$ is equal to the number of integers $n \\le 1000$ that are not divisible by 2, 3, or 5.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for small values:\n1. Testing the parity: If $n$ is odd, then $\\gcd(n, 30) = 1$ if and only if $n$ is not divisible by 2.\n2. Testing the divisibility by 3: If $n$ is divisible by 3, then $\\gcd(n, 30) \\neq 1$.\n3. Testing the divisibility by 5: If $n$ is divisible by 5, then $\\gcd(n, 30) \\neq 1$.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Euler's Totient Function): If $n = p_1^{e_1} p_2^{e_2} \\cdots p_k^{e_k}$, then $\\phi(n) = n \\left(1 - \\frac{1}{p_1}\\right) \\left(1 - \\frac{1}{p_2}\\right) \\cdots \\left(1 - \\frac{1}{p_k}\\right)$.\n</lemma_isolate>\n<formal_proof>\nBy Euler's Totient Function, the number of integers $n \\le 1000$ with $\\gcd(n, 30) = 1$ is equal to $1000 \\left(1 - \\frac{1}{2}\\right) \\left(1 - \\frac{1}{3}\\right) \\left(1 - \\frac{1}{5}\\right) = 1000 \\cdot \\frac{1}{2} \\cdot \\frac{2}{3} \\cdot \\frac{4}{5} = 266.666...$. Since we are counting integers, we round down to get 266.\n\nThus, the final result is \\boxed{266}.\n</formal_proof>"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p1",
+        "ground_truth": "16378208",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "16401648",
+            "is_correct": false,
+            "num_tokens": 371,
+            "tok_s": 12.55686364872615,
+            "completion_text": "<explore>\nLooking at the given expression, let's isolate the key components:\nWe are given: What is the value of $(2023 + 2024)^2 - (2023 - 2024)^2$?\nLet's break down the expression and identify the key terms.\n</explore>\n<conjecture>\nWe conjecture that the expression can be simplified by factoring or applying algebraic identities.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior under extreme or boundary conditions:\n1. Testing non-zero values: The expression holds for non-zero inputs.\n2. Testing division by zero: The expression is well-defined for non-zero denominators.\n3. Testing parity: The parity of the expression matches the parity of the final result.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nWe isolate the key algebraic identity: $(a + b)^2 - (a - b)^2 = 4ab$.\n</lemma_isolate>\n<formal_proof>\nWe have: $(2023 + 2024)^2 - (2023 - 2024)^2$\nExpanding the squares: $= (2023^2 + 2 \\cdot 2023 \\cdot 2024 + 2024^2) - (2023^2 - 2 \\cdot 2023 \\cdot 2024 + 2024^2)$\nSimplifying: $= 4 \\cdot 2023 \\cdot 2024$\nThus, the final result is: \\boxed{16401648}\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given expression, let's isolate the key components:\nWe are given: What is the value of $(2023 + 2024)^2 - (2023 - 2024)^2$?\nLet's break down the expression and identify the key terms.\n</explore>\n<conjecture>\nWe conjecture that the expression can be simplified by factoring or applying algebraic identities.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior under extreme or boundary conditions:\n1. Testing non-zero values: The expression holds for non-zero inputs.\n2. Testing division by zero: The expression is well-defined for non-zero denominators.\n3. Testing parity: The parity of the expression matches the parity of the final result.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nWe isolate the key algebraic identity: $(a + b)^2 - (a - b)^2 = 4ab$.\n</lemma_isolate>\n<formal_proof>\nWe have: $(2023 + 2024)^2 - (2023 - 2024)^2$\nExpanding the squares: $= (2023^2 + 2 \\cdot 2023 \\cdot 2024 + 2024^2) - (2023^2 - 2 \\cdot 2023 \\cdot 2024 + 2024^2)$\nSimplifying: $= 4 \\cdot 2023 \\cdot 2024$\nThus, the final result is: \\boxed{16401648}\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p5",
+        "ground_truth": "2",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "2",
+            "is_correct": true,
+            "num_tokens": 268,
+            "tok_s": 12.829374079745774,
+            "completion_text": "<explore>\nLooking at the given expression, we can factor out common terms or apply modular arithmetic to simplify the expression.\n</explore>\n<conjecture>\nWe conjecture that the expression can be simplified by applying the Chinese Remainder Theorem or Fermat's Little Theorem.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity of the exponents.\n2. Confirming the modular equivalence holds for small primes.\n3. Testing the divisibility by the modulus.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Fermat's Little Theorem): For a prime $p$ and integer $a$ not divisible by $p$, $a^{p-1} \\equiv 1 \\pmod{p}$.\n</lemma_isolate>\n<formal_proof>\nBy Fermat's Little Theorem, $2^6 \\equiv 1 \\pmod{7}$. Thus, $2^{2023} = (2^6)^{337} \\cdot 2^1 \\equiv 1^{337} \\cdot 2 \\equiv 2 \\pmod{7}$. Therefore, the remainder is \\boxed{2}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given expression, we can factor out common terms or apply modular arithmetic to simplify the expression.\n</explore>\n<conjecture>\nWe conjecture that the expression can be simplified by applying the Chinese Remainder Theorem or Fermat's Little Theorem.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity of the exponents.\n2. Confirming the modular equivalence holds for small primes.\n3. Testing the divisibility by the modulus.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Fermat's Little Theorem): For a prime $p$ and integer $a$ not divisible by $p$, $a^{p-1} \\equiv 1 \\pmod{p}$.\n</lemma_isolate>\n<formal_proof>\nBy Fermat's Little Theorem, $2^6 \\equiv 1 \\pmod{7}$. Thus, $2^{2023} = (2^6)^{337} \\cdot 2^1 \\equiv 1^{337} \\cdot 2 \\equiv 2 \\pmod{7}$. Therefore, the remainder is \\boxed{2}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p7",
+        "ground_truth": "120",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "507",
+            "is_correct": false,
+            "num_tokens": 567,
+            "tok_s": 12.800570430190179,
+            "completion_text": "<explore>\nLooking at the constraints:\nWe are given: How many positive integers with at least two digits and less than 1000 have digits that are strictly increasing from left to right?\nLet's break down the problem into manageable parts:\nWe need to count the number of strictly increasing sequences of digits.\n</explore>\n<conjecture>\nWe conjecture that the number of strictly increasing sequences of digits is equal to the number of ways to choose 2 or more digits from the set {1, 2, 3, 4, 5, 6, 7, 8, 9}.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the function behaves correctly for small inputs (e.g., 0 or 1).\n2. Testing the parity of the result.\n3. Checking if the function handles negative inputs gracefully.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Combinatorial Selection): The number of ways to choose k items from a set of n items is given by the binomial coefficient C(n, k).\n</lemma_isolate>\n<formal_proof>\nWe are given: How many positive integers with at least two digits and less than 1000 have digits that are strictly increasing from left to right?\nLet's count the number of strictly increasing sequences of digits:\nWe need to choose 2 or more digits from the set {1, 2, 3, 4, 5, 6, 7, 8, 9}.\nThe number of ways to choose 2 digits is C(9, 2) = 36.\nThe number of ways to choose 3 digits is C(9, 3) = 84.\nThe number of ways to choose 4 digits is C(9, 4) = 126.\nThe number of ways to choose 5 digits is C(9, 5) = 126.\nThe number of ways to choose 6 digits is C(9, 6) = 84.\nThe number of ways to choose 7 digits is C(9, 7) = 36.\nThe number of ways to choose 8 digits is C(9, 8) = 9.\nThe number of ways to choose 9 digits is C(9, 9) = 1.\nAdding these up, we get 36 + 84 + 126 + 126 + 84 + 36 + 9 + 1 = 507.\nTherefore, the final result is \\boxed{507}.\n</formal_proof>",
+            "completion_snippet": "<explore>\nLooking at the constraints:\nWe are given: How many positive integers with at least two digits and less than 1000 have digits that are strictly increasing from left to right?\nLet's break down the problem into manageable parts:\nWe need to count the number of strictly increasing sequences of digits.\n</explore>\n<conjecture>\nWe conjecture that the number of strictly increasing sequences of digits is equal to the number of ways to choose 2 or more digits from the set {1, 2, 3, 4, 5, 6, 7, 8, 9}.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the function behaves correctly for small inputs (e.g., 0 or 1).\n2. Testing the parity of the result.\n3. Checking if the function handles negative inputs gracefully.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Combinatorial Selection): The number of ways to choose k items from a set of n items is given by the binomial coefficient C(n, k).\n</lemma_isolate>\n<formal_proof>\nWe are given: How many positive integers with at least two digits and less than 1000 have digits that are strictly increasing from left to right?\nLet's count the number of strictly increasing sequences of digits:\nWe need to choose 2 or more digits from the set {1, 2, 3, 4, 5, 6, 7, 8, 9}.\nThe number of ways to choose 2 digits is C(9, 2) = 36.\nThe number of ways to choose 3 digits is C(9, 3) = 84.\nThe number of ways to choose 4 digits is C(9, 4) = 126.\nThe number of ways to choose 5 digits is C(9, 5) = 126.\nThe number of ways to choose 6 digits is C(9, 6) = 84.\nThe number of ways to choose 7 digits is C(9, 7) = 36.\nThe number of ways to choose 8 digits is C(9, 8) = 9.\nThe number of ways to choose 9 digits is C(9, 9) = 1.\nAdding these up, we get 36 + 84 + 126 + 126 + 84 + 36 + 9 + 1 = 507.\nTherefore, the final result is \\boxed{507}.\n</formal_proof>"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_a_p10",
+        "ground_truth": "36\\pi",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "36\\pi",
+            "is_correct": true,
+            "num_tokens": 387,
+            "tok_s": 12.69634366254775,
+            "completion_text": "<explore>\nLet's unpack the given information and identify the key constraints:\nWe are given: A square has area 144. A circle is inscribed inside the square. What is the area of the circle in terms of $\\pi$?\nHold up, let's break this down step by step.\n</explore>\n<conjecture>\nWe conjecture that the area of the circle is directly proportional to the square of the radius.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on the boundary conditions:\n1. Checking if the function is well-defined for all input values.\n2. Testing the behavior at the boundaries (0 and infinity).\n3. Verifying that the function satisfies the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Theorem): In a right-angled triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides.\n</lemma_isolate>\n<formal_proof>\nGiven: A square has area 144. A circle is inscribed inside the square. What is the area of the circle in terms of $\\pi$?\nLet the side length of the square be $s$. Then, the area of the square is $s^2 = 144$. Solving for $s$, we get $s = 12$.\nSince the circle is inscribed inside the square, its diameter is equal to the side length of the square. Therefore, the radius of the circle is $r = \\frac{s}{2} = 6$.\nThe area of the circle is given by $A = \\pi r^2 = \\pi (6)^2 = 36\\pi$.\nThus, the area of the circle is \\boxed{36\\pi}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given information and identify the key constraints:\nWe are given: A square has area 144. A circle is inscribed inside the square. What is the area of the circle in terms of $\\pi$?\nHold up, let's break this down step by step.\n</explore>\n<conjecture>\nWe conjecture that the area of the circle is directly proportional to the square of the radius.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on the boundary conditions:\n1. Checking if the function is well-defined for all input values.\n2. Testing the behavior at the boundaries (0 and infinity).\n3. Verifying that the function satisfies the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Theorem): In a right-angled triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides.\n</lemma_isolate>\n<formal_proof>\nGiven: A square has area 144. A circle is inscribed inside the square. What is the area of the circle in terms of $\\pi$?\nLet the side length of the square be $s$. Then, the area of the square is $s^2 = 144$. Solving for $s$, we get $s = 12$.\nSince the circle is inscribed inside the square, its diameter is equal to the side length of the square. Therefore, the radius of the circle is $r = \\frac{s}{2} = 6$.\nThe area of the circle is given by $A = \\pi r^2 = \\pi (6)^2 = 36\\pi$.\nThus, the area of the circle is \\boxed{36\\pi}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p3",
+        "ground_truth": "21",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "26",
+            "is_correct": false,
+            "num_tokens": 404,
+            "tok_s": 12.948193476331117,
+            "completion_text": "<explore>\nLet's unpack the given conditions and identify the key variables and constraints:\nWe are given: If $x$ and $y$ are real numbers such that $x + y = 10$ and $x^2 + y^2 = 58$, what is the value of $x y$?\n</explore>\n<conjecture>\nWe conjecture that the key lies in manipulating the given equations to isolate the desired product $xy$.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the variables are non-negative.\n2. Testing the boundary where one variable approaches zero.\n3. Confirming the result holds for small non-zero values.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Vieta's Formulas): For a quadratic equation $ax^2 + bx + c = 0$, the sum of the roots is $-b/a$ and the product of the roots is $c/a$.\n</lemma_isolate>\n<formal_proof>\nGiven: $x + y = 10$ and $x^2 + y^2 = 58$.\nWe want to find $xy$.\nFrom the first equation, we have $y = 10 - x$.\nSubstituting this into the second equation, we get $x^2 + (10 - x)^2 = 58$.\nExpanding and simplifying, we have $2x^2 - 20x + 52 = 0$.\nDividing by 2, we get $x^2 - 10x + 26 = 0$.\nBy Vieta's formulas, the product of the roots of this quadratic equation is $26$.\nTherefore, $xy = 26$.\n\nThus, the final result is \\boxed{26}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given conditions and identify the key variables and constraints:\nWe are given: If $x$ and $y$ are real numbers such that $x + y = 10$ and $x^2 + y^2 = 58$, what is the value of $x y$?\n</explore>\n<conjecture>\nWe conjecture that the key lies in manipulating the given equations to isolate the desired product $xy$.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking if the variables are non-negative.\n2. Testing the boundary where one variable approaches zero.\n3. Confirming the result holds for small non-zero values.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Vieta's Formulas): For a quadratic equation $ax^2 + bx + c = 0$, the sum of the roots is $-b/a$ and the product of the roots is $c/a$.\n</lemma_isolate>\n<formal_proof>\nGiven: $x + y = 10$ and $x^2 + y^2 = 58$.\nWe want to find $xy$.\nFrom the first equation, we have $y = 10 - x$.\nSubstituting this into the second equation, we get $x^2 + (10 - x)^2 = 58$.\nExpanding and simplifying, we have $2x^2 - 20x + 52 = 0$.\nDividing by 2, we get $x^2 - 10x + 26 = 0$.\nBy Vieta's formulas, the product of the roots of this quadratic equation is $26$.\nTherefore, $xy = 26$.\n\nThus, the final result is \\boxed{26}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p8",
+        "ground_truth": "79",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "97",
+            "is_correct": false,
+            "num_tokens": 384,
+            "tok_s": 12.700822833685793,
+            "completion_text": "<explore>\nLooking at the given conditions:\nWe are given: What is the largest two-digit prime number that is also 1 less than a multiple of 8?\nLet's break down the constraints:\nWe need to find the largest two-digit prime number that satisfies the given condition.\n</explore>\n<conjecture>\nWe conjecture that the largest two-digit prime number that is 1 less than a multiple of 8 is the prime number closest to 100 that satisfies the condition.\n</conjecture>\n<test_edge_cases>\nLet's verify the constraints under extreme or boundary conditions:\n1. Checking if the prime number is indeed prime.\n2. Confirming that the number is the largest two-digit number satisfying the condition.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Prime Number Theorem): The number of primes less than or equal to n is approximately n / log(n).\n</lemma_isolate>\n<formal_proof>\nLet's examine the prime numbers less than 100: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97. Among these, the largest prime number that is 1 less than a multiple of 8 is 97, since 97 + 1 = 98, which is a multiple of 8. Therefore, the largest two-digit prime number that is also 1 less than a multiple of 8 is \\boxed{97}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given conditions:\nWe are given: What is the largest two-digit prime number that is also 1 less than a multiple of 8?\nLet's break down the constraints:\nWe need to find the largest two-digit prime number that satisfies the given condition.\n</explore>\n<conjecture>\nWe conjecture that the largest two-digit prime number that is 1 less than a multiple of 8 is the prime number closest to 100 that satisfies the condition.\n</conjecture>\n<test_edge_cases>\nLet's verify the constraints under extreme or boundary conditions:\n1. Checking if the prime number is indeed prime.\n2. Confirming that the number is the largest two-digit number satisfying the condition.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Prime Number Theorem): The number of primes less than or equal to n is approximately n / log(n).\n</lemma_isolate>\n<formal_proof>\nLet's examine the prime numbers less than 100: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97. Among these, the largest prime number that is 1 less than a multiple of 8 is 97, since 97 + 1 = 98, which is a multiple of 8. Therefore, the largest two-digit prime number that is also 1 less than a multiple of 8 is \\boxed{97}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "amc12_2023_b_p12",
+        "ground_truth": "150",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "150",
+            "is_correct": true,
+            "num_tokens": 514,
+            "tok_s": 12.950206783133565,
+            "completion_text": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: Five distinct books are to be distributed among 3 students such that each student gets at least one book. How many ways can this be done?\n</explore>\n<conjecture>\nWe conjecture that the problem can be solved by partitioning the books into groups and then distributing the groups among the students.\n</conjecture>\n<test_edge_cases>\nLet's verify the solution under edge cases:\n1. Checking if the solution holds when the number of books or students is minimized.\n2. Testing the parity of the result to ensure it matches the parity of the total number of books.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Inclusion-Exclusion Principle): The number of ways to distribute n distinct objects into k distinct boxes such that no box is empty is given by the Stirling number of the second kind, S(n, k), multiplied by k!.\n</lemma_isolate>\n<formal_proof>\nWe have five distinct books and three students. We need to distribute the books such that each student gets at least one book. We can use the Inclusion-Exclusion Principle to count the number of ways to distribute the books.\n\nFirst, we count the total number of ways to distribute the books without any restrictions. Each book can be given to any of the three students, so there are 3^5 = 243 ways to distribute the books.\n\nNext, we subtract the number of ways in which at least one student gets no book. There are 3 ways to choose which student gets no book, and for each choice, there are 2^5 = 32 ways to distribute the books among the remaining two students. So, there are 3 * 32 = 96 ways in which at least one student gets no book.\n\nHowever, we have double-counted the cases where two students get no book. There are 3 ways to choose which two students get no book, and for each choice, there is only 1 way to distribute the books among the remaining student. So, there are 3 * 1 = 3 ways in which two students get no book.\n\nTherefore, the number of ways to distribute the books such that each student gets at least one book is 243 - 96 + 3 = 150.\n\nThus, the final result is \\boxed{150}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: Five distinct books are to be distributed among 3 students such that each student gets at least one book. How many ways can this be done?\n</explore>\n<conjecture>\nWe conjecture that the problem can be solved by partitioning the books into groups and then distributing the groups among the students.\n</conjecture>\n<test_edge_cases>\nLet's verify the solution under edge cases:\n1. Checking if the solution holds when the number of books or students is minimized.\n2. Testing the parity of the result to ensure it matches the parity of the total number of books.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Inclusion-Exclusion Principle): The number of ways to distribute n distinct objects into k distinct boxes such that no box is empty is given by the Stirling number of the second kind, S(n, k), multiplied by k!.\n</lemma_isolate>\n<formal_proof>\nWe have five distinct books and three students. We need to distribute the books such that each student gets at least one book. We can use the Inclusion-Exclusion Principle to count the number of ways to distribute the books.\n\nFirst, we count the total number of ways to distribute the books without any restrictions. Each book can be given to any of the three students, so there are 3^5 = 243 ways to distribute the books.\n\nNext, we subtract the number of ways in which at least one student gets no book. There are 3 ways to choose which student gets no book, and for each choice, there are 2^5 = 32 ways to distribute the books among the remaining two students. So, there are 3 * 32 = 96 ways in which at least one student gets no book.\n\nHowever, we have double-counted the cases where two students get no book. There are 3 ways to choose which two students get no book, and for each choice, there is only 1 way to distribute the books among the remaining student. So, there are 3 * 1 = 3 ways in which two students get no book.\n\nTherefore, the number of ways to distribute the books such that each student gets at least one book is 243 - 96 + 3 = 150.\n\nThus, the final result is \\boxed{150}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p1",
+        "ground_truth": "124",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "124",
+            "is_correct": true,
+            "num_tokens": 346,
+            "tok_s": 12.92301410348374,
+            "completion_text": "<explore>\nLet's unpack the given: We are given that $r$ and $s$ are the roots of $x^2 - 14x + 36 = 0$. What is the value of $r^2 + s^2$?\n</explore>\n<conjecture>\nWe conjecture that Vieta's formulas will relate the sum and product of the roots to the coefficients of the quadratic.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Checking if the quadratic has real roots.\n2. Checking if the roots are distinct.\n3. Checking if the formula holds when the coefficients are zero.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Vieta's Formulas): For a quadratic equation $ax^2 + bx + c = 0$, the sum of the roots is $-b/a$ and the product of the roots is $c/a$.\n</lemma_isolate>\n<formal_proof>\nBy Vieta's formulas, we have $r + s = 14$ and $rs = 36$. We want to find $r^2 + s^2$. We can use the identity $r^2 + s^2 = (r + s)^2 - 2rs$. Substituting the values from Vieta's formulas, we get $r^2 + s^2 = 14^2 - 2 \\cdot 36 = 196 - 72 = 124$.\n\nThus, the final result is \\boxed{124}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given: We are given that $r$ and $s$ are the roots of $x^2 - 14x + 36 = 0$. What is the value of $r^2 + s^2$?\n</explore>\n<conjecture>\nWe conjecture that Vieta's formulas will relate the sum and product of the roots to the coefficients of the quadratic.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Checking if the quadratic has real roots.\n2. Checking if the roots are distinct.\n3. Checking if the formula holds when the coefficients are zero.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Vieta's Formulas): For a quadratic equation $ax^2 + bx + c = 0$, the sum of the roots is $-b/a$ and the product of the roots is $c/a$.\n</lemma_isolate>\n<formal_proof>\nBy Vieta's formulas, we have $r + s = 14$ and $rs = 36$. We want to find $r^2 + s^2$. We can use the identity $r^2 + s^2 = (r + s)^2 - 2rs$. Substituting the values from Vieta's formulas, we get $r^2 + s^2 = 14^2 - 2 \\cdot 36 = 196 - 72 = 124$.\n\nThus, the final result is \\boxed{124}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p2",
+        "ground_truth": "7/32",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "\\frac{7}{32}",
+            "is_correct": true,
+            "num_tokens": 463,
+            "tok_s": 12.810558520635913,
+            "completion_text": "<explore>\nLooking at the given: A coin is tossed 8 times. What is the probability of getting exactly 5 heads? Express your answer as a simplified fraction $\\frac{a}{b}$.\n</explore>\n<conjecture>\nWe conjecture that the probability of getting exactly 5 heads in 8 tosses is given by the binomial coefficient $\\binom{8}{5}$ times the probability of getting heads on a single toss raised to the power of 5, times the probability of getting tails on a single toss raised to the power of 3.\n</conjecture>\n<test_edge_cases>\nLet's verify this holds for edge cases:\n1. Checking if the parity matches: The total number of outcomes is $2^8$, and the number of ways to choose 5 heads out of 8 tosses is $\\binom{8}{5}$.\n2. Checking if the intermediate steps are valid: We are not dividing by zero or taking the square root of a negative number.\n3. Checking if the final result is a simplified fraction: The final fraction is in its simplest form.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Binomial Theorem): $(x+y)^n = \\sum_{k=0}^{n} \\binom{n}{k} x^{n-k} y^k$.\n</lemma_isolate>\n<formal_proof>\nThe probability of getting exactly 5 heads in 8 tosses is given by the binomial coefficient $\\binom{8}{5}$ times the probability of getting heads on a single toss raised to the power of 5, times the probability of getting tails on a single toss raised to the power of 3. This is equal to $\\binom{8}{5} \\left(\\frac{1}{2}\\right)^5 \\left(\\frac{1}{2}\\right)^3 = \\frac{8!}{5!3!} \\left(\\frac{1}{2}\\right)^8 = \\frac{56}{256} = \\frac{7}{32}$.\n\nThus, the final result is \\boxed{\\frac{7}{32}}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given: A coin is tossed 8 times. What is the probability of getting exactly 5 heads? Express your answer as a simplified fraction $\\frac{a}{b}$.\n</explore>\n<conjecture>\nWe conjecture that the probability of getting exactly 5 heads in 8 tosses is given by the binomial coefficient $\\binom{8}{5}$ times the probability of getting heads on a single toss raised to the power of 5, times the probability of getting tails on a single toss raised to the power of 3.\n</conjecture>\n<test_edge_cases>\nLet's verify this holds for edge cases:\n1. Checking if the parity matches: The total number of outcomes is $2^8$, and the number of ways to choose 5 heads out of 8 tosses is $\\binom{8}{5}$.\n2. Checking if the intermediate steps are valid: We are not dividing by zero or taking the square root of a negative number.\n3. Checking if the final result is a simplified fraction: The final fraction is in its simplest form.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Binomial Theorem): $(x+y)^n = \\sum_{k=0}^{n} \\binom{n}{k} x^{n-k} y^k$.\n</lemma_isolate>\n<formal_proof>\nThe probability of getting exactly 5 heads in 8 tosses is given by the binomial coefficient $\\binom{8}{5}$ times the probability of getting heads on a single toss raised to the power of 5, times the probability of getting tails on a single toss raised to the power of 3. This is equal to $\\binom{8}{5} \\left(\\frac{1}{2}\\right)^5 \\left(\\frac{1}{2}\\right)^3 = \\frac{8!}{5!3!} \\left(\\frac{1}{2}\\right)^8 = \\frac{56}{256} = \\frac{7}{32}$.\n\nThus, the final result is \\boxed{\\frac{7}{32}}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p4",
+        "ground_truth": "3",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "14",
+            "is_correct": false,
+            "num_tokens": 651,
+            "tok_s": 12.794986069634978,
+            "completion_text": "<explore>\nLooking at the given expression, we notice that the sum of factorials is being divided by 15. Let's examine the prime factorization of 15: $15 = 3 \\times 5$. This suggests that we should isolate the terms divisible by 3 and 5.\n</explore>\n<conjecture>\nWe conjecture that the sum of factorials can be decomposed into a sum of terms divisible by 3 and 5, with the remainder determined by the last non-zero term.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity: The parity of the sum matches the parity of the divisor.\n2. Checking the sign: The sign of the final result matches the sign of the last non-zero term.\n3. Checking the domain: The domain of the function is restricted to non-negative integers.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Wilson's Theorem): For a prime $p$, $(p-1)! \\equiv -1 \\pmod{p}$.\n</lemma_isolate>\n<formal_proof>\nWe can rewrite the sum as follows:\n\\begin{align*}\n1! + 2! + 3! + \\dots + 50! &= (1! + 2! + 3! + \\dots + 14!) + (15! + 16! + \\dots + 50!) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(1 + 16 + 16^2 + \\dots + 16^{35}) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(16^{36} - 1) / (16 - 1) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(16^{36} - 1) / 15.\n\\end{align*}\nSince $15!$ is divisible by 15, we only need to consider the remainder of $(1! + 2! + 3! + \\dots + 14!) + (16^{36} - 1) / 15$ modulo 15. By Wilson's Theorem, $14! \\equiv -1 \\pmod{15}$. Thus, $1! + 2! + 3! + \\dots + 14! \\equiv -1 \\pmod{15}$. Also, $16^{36} \\equiv 1 \\pmod{15}$, so $(16^{36} - 1) / 15 \\equiv 0 \\pmod{15}$. Therefore, the remainder is $-1 \\equiv \\boxed{14} \\pmod{15}$.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given expression, we notice that the sum of factorials is being divided by 15. Let's examine the prime factorization of 15: $15 = 3 \\times 5$. This suggests that we should isolate the terms divisible by 3 and 5.\n</explore>\n<conjecture>\nWe conjecture that the sum of factorials can be decomposed into a sum of terms divisible by 3 and 5, with the remainder determined by the last non-zero term.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity: The parity of the sum matches the parity of the divisor.\n2. Checking the sign: The sign of the final result matches the sign of the last non-zero term.\n3. Checking the domain: The domain of the function is restricted to non-negative integers.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Wilson's Theorem): For a prime $p$, $(p-1)! \\equiv -1 \\pmod{p}$.\n</lemma_isolate>\n<formal_proof>\nWe can rewrite the sum as follows:\n\\begin{align*}\n1! + 2! + 3! + \\dots + 50! &= (1! + 2! + 3! + \\dots + 14!) + (15! + 16! + \\dots + 50!) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(1 + 16 + 16^2 + \\dots + 16^{35}) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(16^{36} - 1) / (16 - 1) \\\\\n&= (1! + 2! + 3! + \\dots + 14!) + (15!)(16^{36} - 1) / 15.\n\\end{align*}\nSince $15!$ is divisible by 15, we only need to consider the remainder of $(1! + 2! + 3! + \\dots + 14!) + (16^{36} - 1) / 15$ modulo 15. By Wilson's Theorem, $14! \\equiv -1 \\pmod{15}$. Thus, $1! + 2! + 3! + \\dots + 14! \\equiv -1 \\pmod{15}$. Also, $16^{36} \\equiv 1 \\pmod{15}$, so $(16^{36} - 1) / 15 \\equiv 0 \\pmod{15}$. Therefore, the remainder is $-1 \\equiv \\boxed{14} \\pmod{15}$.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "aime_2023_ii_p6",
+        "ground_truth": "35",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "35",
+            "is_correct": true,
+            "num_tokens": 455,
+            "tok_s": 12.80132303995299,
+            "completion_text": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: In rectangle $ABCD$, $AB = 8$ and $BC = 6$. A point $P$ is chosen inside the rectangle such that the distances from $P$ to the four sides are integers. How many such points $P$ exist?\nLet's break down the problem into manageable parts:\nWe need to find the number of integer solutions for the distances from $P$ to the sides of the rectangle.\n</explore>\n<conjecture>\nWe conjecture that the number of integer solutions is determined by the number of lattice points inside the rectangle.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity of the coordinates.\n2. Testing the minimum and maximum values.\n3. Verifying the solution does not violate the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Triples): A Pythagorean triple consists of three positive integers $a$, $b$, and $c$, such that $a^2 + b^2 = c^2$.\n</lemma_isolate>\n<formal_proof>\nLet $x$ and $y$ be the distances from $P$ to sides $AB$ and $AD$, respectively. Since $P$ is inside the rectangle, $0 < x < 8$ and $0 < y < 6$. The distances from $P$ to the other sides are $8 - x$ and $6 - y$. Since these distances are integers, $x$ and $y$ must be integers. The number of integer solutions for $x$ and $y$ is the number of lattice points inside the rectangle. The number of lattice points on the boundary is $2(8 + 6) - 4 = 24$. The total number of lattice points inside the rectangle is $(8 - 1)(6 - 1) = 35$. Therefore, the number of points $P$ that satisfy the given conditions is $35$.\n\nThus, the final result is \\boxed{35}.\n</formal_proof>",
+            "completion_snippet": "<explore>\nLet's unpack the constraints and identify the key variables:\nWe are given: In rectangle $ABCD$, $AB = 8$ and $BC = 6$. A point $P$ is chosen inside the rectangle such that the distances from $P$ to the four sides are integers. How many such points $P$ exist?\nLet's break down the problem into manageable parts:\nWe need to find the number of integer solutions for the distances from $P$ to the sides of the rectangle.\n</explore>\n<conjecture>\nWe conjecture that the number of integer solutions is determined by the number of lattice points inside the rectangle.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the parity of the coordinates.\n2. Testing the minimum and maximum values.\n3. Verifying the solution does not violate the given constraints.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Pythagorean Triples): A Pythagorean triple consists of three positive integers $a$, $b$, and $c$, such that $a^2 + b^2 = c^2$.\n</lemma_isolate>\n<formal_proof>\nLet $x$ and $y$ be the distances from $P$ to sides $AB$ and $AD$, respectively. Since $P$ is inside the rectangle, $0 < x < 8$ and $0 < y < 6$. The distances from $P$ to the other sides are $8 - x$ and $6 - y$. Since these distances are integers, $x$ and $y$ must be integers. The number of integer solutions for $x$ and $y$ is the number of lattice points inside the rectangle. The number of lattice points on the boundary is $2(8 + 6) - 4 = 24$. The total number of lattice points inside the rectangle is $(8 - 1)(6 - 1) = 35$. Therefore, the number of points $P$ that satisfy the given conditions is $35$.\n\nThus, the final result is \\boxed{35}.\n</formal_proof>"
+          }
+        ]
+      }
+    ]
+  },
+  "degradation_metrics": {
+    "num_problems": 10,
+    "adherence_rate": 0.0,
+    "pass_1_rate": 0.8,
+    "best_of_n_rate": 0.8,
+    "avg_tok_s": 12.82818881616513,
+    "total_tokens": 3443,
+    "total_time_s": 268.3933055039997,
+    "results": [
+      {
+        "problem_id": "sanity_01",
+        "ground_truth": "85",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "85",
+            "is_correct": true,
+            "num_tokens": 228,
+            "tok_s": 12.362002320849422,
+            "completion_text": "<explore>\nLooking at the given expression, let's isolate the key components:\nWe are given: What is 37 + 48?\nLet's break down the expression into its prime factors.\n</explore>\n<conjecture>\nWe conjecture that the prime factorization of the sum is the product of the prime factors of the individual numbers.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on edge cases:\n1. Checking if the prime factors are unique.\n2. Verifying the parity (even or odd) of the prime factors.\n3. Testing the divisibility by small primes.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nWe have 37 + 48 = 85. The prime factorization of 85 is 5 * 17. Therefore, the final result is \\boxed{85}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given expression, let's isolate the key components:\nWe are given: What is 37 + 48?\nLet's break down the expression into its prime factors.\n</explore>\n<conjecture>\nWe conjecture that the prime factorization of the sum is the product of the prime factors of the individual numbers.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on edge cases:\n1. Checking if the prime factors are unique.\n2. Verifying the parity (even or odd) of the prime factors.\n3. Testing the divisibility by small primes.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nWe have 37 + 48 = 85. The prime factorization of 85 is 5 * 17. Therefore, the final result is \\boxed{85}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_02",
+        "ground_truth": "210",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "210",
+            "is_correct": true,
+            "num_tokens": 288,
+            "tok_s": 12.862263131161328,
+            "completion_text": "<explore>\nLooking at the given expression, let's isolate the key elements:\nWe are given: What is 15 * 14?\nLet's break down the factors and identify the prime factorization.\n</explore>\n<conjecture>\nWe conjecture that the prime factorization of the product will reveal the prime factors and their multiplicities.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Testing small prime factors: 2, 3, 5.\n2. Testing the parity: the product is even.\n3. Testing the divisibility by 3: the sum of digits is divisible by 3.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nBy the Fundamental Theorem of Arithmetic, the prime factorization of 15 is 3 * 5, and the prime factorization of 14 is 2 * 7. Therefore, 15 * 14 = (3 * 5) * (2 * 7) = 2 * 3 * 5 * 7 = 210.\n\nThus, the final result is \\boxed{210}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given expression, let's isolate the key elements:\nWe are given: What is 15 * 14?\nLet's break down the factors and identify the prime factorization.\n</explore>\n<conjecture>\nWe conjecture that the prime factorization of the product will reveal the prime factors and their multiplicities.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Testing small prime factors: 2, 3, 5.\n2. Testing the parity: the product is even.\n3. Testing the divisibility by 3: the sum of digits is divisible by 3.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nBy the Fundamental Theorem of Arithmetic, the prime factorization of 15 is 3 * 5, and the prime factorization of 14 is 2 * 7. Therefore, 15 * 14 = (3 * 5) * (2 * 7) = 2 * 3 * 5 * 7 = 210.\n\nThus, the final result is \\boxed{210}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_03",
+        "ground_truth": "7",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "7",
+            "is_correct": true,
+            "num_tokens": 185,
+            "tok_s": 13.002628302015552,
+            "completion_text": "<explore>\nLooking at the given equation: 3x - 7 = 14.\n</explore>\n<conjecture>\nWe conjecture that isolating x will reveal the solution.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Testing non-zero values confirms the algebraic manipulation.\n2. Checking for division by zero or undefined expressions.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Linear Equation Isolation): For a linear equation ax + b = c, solving for x yields x = (c - b) / a.\n</lemma_isolate>\n<formal_proof>\nApplying the isolation lemma, we have:\n3x - 7 = 14\n3x = 21\nx = 7\nThus, the solution is \\boxed{7}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given equation: 3x - 7 = 14.\n</explore>\n<conjecture>\nWe conjecture that isolating x will reveal the solution.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Testing non-zero values confirms the algebraic manipulation.\n2. Checking for division by zero or undefined expressions.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Linear Equation Isolation): For a linear equation ax + b = c, solving for x yields x = (c - b) / a.\n</lemma_isolate>\n<formal_proof>\nApplying the isolation lemma, we have:\n3x - 7 = 14\n3x = 21\nx = 7\nThus, the solution is \\boxed{7}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_04",
+        "ground_truth": "361",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "361",
+            "is_correct": true,
+            "num_tokens": 218,
+            "tok_s": 12.798173804580358,
+            "completion_text": "<explore>\nLet's unpack the given: We are given: What is the square of 19? We are asked to find the square of 19.\n</explore>\n<conjecture>\nWe conjecture that the square of 19 is the product of 19 and itself.\n</conjecture>\n<test_edge_cases>\nLet's check the boundary conditions: Testing the edge cases where the variables take extreme values.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Difference of Squares): a^2 - b^2 = (a + b)(a - b).\n</lemma_isolate>\n<formal_proof>\nWe have: (19)^2 = (10 + 9)^2 = (10)^2 + 2(10)(9) + (9)^2 = 100 + 180 + 81 = 361.\nThus, the square of 19 is \\boxed{361}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given: We are given: What is the square of 19? We are asked to find the square of 19.\n</explore>\n<conjecture>\nWe conjecture that the square of 19 is the product of 19 and itself.\n</conjecture>\n<test_edge_cases>\nLet's check the boundary conditions: Testing the edge cases where the variables take extreme values.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Difference of Squares): a^2 - b^2 = (a + b)(a - b).\n</lemma_isolate>\n<formal_proof>\nWe have: (19)^2 = (10 + 9)^2 = (10)^2 + 2(10)(9) + (9)^2 = 100 + 180 + 81 = 361.\nThus, the square of 19 is \\boxed{361}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_05",
+        "ground_truth": "18",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": true,
+                "conjecture": false,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 266,
+            "tok_s": 12.781571413015548,
+            "completion_text": "<explore>\nLooking at the prime factorizations:\n54 = 2 \\times 3^3\n72 = 2^3 \\times 3^2\n</explore>\n<conjecture>\nWe conjecture that the GCD is the product of the common prime factors with the minimum exponent.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for small prime factors:\n1. Testing small primes: 2 and 3.\n2. Testing the parity: both numbers are even.\n3. Testing the divisibility by 3: both numbers are divisible by 3.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nThe prime factorizations are:\n54 = 2 \\times 3^3\n72 = 2^3 \\times 3^2\nThe common prime factors are 2 and 3. The minimum exponent for 2 is 1, and for 3 is 2. Therefore, the GCD is 2^1 \\times 3^2 = 18.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the prime factorizations:\n54 = 2 \\times 3^3\n72 = 2^3 \\times 3^2\n</explore>\n<conjecture>\nWe conjecture that the GCD is the product of the common prime factors with the minimum exponent.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for small prime factors:\n1. Testing small primes: 2 and 3.\n2. Testing the parity: both numbers are even.\n3. Testing the divisibility by 3: both numbers are divisible by 3.\n</test_edge_cases>\n*</conjecture>\n<lemma_isolate>\nLemma (Fundamental Theorem of Arithmetic): Every integer greater than 1 can be uniquely represented as a product of prime numbers.\n</lemma_isolate>\n<formal_proof>\nThe prime factorizations are:\n54 = 2 \\times 3^3\n72 = 2^3 \\times 3^2\nThe common prime factors are 2 and 3. The minimum exponent for 2 is 1, and for 3 is 2. Therefore, the GCD is 2^1 \\times 3^2 = 18.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_06",
+        "ground_truth": "1024",
+        "pass_at_1": false,
+        "best_of_n": false,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": false,
+                "test_edge_cases": false,
+                "lemma_isolate": false,
+                "formal_proof": false
+              }
+            },
+            "pred_boxed": null,
+            "is_correct": false,
+            "num_tokens": 1024,
+            "tok_s": 12.747380842857144,
+            "completion_text": "<explore>\nLet's break down the problem into smaller steps:\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10",
+            "completion_snippet": "<explore>\nLet's break down the problem into smaller steps:\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10.\nLet's isolate the key variables and constraints.\nWe are given: Evaluate 2^10"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_07",
+        "ground_truth": "6",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "6",
+            "is_correct": true,
+            "num_tokens": 313,
+            "tok_s": 12.79814017642852,
+            "completion_text": "<explore>\nLet's unpack the given: We are given a triangle with sides 3, 4, 5 and asked to find its area.\n</explore>\n<conjecture>\nWe conjecture that the area of a triangle with sides a, b, c is given by Heron's formula: Area = sqrt(s(s-a)(s-b)(s-c)), where s is the semiperimeter (s = (a+b+c)/2).\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Testing if the formula breaks when the triangle is degenerate (all sides equal).\n2. Testing if the formula holds for a right triangle (3-4-5).\n3. Testing if the formula holds for a non-degenerate triangle.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Heron's Formula): The area of a triangle with sides a, b, c is given by Area = sqrt(s(s-a)(s-b)(s-c)), where s is the semiperimeter (s = (a+b+c)/2).\n</lemma_isolate>\n<formal_proof>\nLet s = (3+4+5)/2 = 6. Then, the area is sqrt(6(6-3)(6-4)(6-5)) = sqrt(6*3*2*1) = sqrt(36) = 6. Therefore, the area is \\boxed{6}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given: We are given a triangle with sides 3, 4, 5 and asked to find its area.\n</explore>\n<conjecture>\nWe conjecture that the area of a triangle with sides a, b, c is given by Heron's formula: Area = sqrt(s(s-a)(s-b)(s-c)), where s is the semiperimeter (s = (a+b+c)/2).\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Testing if the formula breaks when the triangle is degenerate (all sides equal).\n2. Testing if the formula holds for a right triangle (3-4-5).\n3. Testing if the formula holds for a non-degenerate triangle.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Heron's Formula): The area of a triangle with sides a, b, c is given by Area = sqrt(s(s-a)(s-b)(s-c)), where s is the semiperimeter (s = (a+b+c)/2).\n</lemma_isolate>\n<formal_proof>\nLet s = (3+4+5)/2 = 6. Then, the area is sqrt(6(6-3)(6-4)(6-5)) = sqrt(6*3*2*1) = sqrt(36) = 6. Therefore, the area is \\boxed{6}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_08",
+        "ground_truth": "720",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "720",
+            "is_correct": true,
+            "num_tokens": 296,
+            "tok_s": 13.074259708741153,
+            "completion_text": "<explore>\nLooking at the given information, we can isolate the key variables and constraints:\nWe are given: What is the sum of the angles in a hexagon in degrees?\nLet's break down the problem into manageable parts:\nWe need to find the sum of the interior angles of a hexagon.\n</explore>\n<conjecture>\nWe conjecture that the sum of the interior angles of a polygon with n sides is (n-2) * 180 degrees.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on the boundary conditions:\n1. Checking if the formula holds for a triangle (n=3): (3-2) * 180 = 180 degrees, which is correct.\n2. Testing the parity: the formula holds for both even and odd values of n.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Interior Angle Sum): The sum of the interior angles of a polygon with n sides is (n-2) * 180 degrees.\n</lemma_isolate>\n<formal_proof>\nBy the Interior Angle Sum Lemma, the sum of the interior angles of a hexagon (n=6) is (6-2) * 180 = 4 * 180 = 720 degrees.\n\nThus, the final result is \\boxed{720}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLooking at the given information, we can isolate the key variables and constraints:\nWe are given: What is the sum of the angles in a hexagon in degrees?\nLet's break down the problem into manageable parts:\nWe need to find the sum of the interior angles of a hexagon.\n</explore>\n<conjecture>\nWe conjecture that the sum of the interior angles of a polygon with n sides is (n-2) * 180 degrees.\n</conjecture>\n<test_edge_cases>\nLet's test this conjecture on the boundary conditions:\n1. Checking if the formula holds for a triangle (n=3): (3-2) * 180 = 180 degrees, which is correct.\n2. Testing the parity: the formula holds for both even and odd values of n.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Interior Angle Sum): The sum of the interior angles of a polygon with n sides is (n-2) * 180 degrees.\n</lemma_isolate>\n<formal_proof>\nBy the Interior Angle Sum Lemma, the sum of the interior angles of a hexagon (n=6) is (6-2) * 180 = 4 * 180 = 720 degrees.\n\nThus, the final result is \\boxed{720}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_09",
+        "ground_truth": "16",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "16",
+            "is_correct": true,
+            "num_tokens": 243,
+            "tok_s": 12.801500664439123,
+            "completion_text": "<explore>\nLet's unpack the given expression: Factor x^2 - 9 and evaluate it at x = 5.\n</explore>\n<conjecture>\nWe conjecture that factoring the quadratic expression will simplify the evaluation.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the domain: We ensure the expression is well-defined for all real x.\n2. Testing small values: Confirming the result holds for small positive and negative values.\n3. Checking for division by zero: We ensure the denominator is non-zero.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Difference of Squares): a^2 - b^2 = (a + b)(a - b).\n</lemma_isolate>\n<formal_proof>\nWe factor the quadratic expression: x^2 - 9 = (x + 3)(x - 3). Evaluating at x = 5, we get (5 + 3)(5 - 3) = 8 \\cdot 2 = 16. Therefore, the final result is \\boxed{16}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given expression: Factor x^2 - 9 and evaluate it at x = 5.\n</explore>\n<conjecture>\nWe conjecture that factoring the quadratic expression will simplify the evaluation.\n</conjecture>\n<test_edge_cases>\nLet's verify the behavior at the boundaries:\n1. Checking the domain: We ensure the expression is well-defined for all real x.\n2. Testing small values: Confirming the result holds for small positive and negative values.\n3. Checking for division by zero: We ensure the denominator is non-zero.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Difference of Squares): a^2 - b^2 = (a + b)(a - b).\n</lemma_isolate>\n<formal_proof>\nWe factor the quadratic expression: x^2 - 9 = (x + 3)(x - 3). Evaluating at x = 5, we get (5 + 3)(5 - 3) = 8 \\cdot 2 = 16. Therefore, the final result is \\boxed{16}.\n</formal_proof>\n"
+          }
+        ]
+      },
+      {
+        "problem_id": "sanity_10",
+        "ground_truth": "5",
+        "pass_at_1": true,
+        "best_of_n": true,
+        "rollouts": [
+          {
+            "sample_idx": 0,
+            "adherence": {
+              "adherent": false,
+              "all_tags_present": false,
+              "strictly_ordered": false,
+              "tags": {
+                "explore": false,
+                "conjecture": true,
+                "test_edge_cases": true,
+                "lemma_isolate": true,
+                "formal_proof": true
+              }
+            },
+            "pred_boxed": "5",
+            "is_correct": true,
+            "num_tokens": 382,
+            "tok_s": 13.13759348767238,
+            "completion_text": "<explore>\nLet's unpack the given: We are given: What is the remainder when 125 is divided by 8? We are asked to find the remainder when 125 is divided by 8.\n</explore>\n<conjecture>\nWe conjecture that the remainder is the difference between the dividend and the largest multiple of the divisor that is less than the dividend.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Testing if the division is exact: No, the division is not exact.\n2. Testing if the divisor is prime: Yes, the divisor is prime.\n3. Testing if the dividend is a multiple of the divisor: No, the dividend is not a multiple of the divisor.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Division Algorithm): For any integers a and b, with b > 0, there exist unique integers q and r such that a = bq + r and 0 \u2264 r < b.\n</lemma_isolate>\n<formal_proof>\nBy the Division Algorithm, we can write 125 = 8q + r, where 0 \u2264 r < 8. Solving for r, we get r = 125 - 8q. Since 0 \u2264 r < 8, we have 0 \u2264 125 - 8q < 8. Solving this inequality, we find that 15 \u2264 q < 16. Since q is an integer, we have q = 15. Substituting this value back into the equation, we get r = 125 - 8(15) = 5. Therefore, the remainder when 125 is divided by 8 is \\boxed{5}.\n</formal_proof>\n",
+            "completion_snippet": "<explore>\nLet's unpack the given: We are given: What is the remainder when 125 is divided by 8? We are asked to find the remainder when 125 is divided by 8.\n</explore>\n<conjecture>\nWe conjecture that the remainder is the difference between the dividend and the largest multiple of the divisor that is less than the dividend.\n</conjecture>\n<test_edge_cases>\nLet's check if this holds for edge cases:\n1. Testing if the division is exact: No, the division is not exact.\n2. Testing if the divisor is prime: Yes, the divisor is prime.\n3. Testing if the dividend is a multiple of the divisor: No, the dividend is not a multiple of the divisor.\n</test_edge_cases>\n*</explore>\n<lemma_isolate>\nLemma (Division Algorithm): For any integers a and b, with b > 0, there exist unique integers q and r such that a = bq + r and 0 \u2264 r < b.\n</lemma_isolate>\n<formal_proof>\nBy the Division Algorithm, we can write 125 = 8q + r, where 0 \u2264 r < 8. Solving for r, we get r = 125 - 8q. Since 0 \u2264 r < 8, we have 0 \u2264 125 - 8q < 8. Solving this inequality, we find that 15 \u2264 q < 16. Since q is an integer, we have q = 15. Substituting this value back into the equation, we get r = 125 - 8(15) = 5. Therefore, the remainder when 125 is divided by 8 is \\boxed{5}.\n</formal_proof>\n"
+          }
+        ]
+      }
+    ]
+  },
+  "peak_vram_mb": 3085.27734375,
+  "device": "cuda"
+}

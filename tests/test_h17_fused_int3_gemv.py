@@ -22,6 +22,8 @@ try:
 except ImportError:
     HAS_TORCH = False
 
+import pytest
+
 
 # ==============================================================================
 # INT3 Quantization & Packing Engine
@@ -475,16 +477,13 @@ def cpu_ref_h17_gemv(A_np, packed, scales_gn, zps_gn, group_size=100):
 def test_h17_gpu_extension():
     print("\n=== [ON-GPU EXTENSION TEST] H17 Fused INT3 CUDA Extension ===")
     if not HAS_TORCH or not torch.cuda.is_available():
-        print("  [SKIP] CUDA GPU not available - skipping live GPU kernel call.")
-        return
+        pytest.skip("CUDA GPU not available - skipping live GPU kernel call.")
     try:
         import t4_kernels
     except ImportError:
-        print("  [SKIP] t4_kernels PyTorch C++ extension not compiled - skipping live GPU call.")
-        return
+        pytest.skip("t4_kernels PyTorch C++ extension not compiled - skipping live GPU call.")
     if not hasattr(t4_kernels, 'fused_h17_gemv_s3'):
-        print("  [SKIP] fused_h17_gemv_s3 missing from t4_kernels.")
-        return
+        pytest.skip("fused_h17_gemv_s3 missing from t4_kernels.")
 
     # Deterministic, NON-ZERO data. K=200 -> 2 quant groups (group=100), which
     # exercises the kernel's per-group scale/zp refetch path. K must be a
@@ -542,6 +541,11 @@ def main():
         
         print("\n" + "="*80)
         print("ALL TESTS PASSED SUCCESSFULLY! (0 Errors)")
+        print("="*80)
+    except pytest.skip.Exception as e:
+        print(f"\n[SKIP] GPU test cleanly skipped: {e}")
+        print("\n" + "="*80)
+        print("HOST TESTS PASSED (GPU tests cleanly skipped)")
         print("="*80)
         sys.exit(0)
     except Exception as e:

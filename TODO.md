@@ -54,12 +54,43 @@ identity. Every claim stays machine-verifiable.
   - Cold-start SFT successfully conditions structured tag exploration and prevents basic arithmetic breakdown (60% vs 10% sanity pass).
   - Longer reasoning traces in SFT explore thoroughly but consume more tokens, occasionally hitting the 1024-token cap on lengthy contest proofs. This establishes the exact policy initialization required for **Phase 2 RL (GRPO)** to optimize reward, accuracy, and token efficiency.
 
-## 5. Conjecture loop (stretch, rides the same kernels)
+## 5. Multi-GPU Kernel Sharding & Big Chalk (Qwen2.5-Math-7B) Infrastructure (DONE ✅ 2026-09-06)
+
+- **Goal:** Scale cold-start reasoning from 1.5B to `Qwen2.5-Math-7B` on dual Tesla T4 GPUs (32 GB total VRAM on Kaggle) with 2048-token context.
+- **Kernel & Stream Safety Fixes:**
+  - Audited all 13 exported C++/CUDA bindings in `src/bindings.cpp`.
+  - Added strict `at::cuda::CUDAGuard` device switching and per-device stream binding (`c10::cuda::getCurrentCUDAStream(tensor.device().index())`) across all entry points, eliminating cross-device memory faults.
+- **Empirical Sharding Benchmark (Intra-Layer TP=2 vs Inter-Layer PP=2):**
+  - **PCIe Gen3 Latency:** All-Reduce takes 18.5 µs per call, while P2P boundary transfer takes 4.2 µs.
+  - **Per-Token Communication Overhead on 28 Layers:**
+    - Tensor Parallelism (56 All-Reduces / token): **1.036 ms/token** of PCIe synchronization latency.
+    - Pipeline Parallelism (1 boundary transfer / token): **0.004 ms/token** (246.7x less PCIe traffic).
+  - **Architecture Decision:**
+    - Deploy **Pipeline Parallelism (PP=2)** for single-token autoregressive decode to avoid 56 PCIe sync stalls per token.
+    - Deploy **Tensor Parallelism (TP=2)** (`TPParallelMLP`, `TPParallelAttention`) for batched prefill and training passes.
+    - Unified both under dynamic context manager `CPMultiGPUInferenceScope(mode='tp' | 'pp')`.
+- **Dual-T4 Execution Artifacts:**
+  - Added Kaggle dual-T4 runner notebook: `kaggle_run_big_chalk_7b.ipynb`.
+  - Added multi-GPU bash runner: `scripts/run_kaggle_7b_sft.sh`.
+  - Full test suite: 132 tests passing across `test_multi_gpu_guard.py`, `test_sharding_tp_correctness.py`, `test_sharding_pp_correctness.py`, and `test_e2e_multigpu_suite.py`.
+
+## 5.5. Baby-Chalk (1.5B) RL Post-Training + Scaffolding Fix (DONE ✅ 2026-09-17, audited 2026-09-23)
+
+- **Phase 2 GRPO on physical T4:** 30 steps, cursor-style modified GRPO loss, Rottweiler SymPy verifier, calibrated abstention, 4-gram repetition stopping. Peak VRAM 6.39 GB, 0 OOMs.
+- **Results vs SFT-only / base:** Contest Pass@1 25.0% → **56.2%** (9/16, matches base); Grounding Sanity **80.0%** (8/10, 8x base); −45.7% tokens; geometry 3/3. Report: `docs/BABY_CHALK_RL_RESULTS.md`.
+- **Scaffolding fix (2026-09-17 follow-up):** strict stray-tag rejection (`*</explore>` etc.) with −1.5 format penalty at verifier/FSM/benchmark levels; `LemmaConsistencyValidator` premise checks (Wilson's on composite modulus → −1.5); all 605 seeds curated (100% well-formed ordered scaffolds, 0 boilerplate). **Victory audit PASS** (`docs/VICTORY_AUDIT_BABY_CHALK_FIX.md`): 47/47 gate tests, 87/87 extended suite, benchmark gates held.
+
+## 6. Big-Chalk (7B) RL Post-Training (NEXT — infra done, training pending)
+
+- Infrastructure from §5 is complete (device guards, PP=2/TP=2 sharding, Kaggle SFT runner).
+- Remaining: RL training runner for 7B (cursor-style GRPO + verifier stack under dual-T4 VRAM budget), then external AIME/AMC eval with the same gates as Baby-Chalk (≥56.2% Pass@1, ≥80% sanity, 0 malformed tags).
+
+## 7. Conjecture loop (stretch, rides the same kernels)
 
 - Old-model sees post-cutoff mathlib/Lean-Workbook + recent arXiv, proposes
   lemmas, Lean 4 checks truth, embeddings check novelty.
 - Machine-verified = credible. RL rewards on Lean-pass + novelty + abstain.
-  Only after 1-4 land.
+  Only after 1-5 land.
 
 ---
 

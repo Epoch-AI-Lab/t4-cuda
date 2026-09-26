@@ -21,9 +21,10 @@ setup(
                 os.path.join(src_dir, 'kernels/fused_sft_lora_backward.cu'),
             ],
             extra_compile_args={
-                'cxx': ['-O3'],
+                'cxx': ['-O3', '-std=c++17'],
                 'nvcc': [
                     '-O3',
+                    '-std=c++17',
                     '-gencode=arch=compute_75,code=sm_75',
                     '--use_fast_math',
                     '-Xptxas=-v',

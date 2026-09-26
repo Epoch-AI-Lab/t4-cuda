@@ -1,0 +1,73 @@
+=== check profilers ===
+/usr/local/cuda/bin/ncu
+NVIDIA (R) Nsight Compute Command Line Profiler
+Copyright (c) 2018-2025 NVIDIA Corporation
+/bin/sh: 1: nsys: not found
+
+workload part 1 written
+workload complete
+=== sanity run workload ===
+[workload] GPU: Tesla T4
+[workload] H6 fused_backward_gemm_adamw done
+[workload] H17 fused_h17_gemv_s3 done, C shape (1, 2048)
+[workload] ALL DONE
+
+=== captures ===
+
+$ ncu -f -o /content/traces/h6_fused_adamw_t4 --set basic python3 /content/traces/profile_workload.py
+[workload] H6 fused_backward_gemm_adamw done
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 9: 0%....50%....100% - 9 passes
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 10: 0%....50%....100% - 9 passes
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 11: 0%....50%....100% - 9 passes
+[workload] H17 fused_h17_gemv_s3 done, C shape (1, 2048)
+[workload] ALL DONE
+==PROF== Disconnected from process 12018
+==PROF== Report: /content/traces/h6_fused_adamw_t4.ncu-rep
+
+
+$ ncu -f -o /content/traces/h17_w4a16_gemv_t4 --set basic python3 /content/traces/profile_workload.py
+[workload] H6 fused_backward_gemm_adamw done
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 9: 0%....50%....100% - 9 passes
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 10: 0%....50%....100% - 9 passes
+==PROF== Profiling "fused_h17_gemv_s3_warp_specia..." - 11: 0%....50%....100% - 9 passes
+[workload] H17 fused_h17_gemv_s3 done, C shape (1, 2048)
+[workload] ALL DONE
+==PROF== Disconnected from process 12266
+==PROF== Report: /content/traces/h17_w4a16_gemv_t4.ncu-rep
+
+
+$ /opt/nvidia/nsight-compute/2025.1.1/host/target-linux-x64/nsys profile -f true -o /content/traces/t4_kernels_timeline python3 /content/traces/profile_workload.py
+[workload] H6 fused_backward_gemm_adamw done
+[workload] H17 fused_h17_gemv_s3 done, C shape (1, 2048)
+[workload] ALL DONE
+Collecting data...
+Generating '/tmp/nsys-report-0ec5.qdstrm'
+
+[1/1] [0%                          ] t4_kernels_timeline.nsys-rep
+[1/1] [0%                          ] t4_kernels_timeline.nsys-rep
+[1/1] [9%                          ] t4_kernels_timeline.nsys-rep
+[1/1] [10%                         ] t4_kernels_timeline.nsys-rep
+[1/1] [11%                         ] t4_kernels_timeline.nsys-rep
+[1/1] [12%                         ] t4_kernels_timeline.nsys-rep
+[1/1] [13%                         ] t4_kernels_timeline.nsys-rep
+[1/1] [14%                         ] t4_kernels_timeline.nsys-rep
+[1/1] [=15%                        ] t4_kernels_timeline.nsys-rep
+[1/1] [=17%                        ] t4_kernels_timeline.nsys-rep
+[1/1] [==18%                       ] t4_kernels_timeline.nsys-rep
+[1/1] [==20%                       ] t4_kernels_timeline.nsys-rep
+[1/1] [==21%                       ] t4_kernels_timeline.nsys-rep
+[1/1] [===22%                      ] t4_kernels_timeline.nsys-rep
+[1/1] [===23%                      ] t4_kernels_timeline.nsys-rep
+[1/1] [===========52%              ] t4_kernels_timeline.nsys-rep
+[1/1] [=============59%            ] t4_kernels_timeline.nsys-rep
+[1/1] [========================100%] t4_kernels_timeline.nsys-rep
+[1/1] [========================100%] t4_kernels_timeline.nsys-rep
+Generated:
+    /content/traces/t4_kernels_timeline.nsys-rep
+
+
+=== TRACE CAPTURE DONE ===
+-rw-r--r-- 1 root root 7641756 Sep  9 17:35 /content/traces/h17_w4a16_gemv_t4.ncu-rep
+-rw-r--r-- 1 root root 7641756 Sep  9 17:35 /content/traces/h6_fused_adamw_t4.ncu-rep
+-rw-rw-r-- 1 root root  527636 Sep  9 17:36 /content/traces/t4_kernels_timeline.nsys-rep
+
