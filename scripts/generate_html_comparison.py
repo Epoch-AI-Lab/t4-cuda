@@ -74,10 +74,10 @@ def build_comparison_html(
         b_badge_text = "PASS" if p["base_pass"] else "FAIL"
 
         s_tags_html = "".join(
-            f\x27<span class="tag-pill {"tag-active" if val else "tag-inactive"}">{tag}</span>\x27
+            f'<span class="tag-pill {"tag-active" if val else "tag-inactive"}">{tag}</span>'
             for tag, val in p["sft_tags"].items()
         )
-        b_tags_html = \x27<span class="tag-pill tag-inactive">0 tags generated</span>\x27
+        b_tags_html = '<span class="tag-pill tag-inactive">0 tags generated</span>'
 
         diff_class = ""
         if p["sft_pass"] and not p["base_pass"]:
@@ -93,23 +93,23 @@ def build_comparison_html(
         prob_type_class = "type-contest" if p["type"] == "contest" else "type-sanity"
 
         card = f"""
-        <div class="problem-card {p[\x27type\x27]} {diff_class}" data-id="{p[\x27id\x27]}">
+        <div class="problem-card {p['type']} {diff_class}" data-id="{p['id']}">
             <div class="card-header">
                 <div class="meta-left">
                     <span class="index-num">#{idx:02d}</span>
-                    <span class="prob-id">{html.escape(p[\x27id\x27])}</span>
+                    <span class="prob-id">{html.escape(p['id'])}</span>
                     <span class="type-pill {prob_type_class}">{prob_type_badge}</span>
-                    <span class="disc-pill">{html.escape(p[\x27discipline\x27])}</span>
+                    <span class="disc-pill">{html.escape(p['discipline'])}</span>
                 </div>
                 <div class="meta-right">
                     <span class="gt-label">Gold Answer:</span>
-                    <span class="gt-value">\\boxed{{{html.escape(str(p[\x27ground_truth\x27]))}}}</span>
+                    <span class="gt-value">\\boxed{{{html.escape(str(p['ground_truth']))}}}</span>
                 </div>
             </div>
 
             <div class="problem-statement">
                 <div class="section-title">Problem Statement</div>
-                <p>{html.escape(p[\x27problem\x27])}</p>
+                <p>{html.escape(p['problem'])}</p>
             </div>
 
             <div class="comparison-grid">
@@ -125,7 +125,7 @@ def build_comparison_html(
                     <div class="answer-row">
                         <span class="ans-label">Boxed Answer:</span>
                         <span class="ans-value {s_badge_class}">
-                            {html.escape(str(p[\x27sft_pred\x27])) if p[\x27sft_pred\x27] is not None else \x27<span class="none-val">None (truncated/missing)</span>\x27}
+                            {html.escape(str(p['sft_pred'])) if p['sft_pred'] is not None else '<span class="none-val">None (truncated/missing)</span>'}
                         </span>
                     </div>
 
@@ -135,13 +135,13 @@ def build_comparison_html(
                     </div>
 
                     <div class="metric-row">
-                        <span>Tokens: <strong>{p[\x27sft_toks\x27]}</strong></span>
-                        <span>Speed: <strong>{p[\x27sft_tok_s\x27]:.1f} tok/s</strong></span>
+                        <span>Tokens: <strong>{p['sft_toks']}</strong></span>
+                        <span>Speed: <strong>{p['sft_tok_s']:.1f} tok/s</strong></span>
                     </div>
 
                     <div class="snippet-box">
                         <div class="snippet-label">Completion Preview:</div>
-                        <pre><code>{html.escape(p[\x27sft_snippet\x27])}</code></pre>
+                        <pre><code>{html.escape(p['sft_snippet'])}</code></pre>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ def build_comparison_html(
                     <div class="answer-row">
                         <span class="ans-label">Boxed Answer:</span>
                         <span class="ans-value {b_badge_class}">
-                            {html.escape(str(p[\x27base_pred\x27])) if p[\x27base_pred\x27] is not None else \x27<span class="none-val">None (missing)</span>\x27}
+                            {html.escape(str(p['base_pred'])) if p['base_pred'] is not None else '<span class="none-val">None (missing)</span>'}
                         </span>
                     </div>
 
@@ -167,13 +167,13 @@ def build_comparison_html(
                     </div>
 
                     <div class="metric-row">
-                        <span>Tokens: <strong>{p[\x27base_toks\x27]}</strong></span>
-                        <span>Speed: <strong>{p[\x27base_tok_s\x27]:.1f} tok/s</strong></span>
+                        <span>Tokens: <strong>{p['base_toks']}</strong></span>
+                        <span>Speed: <strong>{p['base_tok_s']:.1f} tok/s</strong></span>
                     </div>
 
                     <div class="snippet-box">
                         <div class="snippet-label">Completion Preview:</div>
-                        <pre><code>{html.escape(p[\x27base_snippet\x27])}</code></pre>
+                        <pre><code>{html.escape(p['base_snippet'])}</code></pre>
                     </div>
                 </div>
             </div>
@@ -705,31 +705,31 @@ def build_comparison_html(
     </div>
 
     <script>
-        const filterBtns = document.querySelectorAll(\x27.filter-btn\x27);
-        const cards = document.querySelectorAll(\x27.problem-card\x27);
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const cards = document.querySelectorAll('.problem-card');
 
         filterBtns.forEach(btn => {{
-            btn.addEventListener(\x27click\x27, () => {{
-                filterBtns.forEach(b => b.classList.remove(\x27active\x27));
-                btn.classList.add(\x27active\x27);
+            btn.addEventListener('click', () => {{
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
 
-                const filter = btn.getAttribute(\x27data-filter\x27);
+                const filter = btn.getAttribute('data-filter');
 
                 cards.forEach(card => {{
-                    if (filter === \x27all\x27) {{
-                        card.classList.remove(\x27is-hidden\x27);
-                    }} else if (filter === \x27contest\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27contest\x27));
-                    }} else if (filter === \x27degradation\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27degradation\x27));
-                    }} else if (filter === \x27sft-win\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27sft-win\x27));
-                    }} else if (filter === \x27base-win\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27base-win\x27));
-                    }} else if (filter === \x27both-pass\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27both-pass\x27));
-                    }} else if (filter === \x27both-fail\x27) {{
-                        card.classList.toggle(\x27is-hidden\x27, !card.classList.contains(\x27both-fail\x27));
+                    if (filter === 'all') {{
+                        card.classList.remove('is-hidden');
+                    }} else if (filter === 'contest') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('contest'));
+                    }} else if (filter === 'degradation') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('degradation'));
+                    }} else if (filter === 'sft-win') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('sft-win'));
+                    }} else if (filter === 'base-win') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('base-win'));
+                    }} else if (filter === 'both-pass') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('both-pass'));
+                    }} else if (filter === 'both-fail') {{
+                        card.classList.toggle('is-hidden', !card.classList.contains('both-fail'));
                     }}
                 }});
             }});

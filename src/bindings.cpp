@@ -2,26 +2,53 @@
 #include <c10/cuda/CUDAStream.h>
 #include <c10/cuda/CUDAGuard.h>
 #include <cuda_fp16.h>
+
 #include "kernels/lop3_dequant.h"
+#include "kernels/fused_w4a16_gemm.h"
 #include "kernels/h17_mega_kernel.h"
 #include "kernels/fused_backward_adamw.h"
-#include "kernels/fused_silu_backward.h"
+#include "kernels/fused_ellie_swiglu_rmsnorm.h"
+#include "kernels/fused_swiglu_backward.h"
+#include "kernels/fused_sft_lora_backward.h"
+
+#define CHECK_CUDA(x) TORCH_CHECK((x).is_cuda(), #x " must be a CUDA tensor")
+#define CHECK_CONTIGUOUS(x) TORCH_CHECK((x).is_contiguous(), #x " must be contiguous")
+#define CHECK_SAME_DEVICE(x, primary) TORCH_CHECK((x).device() == (primary).device(), \
+    #x " device mismatch: expected device ", (primary).device(), " but got ", (x).device())
+#define CHECK_HALF(x) TORCH_CHECK((x).scalar_type() == torch::kHalf, #x " must be FP16")
+#define CHECK_INT32(x) TORCH_CHECK((x).scalar_type() == torch::kInt32, #x " must be Int32")
+#define CHECK_FLOAT(x) TORCH_CHECK((x).scalar_type() == torch::kFloat, #x " must be FP32")
 
 torch::Tensor dequantize_lop3_u4_cuda(
     torch::Tensor packed_weights,
     torch::Tensor scales,
     torch::Tensor zero_points)
 {
-    TORCH_CHECK(packed_weights.is_cuda(), "packed_weights must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
-    TORCH_CHECK(packed_weights.scalar_type() == torch::kInt32, "packed_weights must be Int32");
+    CHECK_CUDA(packed_weights);
+    CHECK_CUDA(scales);
+    CHECK_CUDA(zero_points);
+
+    CHECK_CONTIGUOUS(packed_weights);
+    CHECK_CONTIGUOUS(scales);
+    CHECK_CONTIGUOUS(zero_points);
+
+    CHECK_SAME_DEVICE(scales, packed_weights);
+    CHECK_SAME_DEVICE(zero_points, packed_weights);
+
+    CHECK_INT32(packed_weights);
+    CHECK_HALF(scales);
+    CHECK_HALF(zero_points);
+
+    const at::cuda::CUDAGuard device_guard(packed_weights.device());
 
     int num_uint32s = packed_weights.numel();
+    TORCH_CHECK(num_uint32s > 0, "packed_weights must not be empty");
+    TORCH_CHECK(scales.numel() >= num_uint32s, "scales dimension mismatch");
+    TORCH_CHECK(zero_points.numel() >= num_uint32s, "zero_points dimension mismatch");
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(packed_weights.device());
     torch::Tensor output = torch::empty({num_uint32s * 8}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(packed_weights.device().index()).stream();
 
     launch_lop3_dequant_u4(
         reinterpret_cast<const uint32_t*>(packed_weights.data_ptr<int32_t>()),
@@ -39,16 +66,31 @@ torch::Tensor dequantize_lop3_s4_cuda(
     torch::Tensor scales,
     torch::Tensor zero_points)
 {
-    TORCH_CHECK(packed_weights.is_cuda(), "packed_weights must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
-    TORCH_CHECK(packed_weights.scalar_type() == torch::kInt32, "packed_weights must be Int32");
+    CHECK_CUDA(packed_weights);
+    CHECK_CUDA(scales);
+    CHECK_CUDA(zero_points);
+
+    CHECK_CONTIGUOUS(packed_weights);
+    CHECK_CONTIGUOUS(scales);
+    CHECK_CONTIGUOUS(zero_points);
+
+    CHECK_SAME_DEVICE(scales, packed_weights);
+    CHECK_SAME_DEVICE(zero_points, packed_weights);
+
+    CHECK_INT32(packed_weights);
+    CHECK_HALF(scales);
+    CHECK_HALF(zero_points);
+
+    const at::cuda::CUDAGuard device_guard(packed_weights.device());
 
     int num_uint32s = packed_weights.numel();
+    TORCH_CHECK(num_uint32s > 0, "packed_weights must not be empty");
+    TORCH_CHECK(scales.numel() >= num_uint32s, "scales dimension mismatch");
+    TORCH_CHECK(zero_points.numel() >= num_uint32s, "zero_points dimension mismatch");
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(packed_weights.device());
     torch::Tensor output = torch::empty({num_uint32s * 8}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(packed_weights.device().index()).stream();
 
     launch_lop3_dequant_s4(
         reinterpret_cast<const uint32_t*>(packed_weights.data_ptr<int32_t>()),
@@ -61,8 +103,6 @@ torch::Tensor dequantize_lop3_s4_cuda(
     return output;
 }
 
-#include "kernels/fused_w4a16_gemm.h"
-
 torch::Tensor fused_w4a16_gemm_u4_cuda(
     torch::Tensor A,
     torch::Tensor W_packed,
@@ -70,17 +110,37 @@ torch::Tensor fused_w4a16_gemm_u4_cuda(
     torch::Tensor zero_points,
     int64_t group_size = 0)
 {
-    TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
-    TORCH_CHECK(W_packed.is_cuda(), "W_packed must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
+    CHECK_CUDA(A);
+    CHECK_CUDA(W_packed);
+    CHECK_CUDA(scales);
+    CHECK_CUDA(zero_points);
 
-    TORCH_CHECK(A.scalar_type() == torch::kHalf, "A must be FP16");
-    TORCH_CHECK(W_packed.scalar_type() == torch::kInt32, "W_packed must be Int32");
+    CHECK_CONTIGUOUS(A);
+    CHECK_CONTIGUOUS(W_packed);
+    CHECK_CONTIGUOUS(scales);
+    CHECK_CONTIGUOUS(zero_points);
+
+    CHECK_SAME_DEVICE(W_packed, A);
+    CHECK_SAME_DEVICE(scales, A);
+    CHECK_SAME_DEVICE(zero_points, A);
+
+    CHECK_HALF(A);
+    CHECK_INT32(W_packed);
+    CHECK_HALF(scales);
+    CHECK_HALF(zero_points);
+
+    TORCH_CHECK(A.dim() == 2, "A must be 2D [M, K]");
+    TORCH_CHECK(W_packed.dim() == 2, "W_packed must be 2D [K/8, N]");
+
+    const at::cuda::CUDAGuard device_guard(A.device());
 
     int M = A.size(0);
     int K = A.size(1);
     int N = W_packed.size(1);
+    TORCH_CHECK(M > 0, "M must be positive");
+    if (group_size > 0) {
+        TORCH_CHECK(scales.size(0) * group_size >= K, "scales dimension mismatch");
+    }
 
     int g_size = static_cast<int>(group_size);
     if (g_size <= 0 && scales.dim() == 2 && scales.size(0) > 1) {
@@ -90,7 +150,7 @@ torch::Tensor fused_w4a16_gemm_u4_cuda(
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(A.device());
     torch::Tensor C = torch::empty({M, N}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(A.device().index()).stream();
 
     launch_fused_w4a16_gemm_u4(
         reinterpret_cast<const half*>(A.data_ptr<at::Half>()),
@@ -112,17 +172,37 @@ torch::Tensor fused_w4a16_gemm_s4_cuda(
     torch::Tensor zero_points,
     int64_t group_size = 0)
 {
-    TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
-    TORCH_CHECK(W_packed.is_cuda(), "W_packed must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
+    CHECK_CUDA(A);
+    CHECK_CUDA(W_packed);
+    CHECK_CUDA(scales);
+    CHECK_CUDA(zero_points);
 
-    TORCH_CHECK(A.scalar_type() == torch::kHalf, "A must be FP16");
-    TORCH_CHECK(W_packed.scalar_type() == torch::kInt32, "W_packed must be Int32");
+    CHECK_CONTIGUOUS(A);
+    CHECK_CONTIGUOUS(W_packed);
+    CHECK_CONTIGUOUS(scales);
+    CHECK_CONTIGUOUS(zero_points);
+
+    CHECK_SAME_DEVICE(W_packed, A);
+    CHECK_SAME_DEVICE(scales, A);
+    CHECK_SAME_DEVICE(zero_points, A);
+
+    CHECK_HALF(A);
+    CHECK_INT32(W_packed);
+    CHECK_HALF(scales);
+    CHECK_HALF(zero_points);
+
+    TORCH_CHECK(A.dim() == 2, "A must be 2D [M, K]");
+    TORCH_CHECK(W_packed.dim() == 2, "W_packed must be 2D [K/8, N]");
+
+    const at::cuda::CUDAGuard device_guard(A.device());
 
     int M = A.size(0);
     int K = A.size(1);
     int N = W_packed.size(1);
+    TORCH_CHECK(M > 0, "M must be positive");
+    if (group_size > 0) {
+        TORCH_CHECK(scales.size(0) * group_size >= K, "scales dimension mismatch");
+    }
 
     int g_size = static_cast<int>(group_size);
     if (g_size <= 0 && scales.dim() == 2 && scales.size(0) > 1) {
@@ -132,7 +212,7 @@ torch::Tensor fused_w4a16_gemm_s4_cuda(
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(A.device());
     torch::Tensor C = torch::empty({M, N}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(A.device().index()).stream();
 
     launch_fused_w4a16_gemm_s4(
         reinterpret_cast<const half*>(A.data_ptr<at::Half>()),
@@ -152,16 +232,31 @@ torch::Tensor dequantize_lop3_s3_cuda(
     torch::Tensor scales,
     torch::Tensor zero_points)
 {
-    TORCH_CHECK(packed_weights.is_cuda(), "packed_weights must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
-    TORCH_CHECK(packed_weights.scalar_type() == torch::kInt32, "packed_weights must be Int32");
+    CHECK_CUDA(packed_weights);
+    CHECK_CUDA(scales);
+    CHECK_CUDA(zero_points);
+
+    CHECK_CONTIGUOUS(packed_weights);
+    CHECK_CONTIGUOUS(scales);
+    CHECK_CONTIGUOUS(zero_points);
+
+    CHECK_SAME_DEVICE(scales, packed_weights);
+    CHECK_SAME_DEVICE(zero_points, packed_weights);
+
+    CHECK_INT32(packed_weights);
+    CHECK_HALF(scales);
+    CHECK_HALF(zero_points);
+
+    const at::cuda::CUDAGuard device_guard(packed_weights.device());
 
     int num_uint32s = packed_weights.numel();
+    TORCH_CHECK(num_uint32s > 0, "packed_weights must not be empty");
+    TORCH_CHECK(scales.numel() >= num_uint32s, "scales dimension mismatch");
+    TORCH_CHECK(zero_points.numel() >= num_uint32s, "zero_points dimension mismatch");
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(packed_weights.device());
     torch::Tensor output = torch::empty({num_uint32s * 10}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(packed_weights.device().index()).stream();
 
     launch_lop3_dequant_s3(
         reinterpret_cast<const uint32_t*>(packed_weights.data_ptr<int32_t>()),
@@ -178,15 +273,26 @@ torch::Tensor dequantize_lop3_fp8_cuda(
     torch::Tensor packed_weights,
     torch::Tensor scales)
 {
-    TORCH_CHECK(packed_weights.is_cuda(), "packed_weights must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
-    TORCH_CHECK(packed_weights.scalar_type() == torch::kInt32, "packed_weights must be Int32");
+    CHECK_CUDA(packed_weights);
+    CHECK_CUDA(scales);
+
+    CHECK_CONTIGUOUS(packed_weights);
+    CHECK_CONTIGUOUS(scales);
+
+    CHECK_SAME_DEVICE(scales, packed_weights);
+
+    CHECK_INT32(packed_weights);
+    CHECK_HALF(scales);
+
+    const at::cuda::CUDAGuard device_guard(packed_weights.device());
 
     int num_uint32s = packed_weights.numel();
+    TORCH_CHECK(num_uint32s > 0, "packed_weights must not be empty");
+    TORCH_CHECK(scales.numel() >= num_uint32s, "scales dimension mismatch");
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(packed_weights.device());
     torch::Tensor output = torch::empty({num_uint32s * 4}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(packed_weights.device().index()).stream();
 
     launch_lop3_dequant_fp8(
         reinterpret_cast<const uint32_t*>(packed_weights.data_ptr<int32_t>()),
@@ -202,24 +308,29 @@ torch::Tensor fused_h17_gemv_s3_cuda(
     torch::Tensor A,
     torch::Tensor W_packed,
     torch::Tensor scales,
-    torch::Tensor zero_points)
+    torch::Tensor zero_points = torch::Tensor())
 {
-    TORCH_CHECK(A.is_cuda(), "A must be a CUDA tensor");
-    TORCH_CHECK(W_packed.is_cuda(), "W_packed must be a CUDA tensor");
-    TORCH_CHECK(scales.is_cuda(), "scales must be a CUDA tensor");
+    CHECK_CUDA(A);
+    CHECK_CUDA(W_packed);
+    CHECK_CUDA(scales);
+
+    CHECK_CONTIGUOUS(A);
+    CHECK_CONTIGUOUS(W_packed);
+    CHECK_CONTIGUOUS(scales);
+
+    CHECK_SAME_DEVICE(W_packed, A);
+    CHECK_SAME_DEVICE(scales, A);
+
     if (zero_points.defined() && zero_points.numel() > 0) {
-        TORCH_CHECK(zero_points.is_cuda(), "zero_points must be a CUDA tensor");
-        TORCH_CHECK(zero_points.scalar_type() == torch::kHalf, "zero_points must be FP16");
-        TORCH_CHECK(zero_points.is_contiguous(), "zero_points must be contiguous");
+        CHECK_CUDA(zero_points);
+        CHECK_CONTIGUOUS(zero_points);
+        CHECK_SAME_DEVICE(zero_points, A);
+        CHECK_HALF(zero_points);
     }
 
-    TORCH_CHECK(A.is_contiguous(), "A must be contiguous");
-    TORCH_CHECK(W_packed.is_contiguous(), "W_packed must be contiguous");
-    TORCH_CHECK(scales.is_contiguous(), "scales must be contiguous");
-
-    TORCH_CHECK(A.scalar_type() == torch::kHalf, "A must be FP16");
-    TORCH_CHECK(W_packed.scalar_type() == torch::kInt32, "W_packed must be Int32");
-    TORCH_CHECK(scales.scalar_type() == torch::kHalf, "scales must be FP16");
+    CHECK_HALF(A);
+    CHECK_INT32(W_packed);
+    CHECK_HALF(scales);
 
     TORCH_CHECK(A.dim() == 1 || A.dim() == 2, "A must be 1D or 2D tensor");
     TORCH_CHECK(W_packed.dim() == 2, "W_packed must be a 2D tensor");
@@ -243,12 +354,12 @@ torch::Tensor fused_h17_gemv_s3_cuda(
                     "zero_points must have num_groups * N elements");
     }
 
-    at::cuda::CUDAGuard device_guard(A.device());
+    const at::cuda::CUDAGuard device_guard(A.device());
 
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(A.device());
     torch::Tensor C = torch::empty({M, N}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(A.device().index()).stream();
 
     const half* zp_ptr = zero_points.defined() && zero_points.numel() > 0 ?
                          reinterpret_cast<const half*>(zero_points.data_ptr<at::Half>()) : nullptr;
@@ -280,17 +391,32 @@ void fused_backward_gemm_adamw_cuda(
     float bias_correction1,
     float bias_correction2)
 {
-    TORCH_CHECK(dY.is_cuda() && X.is_cuda() && W_master.is_cuda() && W_active.is_cuda() && exp_avg.is_cuda() && exp_avg_sq.is_cuda(),
-                "All tensors must be CUDA tensors");
-    TORCH_CHECK(dY.is_contiguous() && X.is_contiguous() && W_master.is_contiguous() && W_active.is_contiguous() && exp_avg.is_contiguous() && exp_avg_sq.is_contiguous(),
-                "All tensors must be contiguous");
+    CHECK_CUDA(dY);
+    CHECK_CUDA(X);
+    CHECK_CUDA(W_master);
+    CHECK_CUDA(W_active);
+    CHECK_CUDA(exp_avg);
+    CHECK_CUDA(exp_avg_sq);
 
-    TORCH_CHECK(dY.scalar_type() == torch::kHalf, "dY must be FP16");
-    TORCH_CHECK(X.scalar_type() == torch::kHalf, "X must be FP16");
-    TORCH_CHECK(W_master.scalar_type() == torch::kFloat, "W_master must be FP32");
-    TORCH_CHECK(W_active.scalar_type() == torch::kHalf, "W_active must be FP16");
-    TORCH_CHECK(exp_avg.scalar_type() == torch::kFloat, "exp_avg must be FP32");
-    TORCH_CHECK(exp_avg_sq.scalar_type() == torch::kFloat, "exp_avg_sq must be FP32");
+    CHECK_CONTIGUOUS(dY);
+    CHECK_CONTIGUOUS(X);
+    CHECK_CONTIGUOUS(W_master);
+    CHECK_CONTIGUOUS(W_active);
+    CHECK_CONTIGUOUS(exp_avg);
+    CHECK_CONTIGUOUS(exp_avg_sq);
+
+    CHECK_SAME_DEVICE(X, dY);
+    CHECK_SAME_DEVICE(W_master, dY);
+    CHECK_SAME_DEVICE(W_active, dY);
+    CHECK_SAME_DEVICE(exp_avg, dY);
+    CHECK_SAME_DEVICE(exp_avg_sq, dY);
+
+    CHECK_HALF(dY);
+    CHECK_HALF(X);
+    CHECK_FLOAT(W_master);
+    CHECK_HALF(W_active);
+    CHECK_FLOAT(exp_avg);
+    CHECK_FLOAT(exp_avg_sq);
 
     int K = dY.size(0);
     int M = dY.size(1);
@@ -298,8 +424,8 @@ void fused_backward_gemm_adamw_cuda(
     TORCH_CHECK(X.size(0) == K, "X batch dimension must match dY batch dimension");
     TORCH_CHECK(W_master.size(0) == M && W_master.size(1) == N, "W_master shape must be [M, N]");
 
-    at::cuda::CUDAGuard device_guard(dY.device());
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    const at::cuda::CUDAGuard device_guard(dY.device());
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(dY.device().index()).stream();
 
     launch_fused_backward_gemm_adamw(
         reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
@@ -314,24 +440,32 @@ void fused_backward_gemm_adamw_cuda(
         stream);
 }
 
-#include "kernels/fused_ellie_swiglu_rmsnorm.h"
-
 torch::Tensor fused_ellie_rmsnorm_cuda(
     torch::Tensor x,
     torch::Tensor gamma,
     float eps = 1e-6f)
 {
-    TORCH_CHECK(x.is_cuda() && gamma.is_cuda(), "x and gamma must be CUDA tensors");
-    TORCH_CHECK(x.is_contiguous() && gamma.is_contiguous(), "x and gamma must be contiguous");
-    TORCH_CHECK(x.scalar_type() == torch::kHalf && gamma.scalar_type() == torch::kHalf, "x and gamma must be FP16");
+    CHECK_CUDA(x);
+    CHECK_CUDA(gamma);
 
-    int M = x.dim() == 1 ? 1 : x.size(0);
-    int D = x.dim() == 1 ? x.size(0) : x.size(1);
+    CHECK_CONTIGUOUS(x);
+    CHECK_CONTIGUOUS(gamma);
+
+    CHECK_SAME_DEVICE(gamma, x);
+
+    CHECK_HALF(x);
+    CHECK_HALF(gamma);
+
+    TORCH_CHECK(x.dim() >= 1, "x must have at least 1 dimension");
+    int D = x.size(-1);
+    TORCH_CHECK(D > 0, "hidden dimension D must be positive");
+    int M = x.numel() / D;
+    TORCH_CHECK(M > 0, "M must be positive");
     TORCH_CHECK(gamma.numel() == D, "gamma size must match hidden dimension D");
 
-    at::cuda::CUDAGuard device_guard(x.device());
+    const at::cuda::CUDAGuard device_guard(x.device());
     torch::Tensor out = torch::empty_like(x);
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(x.device().index()).stream();
 
     launch_fused_ellie_rmsnorm_forward(
         reinterpret_cast<const half*>(x.data_ptr<at::Half>()),
@@ -346,17 +480,25 @@ torch::Tensor fused_ellie_swiglu_cuda(
     torch::Tensor gate,
     torch::Tensor up)
 {
-    TORCH_CHECK(gate.is_cuda() && up.is_cuda(), "gate and up must be CUDA tensors");
-    TORCH_CHECK(gate.is_contiguous() && up.is_contiguous(), "gate and up must be contiguous");
-    TORCH_CHECK(gate.scalar_type() == torch::kHalf && up.scalar_type() == torch::kHalf, "gate and up must be FP16");
+    CHECK_CUDA(gate);
+    CHECK_CUDA(up);
+
+    CHECK_CONTIGUOUS(gate);
+    CHECK_CONTIGUOUS(up);
+
+    CHECK_SAME_DEVICE(up, gate);
+
+    CHECK_HALF(gate);
+    CHECK_HALF(up);
+
     TORCH_CHECK(gate.sizes() == up.sizes(), "gate and up must have identical dimensions");
 
     int M = gate.dim() == 1 ? 1 : gate.size(0);
     int H = gate.dim() == 1 ? gate.size(0) : gate.size(1);
 
-    at::cuda::CUDAGuard device_guard(gate.device());
+    const at::cuda::CUDAGuard device_guard(gate.device());
     torch::Tensor out = torch::empty_like(gate);
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(gate.device().index()).stream();
 
     launch_fused_ellie_swiglu_forward(
         reinterpret_cast<const half*>(gate.data_ptr<at::Half>()),
@@ -379,18 +521,55 @@ torch::Tensor fused_ellie_rmsnorm_w4a16_gemv_swiglu_cuda(
     int group_size = 128,
     float eps = 1e-6f)
 {
-    TORCH_CHECK(x.is_cuda() && gamma.is_cuda() && W_gate.is_cuda() && W_up.is_cuda(), "All tensors must be CUDA tensors");
-    TORCH_CHECK(x.is_contiguous() && gamma.is_contiguous() && W_gate.is_contiguous() && W_up.is_contiguous(), "Tensors must be contiguous");
+    CHECK_CUDA(x);
+    CHECK_CUDA(gamma);
+    CHECK_CUDA(W_gate);
+    CHECK_CUDA(scale_gate);
+    CHECK_CUDA(W_up);
+    CHECK_CUDA(scale_up);
+
+    CHECK_CONTIGUOUS(x);
+    CHECK_CONTIGUOUS(gamma);
+    CHECK_CONTIGUOUS(W_gate);
+    CHECK_CONTIGUOUS(scale_gate);
+    CHECK_CONTIGUOUS(W_up);
+    CHECK_CONTIGUOUS(scale_up);
+
+    CHECK_SAME_DEVICE(gamma, x);
+    CHECK_SAME_DEVICE(W_gate, x);
+    CHECK_SAME_DEVICE(scale_gate, x);
+    CHECK_SAME_DEVICE(W_up, x);
+    CHECK_SAME_DEVICE(scale_up, x);
+
+    if (zp_gate.defined() && zp_gate.numel() > 0) {
+        CHECK_CUDA(zp_gate);
+        CHECK_CONTIGUOUS(zp_gate);
+        CHECK_SAME_DEVICE(zp_gate, x);
+        CHECK_HALF(zp_gate);
+    }
+    if (zp_up.defined() && zp_up.numel() > 0) {
+        CHECK_CUDA(zp_up);
+        CHECK_CONTIGUOUS(zp_up);
+        CHECK_SAME_DEVICE(zp_up, x);
+        CHECK_HALF(zp_up);
+    }
+
+    CHECK_HALF(x);
+    CHECK_HALF(gamma);
+    CHECK_INT32(W_gate);
+    CHECK_HALF(scale_gate);
+    CHECK_INT32(W_up);
+    CHECK_HALF(scale_up);
 
     int D = x.numel();
     int H = W_gate.size(1);
     TORCH_CHECK(W_gate.size(0) == D / 8, "W_gate rows must equal D/8 for INT4 packing");
     TORCH_CHECK(W_up.size(0) == D / 8 && W_up.size(1) == H, "W_up dimensions must match W_gate");
 
-    at::cuda::CUDAGuard device_guard(x.device());
+    const at::cuda::CUDAGuard device_guard(x.device());
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(x.device());
     torch::Tensor out = torch::empty({1, H}, options);
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(x.device().index()).stream();
 
     const half* zp_g_ptr = zp_gate.defined() && zp_gate.numel() > 0 ? reinterpret_cast<const half*>(zp_gate.data_ptr<at::Half>()) : nullptr;
     const half* zp_u_ptr = zp_up.defined() && zp_up.numel() > 0 ? reinterpret_cast<const half*>(zp_up.data_ptr<at::Half>()) : nullptr;
@@ -410,25 +589,35 @@ torch::Tensor fused_ellie_rmsnorm_w4a16_gemv_swiglu_cuda(
     return out;
 }
 
-#include "kernels/fused_swiglu_backward.h"
-#include "kernels/fused_sft_lora_backward.h"
-
 std::vector<torch::Tensor> fused_swiglu_backward_cuda(
     torch::Tensor dY,
     torch::Tensor gate,
     torch::Tensor up)
 {
-    TORCH_CHECK(dY.is_cuda() && gate.is_cuda() && up.is_cuda(), "All tensors must be on CUDA");
-    TORCH_CHECK(dY.is_contiguous() && gate.is_contiguous() && up.is_contiguous(), "All tensors must be contiguous");
-    TORCH_CHECK(dY.scalar_type() == torch::kHalf, "dY must be FP16");
+    CHECK_CUDA(dY);
+    CHECK_CUDA(gate);
+    CHECK_CUDA(up);
+
+    CHECK_CONTIGUOUS(dY);
+    CHECK_CONTIGUOUS(gate);
+    CHECK_CONTIGUOUS(up);
+
+    CHECK_SAME_DEVICE(gate, dY);
+    CHECK_SAME_DEVICE(up, dY);
+
+    CHECK_HALF(dY);
+    CHECK_HALF(gate);
+    CHECK_HALF(up);
+
+    TORCH_CHECK(gate.numel() == dY.numel() && up.numel() == dY.numel(), "gate and up must match dY numel");
 
     int numel = dY.numel();
-    at::cuda::CUDAGuard device_guard(dY.device());
+    const at::cuda::CUDAGuard device_guard(dY.device());
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(dY.device());
     torch::Tensor d_gate = torch::empty_like(gate);
     torch::Tensor d_up = torch::empty_like(up);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(dY.device().index()).stream();
 
     launch_fused_swiglu_backward(
         reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
@@ -462,20 +651,63 @@ torch::Tensor fused_sft_lora_backward_adamw_cuda(
     float bias_correction1 = 1.0f,
     float bias_correction2 = 1.0f)
 {
-    TORCH_CHECK(dY.is_cuda() && X.is_cuda() && H_lora.is_cuda(), "Input tensors must be on CUDA");
-    TORCH_CHECK(A_master.is_cuda() && A_active.is_cuda() && m_A.is_cuda() && v_A.is_cuda(), "Adapter A tensors must be on CUDA");
-    TORCH_CHECK(B_master.is_cuda() && B_active.is_cuda() && m_B.is_cuda() && v_B.is_cuda(), "Adapter B tensors must be on CUDA");
+    CHECK_CUDA(dY);
+    CHECK_CUDA(X);
+    CHECK_CUDA(H_lora);
+    CHECK_CUDA(A_master);
+    CHECK_CUDA(A_active);
+    CHECK_CUDA(m_A);
+    CHECK_CUDA(v_A);
+    CHECK_CUDA(B_master);
+    CHECK_CUDA(B_active);
+    CHECK_CUDA(m_B);
+    CHECK_CUDA(v_B);
+
+    CHECK_CONTIGUOUS(dY);
+    CHECK_CONTIGUOUS(X);
+    CHECK_CONTIGUOUS(H_lora);
+    CHECK_CONTIGUOUS(A_master);
+    CHECK_CONTIGUOUS(A_active);
+    CHECK_CONTIGUOUS(m_A);
+    CHECK_CONTIGUOUS(v_A);
+    CHECK_CONTIGUOUS(B_master);
+    CHECK_CONTIGUOUS(B_active);
+    CHECK_CONTIGUOUS(m_B);
+    CHECK_CONTIGUOUS(v_B);
+
+    CHECK_SAME_DEVICE(X, dY);
+    CHECK_SAME_DEVICE(H_lora, dY);
+    CHECK_SAME_DEVICE(A_master, dY);
+    CHECK_SAME_DEVICE(A_active, dY);
+    CHECK_SAME_DEVICE(m_A, dY);
+    CHECK_SAME_DEVICE(v_A, dY);
+    CHECK_SAME_DEVICE(B_master, dY);
+    CHECK_SAME_DEVICE(B_active, dY);
+    CHECK_SAME_DEVICE(m_B, dY);
+    CHECK_SAME_DEVICE(v_B, dY);
+
+    CHECK_HALF(dY);
+    CHECK_HALF(X);
+    CHECK_HALF(H_lora);
+    CHECK_FLOAT(A_master);
+    CHECK_HALF(A_active);
+    CHECK_FLOAT(m_A);
+    CHECK_FLOAT(v_A);
+    CHECK_FLOAT(B_master);
+    CHECK_HALF(B_active);
+    CHECK_FLOAT(m_B);
+    CHECK_FLOAT(v_B);
 
     int M = dY.size(0);
     int d_out = dY.size(1);
     int d_in = X.size(1);
     int r = H_lora.size(1);
 
-    at::cuda::CUDAGuard device_guard(dY.device());
+    const at::cuda::CUDAGuard device_guard(dY.device());
     auto options = torch::TensorOptions().dtype(torch::kHalf).device(dY.device());
     torch::Tensor dX = torch::empty({M, d_in}, options);
 
-    cudaStream_t stream = c10::cuda::getCurrentCUDAStream().stream();
+    cudaStream_t stream = c10::cuda::getCurrentCUDAStream(dY.device().index()).stream();
 
     launch_fused_sft_lora_backward_adamw(
         reinterpret_cast<const half*>(dY.data_ptr<at::Half>()),
@@ -506,7 +738,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           py::arg("A"), py::arg("W_packed"), py::arg("scales"), py::arg("zero_points"), py::arg("group_size") = 0);
     m.def("fused_w4a16_gemm_s4", &fused_w4a16_gemm_s4_cuda, "Fused Signed S4A16 GEMM with LOP3 0x6A Dequant (CUDA)",
           py::arg("A"), py::arg("W_packed"), py::arg("scales"), py::arg("zero_points"), py::arg("group_size") = 0);
-    m.def("fused_h17_gemv_s3", &fused_h17_gemv_s3_cuda, "Flagship H17 Fused INT3 Dequant + GEMV Decode Mega-Kernel (CUDA)");
+    m.def("fused_h17_gemv_s3", &fused_h17_gemv_s3_cuda, "Flagship H17 Fused INT3 Dequant + GEMV Decode Mega-Kernel (CUDA)",
+          py::arg("A"), py::arg("W_packed"), py::arg("scales"), py::arg("zero_points") = torch::Tensor());
     m.def("fused_backward_gemm_adamw", &fused_backward_gemm_adamw_cuda, "H6 Fused Backward GEMM + Inline AdamW Optimizer Kernel (CUDA)");
     m.def("fused_ellie_rmsnorm", &fused_ellie_rmsnorm_cuda, "Fused Ellie 4B RMSNorm Kernel (CUDA)");
     m.def("fused_ellie_swiglu", &fused_ellie_swiglu_cuda, "Fused Ellie 4B SwiGLU Elementwise Kernel (CUDA)");

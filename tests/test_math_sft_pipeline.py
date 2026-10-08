@@ -31,7 +31,7 @@ from benchmarks.eval_math_benchmark import (
     verify_math_answer_sympy
 )
 
-SNAPSHOT_PATH = "/home/kriday/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2"
+SNAPSHOT_PATH = os.path.expanduser("~/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2")
 DATASET_PATH = os.path.join(REPO_DIR, "data", "chalk_seeds_500.jsonl")
 EXTERNAL_EVAL_PATH = os.path.join(REPO_DIR, "data", "external_math_eval.json")
 

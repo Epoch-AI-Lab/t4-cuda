@@ -1,0 +1,15 @@
+{
+  "model": "Qwen/Qwen2.5-Math-1.5B",
+  "sft_adapter_path": "results/chalk_math_1.5b_sft/lora_adapter",
+  "max_steps": 30,
+  "batch_size": 1,
+  "num_generations": 4,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "final_loss": 1.3145511150360107,
+  "final_mean_reward": -2.0464999675750732,
+  "elapsed_seconds": 1497.3169598579407,
+  "peak_vram_gb": 6.389412879943848,
+  "device": "cuda",
+  "dry_run": false
+}

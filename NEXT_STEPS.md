@@ -1,6 +1,6 @@
 # Tesla T4 GPU Physical Execution & Next Research Milestones
 
-> **Status (2026-08-16)**: The 5-stage physical execution protocol on physical **NVIDIA Tesla T4** hardware (TU104, sm_75, 70W TDP) has been **COMPLETED and VERIFIED 100%**. All test suites (`run_all_cuda_tests.py`, `verify_colab.sh`, `test_dequant_correctness.py`, `test_h6_fused_backward_adamw.py`, `test_h17_fused_int3_gemv.py`) pass cleanly on live silicon.
+> **Status (2026-09-23)**: Phase 2 physical execution on **NVIDIA Tesla T4** (TU104, sm_75, 70W TDP) is **COMPLETE and VERIFIED**. Milestones A–C below are done: end-to-end serving engine (1.48x wall-clock speedup), H26 steering-vector experiments superseded, and Nsight `.nsys-rep`/`.ncu-rep` traces captured (Milestone C, see `results/traces/`). The RL track has also advanced: Baby-Chalk (1.5B) cold-start SFT + GRPO RL post-training passed its victory audit (`docs/VICTORY_AUDIT_BABY_CHALK_FIX.md`).
 
 ---
 
@@ -18,20 +18,24 @@
 
 ---
 
-## 2. Immediate Research Priorities (Phase 2)
+## 2. Immediate Research Priorities (Phase 3 — as of 2026-09-23)
 
-### Milestone A: End-to-End Token Generation Serving Engine
-- **Objective**: Wire `fused_h17_gemv_s3` and `fused_w4a16_gemv` into a minimal autoregressive token generation loop for a real model (e.g. 0.5B / 4B model) on Tesla T4.
-- **Metric**: Measure **real wall-clock tokens/sec (p50, p90, p99 latency)** vs `torch.compile` (inductor) and standard HuggingFace/BitsAndBytes baselines.
-- **Deliverable**: `benchmarks/benchmark_end_to_end_serving.py` executed on Colab T4.
+### ~~Milestone A~~ ✅ DONE: End-to-End Token Generation Serving Engine
+- Unified speculative serving engine verified at **1.48x net wall-clock speedup** (`src/unified_speculative_engine.py`, `results/t4_speculative_benchmark_report.json`).
 
-### Milestone B: Decisive Experiment for H26 (INT3 Steering Vector Drift)
-- **Objective**: Extract linear persona steering vectors (directness, depth, tone) from FP16 activations and measure their cosine similarity drift when applied to an INT3/INT4 quantized model.
-- **Metric**: Confirm whether steering vectors retain $\ge 85\%$ directional alignment after weight quantization or if sub-4-bit discretization causes representation collapse.
-- **Deliverable**: `experiments/h26_steering_quantization_drift.py`.
+### ~~Milestone B~~ ✅ SUPERSEDED: H26 Steering Vector Drift
+- Superseded by the RL/post-training track; hypothesis retired from the critical path.
 
-### Milestone C: Full Nsight Systems / Compute Trace Capture
-- **Objective**: Generate clean `.nsys-rep` and `.ncu-rep` trace captures on Colab T4 for the fused AdamW (H6) and INT3 Mega-Kernel (H17) to provide auditable roofline and warp stall evidence for publication.
+### ~~Milestone C~~ ✅ DONE: Full Nsight Systems / Compute Trace Capture
+- `.nsys-rep` / `.ncu-rep` traces captured for H6 fused AdamW and H17 mega-kernel (`results/traces/`); AdamW kernel identified as 95% of GPU time, starved by shared memory.
+
+### Milestone D (NEW): Big-Chalk (Qwen2.5-Math-7B) RL Post-Training
+- **Objective**: Scale the verified Baby-Chalk RL pipeline (cursor-style GRPO + Rottweiler verifier + strict scaffold enforcement + calibrated abstention) to `Qwen2.5-Math-7B` on dual Tesla T4 (Kaggle, 2×16 GB) using the PP=2 decode / TP=2 training sharding decided in `TODO.md` §5.
+- **Metric**: Contest Pass@1 ≥ 56.2% and Grounding Sanity ≥ 80.0% (match or beat Baby-Chalk), 0 malformed tag artifacts, peak VRAM within dual-T4 budget.
+- **Deliverables**: `benchmarks/train_big_chalk_rl.py` (does not exist yet — only `train_baby_chalk_rl.py` + `scripts/run_kaggle_7b_sft.sh` SFT runner exist), Kaggle runner notebook, eval artifact under `results/benchmarks/`.
+
+### Milestone E (NEW): Conjecture Loop (stretch — `TODO.md` §6)
+- Old-model proposes lemmas over post-cutoff mathlib/Lean-Workbook; Lean 4 checks truth; embeddings check novelty. Only after Milestone D lands.
 
 ---
 

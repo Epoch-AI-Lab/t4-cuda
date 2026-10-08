@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Microarchitectural Simulation Suite for Tesla T4 (Turing CC 7.5) Hypotheses H7, H8, H9
-Calculates exact SASS instruction counts, bank conflict swizzles, arithmetic intensity,
-and roofline performance metrics.
+[THEORETICAL MODEL] Microarchitectural Analytical Suite for Tesla T4 (Turing CC 7.5) Hypotheses H7, H8, H9
+Calculates theoretical SASS instruction estimates, bank conflict models, arithmetic intensity,
+and roofline projection metrics. (Pure analytical modeling; physical execution requires GPU hardware).
 """
 
 import sys
@@ -22,7 +22,7 @@ T4_SPECS = {
 def simulate_h7_int3_lop3():
     """Simulates H7: Signed INT3 Dequantization via LOP3 LUT 0xCA."""
     print("=" * 80)
-    print("  SIMULATION H7: SIGNED INT3 SUB-BYTE LOP3 DEQUANTIZATION (TURING SM 7.5)")
+    print("  THEORETICAL MODEL H7: SIGNED INT3 SUB-BYTE LOP3 DEQUANTIZATION (TURING SM 7.5)")
     print("=" * 80)
 
     naive_bfe_insts_per_10_elements = 40  # 4 insts per element (bfe, shift, and, add)
@@ -45,18 +45,18 @@ def simulate_h7_int3_lop3():
     print(f"Effective GDDR6 Bandwidth Saturation       : {attainable_bw:.2f} GB/s ({0.948*100:.1f}%)")
     print(f"7B Model Memory Footprint (FP16 vs INT3)   : {fp16_bytes_7b:.2f} GB -> {int3_bytes_7b:.2f} GB ({memory_savings_factor:.2f}x compression)")
     print(f"Batch Size Scaling in 16GB VRAM (S=4096)   : B = 2 -> B = 32 (16x scaling)")
-    print("Status: HYPOTHESIS H7 CONFIRMED")
+    print("Status: THEORETICAL MODEL PROJECTION COMPLETE (Requires Hardware Validation)")
     print()
 
 def simulate_h8_warp_specialization():
     """Simulates H8: Warp-Specialized Split-K GEMM for 70W T4."""
     print("=" * 80)
-    print("  SIMULATION H8: WARP-SPECIALIZED PRODUCER-CONSUMER SPLIT-K GEMM (TURING SM 7.5)")
+    print("  THEORETICAL MODEL H8: WARP-SPECIALIZED PRODUCER-CONSUMER SPLIT-K GEMM (TURING SM 7.5)")
     print("=" * 80)
 
-    standard_gemm_stall_cycles = 240
-    warp_spec_stall_cycles = 14
-    stall_reduction_pct = (1.0 - (warp_spec_stall_cycles / standard_gemm_stall_cycles)) * 100.0
+    baseline_gemm_stall_cycles = 240
+    specialized_gemm_stall_cycles = 14
+    stall_reduction_pct = (1.0 - (specialized_gemm_stall_cycles / baseline_gemm_stall_cycles)) * 100.0
 
     standard_clock_mhz = 1080.0  # Throttled by NVPM power cap spikes
     warp_spec_clock_mhz = 1590.0 # Locked peak boost clock
@@ -68,17 +68,17 @@ def simulate_h8_warp_specialization():
     attainable_bw_h8  = T4_SPECS["gddr6_bw_gbps"] * 0.912 # 291.84 GB/s
     speedup = attainable_bw_h8 / attainable_bw_std
 
-    print(f"HBM Fetch Warp Stall Latency (Std vs H8)  : {standard_gemm_stall_cycles} cycles -> {warp_spec_stall_cycles} cycles ({stall_reduction_pct:.1f}% reduction)")
+    print(f"HBM Fetch Warp Stall Latency (Std vs H8)  : {baseline_gemm_stall_cycles} cycles -> {specialized_gemm_stall_cycles} cycles ({stall_reduction_pct:.1f}% reduction)")
     print(f"Sustained SM Boost Clock                   : {standard_clock_mhz} MHz -> {warp_spec_clock_mhz} MHz (Locked Peak)")
     print(f"Dynamic Power Profile                      : {standard_power_w} W (Throttled) -> {warp_spec_power_w} W (Stable)")
     print(f"Attainable Decode Throughput               : {attainable_bw_std:.1f} GB/s -> {attainable_bw_h8:.1f} GB/s ({speedup:.2f}x speedup)")
-    print("Status: HYPOTHESIS H8 CONFIRMED")
+    print("Status: THEORETICAL MODEL PROJECTION COMPLETE (Requires Hardware Validation)")
     print()
 
 def simulate_h9_fp8_emulation():
     """Simulates H9: Fused FP8 Emulation via Micro-Scale LOP3 Mantissa Rescaling."""
     print("=" * 80)
-    print("  SIMULATION H9: FUSED FP8 EMULATION VIA LOP3 MANTISSA RESCALING (TURING SM 7.5)")
+    print("  THEORETICAL MODEL H9: FUSED FP8 EMULATION VIA LOP3 MANTISSA RESCALING (TURING SM 7.5)")
     print("=" * 80)
 
     pytorch_cast_insts = 22
@@ -96,7 +96,7 @@ def simulate_h9_fp8_emulation():
     print(f"Emulated FP8 GEMM Throughput on Tesla T4   : {pytorch_cast_tflops:.1f} TFLOPS -> {lop3_h9_tflops:.1f} TFLOPS ({tflops_speedup:.2f}x speedup)")
     print(f"HBM Memory Traffic Reduction               : {hbm_traffic_reduction:.1f}x (1 byte/param vs 2 bytes/param)")
     print(f"Effective GDDR6 Bandwidth Saturation       : {bw_saturation:.1f}%")
-    print("Status: HYPOTHESIS H9 CONFIRMED")
+    print("Status: THEORETICAL MODEL PROJECTION COMPLETE (Requires Hardware Validation)")
     print("=" * 80)
 
 if __name__ == "__main__":

@@ -31,6 +31,8 @@ except ImportError:
     print("WARNING: t4_kernels not found! Running in pure PyTorch mode.")
 
 ANSWER_RE = re.compile(r"####\s*(-?[0-9][0-9,\.]*)")
+_tokenized_gen_tokens = 0
+_tokenizer_cache = None
 
 
 def extract_answer(text: str) -> str | None:
@@ -44,6 +46,7 @@ def extract_answer(text: str) -> str | None:
 
 def reward_correct(completions, answer, **kwargs):
     """+1 exact match, 0 otherwise. Verifiable, no judge needed."""
+    global _tokenized_gen_tokens, _tokenizer_cache
     rewards = []
     for comp, gold in zip(completions, answer):
         if isinstance(comp, list):
@@ -51,6 +54,11 @@ def reward_correct(completions, answer, **kwargs):
         pred = extract_answer(comp)
         gold = gold.replace(",", "").rstrip(".")
         rewards.append(1.0 if pred == gold else 0.0)
+        if _tokenizer_cache is not None:
+            try:
+                _tokenized_gen_tokens += len(_tokenizer_cache.encode(comp, add_special_tokens=False))
+            except Exception:
+                pass
     return rewards
 
 
@@ -151,15 +159,33 @@ def main():
     _orig_generate = transformers.GenerationMixin.generate
 
     generation_time_total = 0.0
+    actual_gen_tokens = 0
 
     def int4_hooked_generate(self, *gen_args, **gen_kwargs):
-        nonlocal generation_time_total
+        nonlocal generation_time_total, actual_gen_tokens
         torch.cuda.synchronize()
         t0 = time.perf_counter()
         with Int4RolloutScope(self, group_size=args.group_size):
             res = _orig_generate(self, *gen_args, **gen_kwargs)
         torch.cuda.synchronize()
         generation_time_total += time.perf_counter() - t0
+        try:
+            input_ids = gen_kwargs.get("input_ids", None)
+            if input_ids is None and len(gen_args) > 0 and isinstance(gen_args[0], torch.Tensor):
+                input_ids = gen_args[0]
+            seqs = res.sequences if hasattr(res, "sequences") else res
+            if isinstance(seqs, torch.Tensor):
+                in_len = input_ids.shape[1] if (input_ids is not None and isinstance(input_ids, torch.Tensor)) else 0
+                gen = seqs[:, in_len:]
+                pad_id = getattr(self.generation_config, "pad_token_id", None)
+                if pad_id is None:
+                    pad_id = getattr(self.config, "pad_token_id", None)
+                if pad_id is not None:
+                    actual_gen_tokens += int((gen != pad_id).sum().item())
+                else:
+                    actual_gen_tokens += int(gen.numel())
+        except Exception:
+            pass
         return res
 
     transformers.GenerationMixin.generate = int4_hooked_generate
@@ -200,6 +226,13 @@ def main():
         train_dataset=ds,
     )
 
+    global _tokenizer_cache
+    try:
+        from transformers import AutoTokenizer
+        _tokenizer_cache = AutoTokenizer.from_pretrained(args.model)
+    except Exception:
+        _tokenizer_cache = None
+
     torch.cuda.reset_peak_memory_stats()
     t0 = time.time()
     trainer.train()
@@ -207,9 +240,8 @@ def main():
 
     peak_vram = torch.cuda.max_memory_allocated() / (1024 ** 3)
 
-    # tokens/sec estimate: completion tokens generated per step across group generations
-    gen_tokens_per_step = (args.batch_size * args.num_generations * args.max_completion_len)
-    total_gen_tokens = gen_tokens_per_step * args.steps
+    # Count actual non-pad generated tokens dynamically
+    total_gen_tokens = actual_gen_tokens if actual_gen_tokens > 0 else _tokenized_gen_tokens
 
     metrics = {
         "model": args.model,
